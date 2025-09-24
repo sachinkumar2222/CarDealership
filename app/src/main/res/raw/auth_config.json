@@ -1,0 +1,13 @@
+{
+  "client_id": "be9222f6-c405-488d-8629-4453077b7d02",
+  "authorization_user_agent": "WEBVIEW",
+  "redirect_uri": "msauth://com.slt.cardealership/LvNNxev6AklGdq5u5cHvuED9sBw%3D",
+  "authorities": [
+    {
+      "type": "B2C",
+      "authority_url": "https://sbamybuissness.b2clogin.com/tfp/sbamybuissness.onmicrosoft.com/b2c_1a_signup_signin",
+      "default": true
+    }
+  ]
+}
+

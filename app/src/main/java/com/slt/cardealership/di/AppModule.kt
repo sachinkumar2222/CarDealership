@@ -1,0 +1,49 @@
+package com.slt.cardealership.di
+
+import com.slt.cardealership.data.remote.auth.AuthRepositoryImpl
+import com.slt.cardealership.data.repo.ArticleRepositoryImpl
+import com.slt.cardealership.data.repo.DealerRepositoryImpl
+import com.slt.cardealership.domain.repo.ArticleRepository
+import com.slt.cardealership.domain.repo.AuthRepository
+import com.slt.cardealership.domain.repo.DealerRepository
+import com.slt.cardealership.domain.usecase.SignInUseCase
+import com.slt.cardealership.domain.usecase.SilentLoginUseCase
+import com.slt.cardealership.domain.usecase.SignOutUseCase
+import dagger.Binds
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class AppModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindArticleRepository(impl: ArticleRepositoryImpl): ArticleRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDealerRepository(impl: DealerRepositoryImpl): DealerRepository
+
+    companion object {
+        @Provides
+        @Singleton
+        fun provideSignInUseCase(repo: AuthRepository): SignInUseCase = SignInUseCase(repo)
+
+        @Provides
+        @Singleton
+        fun provideSilentLoginUseCase(repo: AuthRepository): SilentLoginUseCase = SilentLoginUseCase(repo)
+
+        @Provides
+        @Singleton
+        fun provideSignOutUseCase(repo: AuthRepository): SignOutUseCase = SignOutUseCase(repo)
+    }
+}

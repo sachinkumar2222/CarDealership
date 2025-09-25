@@ -441,7 +441,7 @@ fun HoursRow(day: String, hours: String) {
 @Preview(showBackground = true)
 @Composable
 fun InfoScreenPreview() {
-    CarDealershipTheme {
+    CarDealershipTheme(darkTheme = false) {
         // Preview will show basic layout as it has no data
         InfoScreen()
     }

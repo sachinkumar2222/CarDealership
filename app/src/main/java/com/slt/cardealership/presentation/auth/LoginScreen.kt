@@ -118,7 +118,7 @@ fun LoginScreen(
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
-    CarDealershipTheme {
+    CarDealershipTheme(darkTheme = false) {
         // You can add a preview resource for the Microsoft icon if needed
         // For now, it might show a warning in the preview, but it will work in the app.
         LoginScreen()

@@ -50,6 +50,22 @@ fun ArticleScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showFilterDialog by remember { mutableStateOf(false) }
 
+    if (showFilterDialog) {
+        ArticleFilterDialog(
+            currentNameFilter = viewModel.articleNameFilter,
+            currentStatusFilter = viewModel.statusFilter,
+            onDismiss = { showFilterDialog = false },
+            onResetFilters = {
+                viewModel.resetFilters()
+                showFilterDialog = false
+            },
+            onApplyFilters = { name, status ->
+                viewModel.applyFilters(name, status)
+                showFilterDialog = false
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -76,7 +92,7 @@ fun ArticleScreen(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(onClick = { /* TODO: Implement filter logic */ }) {
+            OutlinedButton(onClick = { showFilterDialog = true }) {
                 Icon(
                     Icons.Default.FilterList,
                     contentDescription = "Filter",
@@ -293,7 +309,7 @@ fun RowScope.TableCell(
 @Preview(showBackground = true)
 @Composable
 fun ArticleScreenPreview() {
-    CarDealershipTheme {
+    CarDealershipTheme(darkTheme = false) {
         ArticleScreen(navController = rememberNavController())
     }
 }

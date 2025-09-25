@@ -48,7 +48,7 @@ fun SplashScreen() {
 @Preview(showBackground = true)
 @Composable
 fun SplashScreenPreview() {
-    CarDealershipTheme {
+    CarDealershipTheme(darkTheme = false) {
         SplashScreen()
     }
 }

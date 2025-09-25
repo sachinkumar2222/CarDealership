@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.home
 
+import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -27,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -41,6 +44,7 @@ import com.slt.cardealership.presentation.articles.ArticleUiState
 import com.slt.cardealership.presentation.articles.ArticleViewModel
 import com.slt.cardealership.presentation.info.InfoScreen
 import com.slt.cardealership.presentation.navigation.Routes
+import com.slt.cardealership.presentation.settings.SettingsScreen
 import com.slt.cardealership.ui.theme.CarDealershipTheme
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -129,7 +133,7 @@ fun HomeScreen(mainNavController: NavController) {
                     )
                 }
                 composable<HomeRoutes.Profile> { CenteredText("Profile Screen") }
-                composable<HomeRoutes.Settings> { CenteredText("Settings Screen") }
+                composable<HomeRoutes.Settings> { SettingsScreen() }
 
             }
         }
@@ -299,6 +303,7 @@ fun InfoCardGridItem(title: String, icon: ImageVector, onClick: () -> Unit) {
     }
 }
 
+@SuppressLint("RestrictedApi")
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
@@ -307,26 +312,64 @@ fun BottomNavigationBar(navController: NavController) {
         BottomNavItem("Profile", Icons.Default.Person, HomeRoutes.Profile),
         BottomNavItem("Settings", Icons.Default.Settings, HomeRoutes.Settings)
     )
-
     NavigationBar {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = navBackStackEntry?.destination?.route
+        // Get the current destination from the back stack
+        val currentDestination = navBackStackEntry?.destination
 
         items.forEach { item ->
+            val itemRouteName = item.route::class.qualifiedName
+            val selected = currentDestination?.hierarchy?.any { it.route == itemRouteName } == true
             NavigationBarItem(
                 icon = { Icon(item.icon, item.title) },
                 label = { Text(item.title) },
-                selected = currentRoute == item.route::class.qualifiedName,
+                // FIX 1: Check if the current route's hierarchy contains the item's route.
+                // This correctly highlights "Articles" even when you are on the "AddEditArticle" screen.
+                selected = selected,
                 onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
+                    val backStack = navController.currentBackStack.value.joinToString(separator = "\n") { entry ->
+                        "  -> ${entry.destination.route}"
+                    }
+                    Log.d("NavDebug", "--- BottomBar Click ---")
+                    Log.d("NavDebug", "Clicked Item: ${item.title}")
+                    Log.d("NavDebug", "Current Destination: ${currentDestination?.route}")
+                    Log.d("NavDebug", "Is Item Selected? $selected")
+                    Log.d("NavDebug", "Back Stack Before:\n$backStack")
+                    // FIX 2: Check if you are already on the destination before navigating.
+                    // This prevents redundant navigation and allows returning to Home to work correctly.
+                    if (currentDestination?.route != itemRouteName) {
+                        navController.navigate(item.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 }
             )
         }
     }
+
+//    NavigationBar {
+//        val navBackStackEntry by navController.currentBackStackEntryAsState()
+//        val currentRoute = navBackStackEntry?.destination?.route
+//
+//        items.forEach { item ->
+//            NavigationBarItem(
+//                icon = { Icon(item.icon, item.title) },
+//                label = { Text(item.title) },
+//                selected = currentRoute == item.route::class.qualifiedName,
+//                onClick = {
+//                    navController.navigate(item.route) {
+//                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+//                        launchSingleTop = true
+//                        restoreState = true
+//                    }
+//                }
+//            )
+//        }
+//    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -474,7 +517,7 @@ fun CenteredText(text: String) {
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
-    CarDealershipTheme {
+    CarDealershipTheme(darkTheme = false) {
         HomeScreen(rememberNavController())
     }
 }

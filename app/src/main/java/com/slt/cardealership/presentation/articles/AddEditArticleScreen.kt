@@ -1,4 +1,5 @@
 package com.slt.cardealership.presentation.articles
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -43,51 +44,14 @@ fun AddEditArticleScreen(
         }
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (isEditing) "Edit Article" else "Add Article") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
-        },
-        bottomBar = {
-            // Bottom bar with Cancel and Save buttons
-            Surface(shadowElevation = 8.dp) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    OutlinedButton(onClick = onNavigateBack, modifier = Modifier.width(100.dp)) {
-                        Text("Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            viewModel.onSaveArticle()
-                            onNavigateBack() // Go back after saving
-                        },
-                        modifier = Modifier.width(100.dp)
-                    ) {
-                        Text("Save")
-                    }
-                }
-            }
-        }
-    ) { paddingValues ->
+    Box(modifier = Modifier.fillMaxSize())
+    {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
+            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
         ) {
             item {
                 Row(
@@ -99,12 +63,32 @@ fun AddEditArticleScreen(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        FormTextField(label = "Article Title *", value = viewModel.articleTitle, onValueChange = { viewModel.articleTitle = it })
-                        FormTextField(label = "Article Slug *",  value = viewModel.slug, onValueChange = { viewModel.slug = it })
-                        FormDropdown(label = "Status *", selectedValue = viewModel.status, options = listOf("Draft", "Published"), onValueChange = { viewModel.status = it })
-                        FormDropdown(label = "Domain *", selectedValue = viewModel.domain, options = listOf("All Domains", "Domain A", "Domain B"), onValueChange = { viewModel.domain = it })
-                        FormTextField(label = "Meta Title", value = viewModel.metaTitle, onValueChange = { viewModel.metaTitle = it })
-                        FormTextField(label = "Meta Description", value = viewModel.metaDescription, onValueChange = { viewModel.metaDescription = it })
+                        FormTextField(
+                            label = "Article Title *",
+                            value = viewModel.articleTitle,
+                            onValueChange = { viewModel.articleTitle = it })
+                        FormTextField(
+                            label = "Article Slug *",
+                            value = viewModel.slug,
+                            onValueChange = { viewModel.slug = it })
+                        FormDropdown(
+                            label = "Status *",
+                            selectedValue = viewModel.status,
+                            options = listOf("Draft", "Published"),
+                            onValueChange = { viewModel.status = it })
+                        FormDropdown(
+                            label = "Domain *",
+                            selectedValue = viewModel.domain,
+                            options = listOf("All Domains", "Domain A", "Domain B"),
+                            onValueChange = { viewModel.domain = it })
+                        FormTextField(
+                            label = "Meta Title",
+                            value = viewModel.metaTitle,
+                            onValueChange = { viewModel.metaTitle = it })
+                        FormTextField(
+                            label = "Meta Description",
+                            value = viewModel.metaDescription,
+                            onValueChange = { viewModel.metaDescription = it })
                     }
                     // Right Column for image picker
                     FeaturedImagePicker(
@@ -126,6 +110,31 @@ fun AddEditArticleScreen(
                 )
             }
         }
+        Surface(
+            shadowElevation = 8.dp,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(onClick = onNavigateBack, modifier = Modifier.width(100.dp)) {
+                    Text("Cancel")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        viewModel.onSaveArticle()
+                        onNavigateBack()
+                    },
+                    modifier = Modifier.width(100.dp)
+                ) {
+                    Text("Save")
+                }
+            }
+        }
     }
 }
 
@@ -142,7 +151,12 @@ fun FormTextField(label: String, value: String, onValueChange: (String) -> Unit)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FormDropdown(label: String, selectedValue: String, options: List<String>, onValueChange: (String) -> Unit) {
+fun FormDropdown(
+    label: String,
+    selectedValue: String,
+    options: List<String>,
+    onValueChange: (String) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
@@ -174,7 +188,11 @@ fun FormDropdown(label: String, selectedValue: String, options: List<String>, on
 @Composable
 fun FeaturedImagePicker(imageUri: Uri?, onAddClick: () -> Unit) {
     Column {
-        Text("Featured Image *", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            "Featured Image *",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Box(
             modifier = Modifier
@@ -193,7 +211,11 @@ fun FeaturedImagePicker(imageUri: Uri?, onAddClick: () -> Unit) {
                 )
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.AddPhotoAlternate, "Add Image", tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.AddPhotoAlternate,
+                        "Add Image",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Add featured image", color = MaterialTheme.colorScheme.primary)
                 }

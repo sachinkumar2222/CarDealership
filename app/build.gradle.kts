@@ -43,6 +43,10 @@ android {
 }
 
 dependencies {
+
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
+
+
     implementation("com.auth0.android:jwtdecode:2.0.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")

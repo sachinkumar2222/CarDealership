@@ -100,7 +100,7 @@ fun AddEditArticleScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         FormTextField(label = "Article Title *", value = viewModel.articleTitle, onValueChange = { viewModel.articleTitle = it })
-                        FormTextField(label = "Article Slug *", value = viewModel.slug, onValueChange = { viewModel.slug = it })
+                        FormTextField(label = "Article Slug *",  value = viewModel.slug, onValueChange = { viewModel.slug = it })
                         FormDropdown(label = "Status *", selectedValue = viewModel.status, options = listOf("Draft", "Published"), onValueChange = { viewModel.status = it })
                         FormDropdown(label = "Domain *", selectedValue = viewModel.domain, options = listOf("All Domains", "Domain A", "Domain B"), onValueChange = { viewModel.domain = it })
                         FormTextField(label = "Meta Title", value = viewModel.metaTitle, onValueChange = { viewModel.metaTitle = it })

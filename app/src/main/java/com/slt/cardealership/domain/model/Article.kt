@@ -2,23 +2,29 @@ package com.slt.cardealership.domain.model
 
 import com.google.gson.annotations.SerializedName
 
-/**
- * Represents a single article post from the API.
- * The field names are mapped to the expected JSON keys.
- */
+// This is the wrapper for the entire API response
+data class ArticleListResponse(
+    // THIS IS THE FIX: It tells the parser to find the key "list" in the JSON
+    // and put its contents into our "articles" property.
+    @SerializedName("list")
+    val articles: List<Article>?
+)
+
+// This data class for a single article now needs to match the new JSON fields
 data class Article(
-    @SerializedName("id") // Assuming there's a unique ID for each post
+    @SerializedName("id")
     val id: String,
 
-    @SerializedName("title")
+    @SerializedName("postTitle")
     val title: String,
 
-    @SerializedName("domainName") // Assuming a field for this based on the UI
+    @SerializedName("domain_name")
     val domainName: String,
 
     @SerializedName("status")
     val status: String,
 
-    @SerializedName("createdOn") // For sorting
-    val createdOn: String? // Assuming date is a string, can be changed to Date if needed
+    // Use the formatted "createdOn" from the new response
+    @SerializedName("createdOn")
+    val createdOn: String
 )

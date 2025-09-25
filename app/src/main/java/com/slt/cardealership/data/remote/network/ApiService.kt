@@ -1,6 +1,7 @@
 package com.slt.cardealership.data.remote.network
 
 import com.slt.cardealership.domain.model.Article
+import com.slt.cardealership.domain.model.ArticleListResponse
 import com.slt.cardealership.domain.model.DealerInfo
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -19,7 +20,8 @@ interface ApiService {
     @GET("DealerPosts")
     suspend fun getArticles(
         @Query("dealerId") dealerId: String
-    ): List<Article> // Assuming the API returns a list of articles
+    ): ArticleListResponse
+    // Assuming the API returns a list of articles
 
     @POST("DealerPosts")
     suspend fun addArticle(

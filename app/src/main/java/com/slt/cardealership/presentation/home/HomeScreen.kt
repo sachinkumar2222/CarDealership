@@ -34,8 +34,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.slt.cardealership.R
+import com.slt.cardealership.domain.model.Article
 import com.slt.cardealership.presentation.articles.AddEditArticleScreen
 import com.slt.cardealership.presentation.articles.ArticleScreen
+import com.slt.cardealership.presentation.articles.ArticleUiState
+import com.slt.cardealership.presentation.articles.ArticleViewModel
 import com.slt.cardealership.presentation.info.InfoScreen
 import com.slt.cardealership.presentation.navigation.Routes
 import com.slt.cardealership.ui.theme.CarDealershipTheme
@@ -43,13 +46,20 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 // --- Nested Navigation Routes for the Bottom Bar ---
-@Serializable sealed class HomeRoutes {
-    @Serializable object Dashboard : HomeRoutes()
-    @Serializable object Info : HomeRoutes()
-    @Serializable object Profile : HomeRoutes()
-    @Serializable object Settings : HomeRoutes()
-    @Serializable object Articles : HomeRoutes()
-    @Serializable data class AddEditArticle(val articleId: String? = null) : HomeRoutes()
+@Serializable
+sealed class HomeRoutes {
+    @Serializable
+    object Dashboard : HomeRoutes()
+    @Serializable
+    object Info : HomeRoutes()
+    @Serializable
+    object Profile : HomeRoutes()
+    @Serializable
+    object Settings : HomeRoutes()
+    @Serializable
+    object Articles : HomeRoutes()
+    @Serializable
+    data class AddEditArticle(val articleId: String? = null) : HomeRoutes()
 }
 
 // --- Data Models for UI ---
@@ -65,6 +75,7 @@ fun HomeScreen(mainNavController: NavController) {
     val scope = rememberCoroutineScope()
     val homeNavController = rememberNavController() // For nested navigation
     val homeViewModel: HomeViewModel = hiltViewModel()
+    val articleViewModel: ArticleViewModel = hiltViewModel()
 
     val navDrawerItems = listOf(
         NavDrawerItem("Home", Icons.Default.Home),
@@ -100,7 +111,12 @@ fun HomeScreen(mainNavController: NavController) {
                 startDestination = HomeRoutes.Dashboard,
                 modifier = Modifier.padding(paddingValues)
             ) {
-                composable<HomeRoutes.Dashboard> { DashboardContent(navController = homeNavController) }
+                composable<HomeRoutes.Dashboard> {
+                    DashboardContent(
+                        navController = homeNavController,
+                        articleViewModel = articleViewModel
+                    )
+                }
                 composable<HomeRoutes.Info> { InfoScreen() }
                 composable<HomeRoutes.Articles> { ArticleScreen(navController = homeNavController) }
                 composable<HomeRoutes.AddEditArticle> { backStackEntry ->
@@ -121,7 +137,8 @@ fun HomeScreen(mainNavController: NavController) {
 }
 
 @Composable
-fun DashboardContent(navController: NavController) {
+fun DashboardContent(navController: NavController, articleViewModel: ArticleViewModel) {
+    val articleState by articleViewModel.uiState.collectAsState()
     // Each dashboard item now has a route associated with it for navigation
     val dashboardItems = listOf(
         DashboardItem("Info", Icons.Default.Business, HomeRoutes.Info),
@@ -134,7 +151,10 @@ fun DashboardContent(navController: NavController) {
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        modifier = Modifier.fillMaxSize().background(Color(0xFFF0F2F5)).padding(horizontal = 8.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF0F2F5))
+            .padding(horizontal = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 16.dp)
@@ -144,6 +164,51 @@ fun DashboardContent(navController: NavController) {
             InfoCardGridItem(item.title, item.icon) { navController.navigate(item.route) }
         }
         item(span = { GridItemSpan(maxLineSpan) }) { GoogleBusinessProfileCard() }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            when (val state = articleState) {
+                is ArticleUiState.Success -> {
+                    // If the article list is not empty, get the first one and show the card
+                    state.articles.firstOrNull()?.let { article ->
+                        LatestArticleCard(article = article)
+                    }
+                }
+                // You can add Loading or Error states here if you wish
+                else -> { /* Do nothing for loading/error on the dashboard for now */ }
+            }
+        }
+    }
+}
+
+@Composable
+fun LatestArticleCard(article: Article) {
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        Text(
+            "Latest Article",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp) // Align with grid padding
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(text = article.title, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = article.createdOn,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+        }
     }
 }
 
@@ -162,15 +227,29 @@ fun TopBar(onMenuClick: () -> Unit, onLogoutClick: () -> Unit) {
                     onClick = { menuExpanded = true },
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(
+                            alpha = 0.5f
+                        )
+                    )
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("S", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                        Icon(Icons.Default.ArrowDropDown, "Toggle Menu", tint = MaterialTheme.colorScheme.primary)
+                        Text(
+                            "S",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            "Toggle Menu",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    DropdownMenuItem(text = { Text("Account Settings") }, onClick = { menuExpanded = false })
+                    DropdownMenuItem(
+                        text = { Text("Account Settings") },
+                        onClick = { menuExpanded = false })
                     DropdownMenuItem(
                         text = { Text("Log Out") },
                         onClick = {
@@ -197,13 +276,25 @@ fun InfoCardGridItem(title: String, icon: ImageVector, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(8.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(icon, title, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                icon,
+                title,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            Text(title, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }

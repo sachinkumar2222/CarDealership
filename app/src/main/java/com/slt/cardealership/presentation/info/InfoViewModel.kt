@@ -11,8 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.json.JSONObject
-import java.util.Base64
 import javax.inject.Inject
 
 sealed class InfoUiState {
@@ -34,46 +32,37 @@ class InfoViewModel @Inject constructor(
         fetchDealerInfo()
     }
 
-    private fun fetchDealerInfo() {
+    fun fetchDealerInfo() {
         viewModelScope.launch {
             _uiState.value = InfoUiState.Loading
             try {
-                val token = sessionManager.authToken
-                if (token == null) {
-                    _uiState.value = InfoUiState.Error("User is not logged in.")
+                // Get the saved dealer ID string from SessionManager
+                val dealerIdString = sessionManager.getDealerSlug()
+
+                if (dealerIdString.isNullOrBlank()) {
+                    _uiState.value = InfoUiState.Error("Could not find saved Dealer ID.")
                     return@launch
                 }
 
-                val dealerId = getDealerIdFromToken(token)
+                // Convert the string to a Long
+                val dealerId = dealerIdString.toLongOrNull()
                 if (dealerId == null) {
-                    _uiState.value = InfoUiState.Error("Could not find Dealer ID in token.")
+                    _uiState.value = InfoUiState.Error("Saved Dealer ID is not a valid number.")
                     return@launch
                 }
 
+                // --- THIS IS THE CORRECTED LOGIC ---
+                // Call the suspend function directly. If it fails, the catch block will run.
                 val dealerInfo = dealerRepository.getDealerInfo(dealerId)
-                Log.d("infoviewmodel","${dealerInfo}")
+
+                // If the call succeeds, this line will be reached.
                 _uiState.value = InfoUiState.Success(dealerInfo)
 
             } catch (e: Exception) {
-                Log.e("infoViewModel", "Failed to fetch dealer info", e)
+                // If getDealerInfo fails, the exception is caught here.
+                Log.e("InfoViewModel", "Failed to fetch dealer info", e)
                 _uiState.value = InfoUiState.Error(e.message ?: "An unknown error occurred")
             }
-        }
-    }
-
-    private fun getDealerIdFromToken(token: String): String? {
-        try {
-            val parts = token.split(".")
-            if (parts.size < 2) return null
-
-            val payload = String(Base64.getUrlDecoder().decode(parts[1]))
-            val json = JSONObject(payload)
-            val fullDealerId = json.optString("extension_DealerId", null)
-            Log.d("infoviewmodel","${fullDealerId}")
-            return fullDealerId
-        } catch (e: Exception) {
-            // Log the exception in a real app
-            return null
         }
     }
 }

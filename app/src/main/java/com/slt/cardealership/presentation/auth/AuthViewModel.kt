@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slt.cardealership.common.ResultState
+import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.domain.model.User
 import com.slt.cardealership.domain.usecase.SignInUseCase
 import com.slt.cardealership.domain.usecase.SilentLoginUseCase
@@ -29,7 +30,8 @@ sealed class AuthEvent {
 class AuthViewModel @Inject constructor(
     private val signInUseCase: SignInUseCase,
     private val silentLoginUseCase: SilentLoginUseCase,
-    private val signOutUseCase: SignOutUseCase
+    private val signOutUseCase: SignOutUseCase,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<ResultState<String>>(ResultState.Loading)
@@ -53,6 +55,14 @@ class AuthViewModel @Inject constructor(
             val result = signInUseCase(activity)
             _authState.value = result.fold(
                 onSuccess = { token ->
+                    val user = TokenParser.parse(token)
+                    _userState.value = user
+
+                    TokenParser.getDealerIdFromToken(token)?.let { dealerId ->
+                        sessionManager.saveDealerSlug(dealerId.toString())
+                        Log.d("AuthViewModel", "Dealer slug SAVED on login: $dealerId")
+                    }
+
                     _events.send(AuthEvent.NavigateToHome(token))
                     ResultState.Success(token)
                 },
@@ -71,6 +81,11 @@ class AuthViewModel @Inject constructor(
                     // --- ALSO CALL THE PARSER HERE ---
                     val user = TokenParser.parse(token)
                     _userState.value = user // Store the parsed user
+                    TokenParser.getDealerIdFromToken(token)?.let { dealerId ->
+                        sessionManager.saveDealerSlug(dealerId.toString())
+                        Log.d("AuthViewModel", "Dealer slug SAVED on silent login: $dealerId")
+                    }
+
                     Log.d("AuthViewModel", "Silent login successful for: ${user?.name}")
 
                     _events.send(AuthEvent.NavigateToHome(token))

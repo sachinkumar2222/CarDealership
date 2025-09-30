@@ -2,98 +2,77 @@ package com.slt.cardealership.domain.model
 
 import com.google.gson.annotations.SerializedName
 
-// This is the main, top-level data class
+// MAIN UI MODEL: Combines data from all API calls for the UI
 data class DealerInfo(
-    @SerializedName("dealer_name")
+    val id: Long,
     val name: String?,
-    @SerializedName("address_1")
-    val address: String?,
-    @SerializedName("primary_phone_no")
     val phone: String?,
-    @SerializedName("city_name")
+    val address: String?,
     val city: String?,
-    @SerializedName("state_name")
     val state: String?,
-    @SerializedName("zip_code")
     val zipCode: String?,
-    @SerializedName("website_url")
     val websiteUrl: String?,
-    @SerializedName("dealerEmailId")
-    val email: String?,
-    @SerializedName("aboutText")
-    val aboutText: String?,
-
-    @SerializedName("dealer_type")
+    val aboutText: String?, // Assuming this might come from metas or another endpoint
     val dealerType: String?,
-    @SerializedName("dealerCategory")
     val dealerCategory: DealerCategory?,
-
-    // Nested object for amenities
-    @SerializedName("amenitiesAccessibility")
-    val amenities: AmenitiesAccessibility?,
-
-    // List of nested objects for banners
-    @SerializedName("lstBanner")
-    val banners: List<Banner>?,
-
-    // List of strings for the header images
-    @SerializedName("showroomImages")
+    val amenities: Amenities?,
+    val isClaimed: Boolean?,
     val showroomImages: List<String>?,
-
-    // List of nested objects for business hours
-    @SerializedName("dealerHours")
     val dealerHours: List<DealerHours>?
 )
 
-data class DealerCategory(
-    @SerializedName("name")
+// MODELS FOR API RESPONSES
+data class DealerDetailsResponse(
+    val id: Long,
     val name: String?,
-    @SerializedName("business_segment")
-    val businessSegment: String?
+    val phone: String?,
+    @SerializedName("website_url") val websiteUrl: String?,
+    val address: String?,
+    @SerializedName("state_name") val stateName: String?,
+    @SerializedName("city_name") val cityName: String?,
+    @SerializedName("zipcode_name") val zipcodeName: String?,
+    @SerializedName("dealer_type_id") val dealerTypeId: Int?,
+    @SerializedName("is_claimed") // <-- ADD THIS LINE
+    val isClaimed: Boolean?
 )
 
-// A separate data class for the nested "amenitiesAccessibility" object
-data class AmenitiesAccessibility(
-    @SerializedName("isEntrance")
+data class DealerMetasResponse(
+    @SerializedName("category") val categoryName: String?,
+    @SerializedName("business_segment") val businessSegment: String?,
+    val wifi: Boolean?,
+    val parking: Boolean?,
+    @SerializedName("kids_play_area") val kidsPlayArea: Boolean?,
+    @SerializedName("wheelchair_accessible_entrance") val isEntrance: Boolean?,
+    @SerializedName("wheelchair_accessible_seating") val isSeating: Boolean?,
+    @SerializedName("wheelchair_accessible_restroom") val isRestroom: Boolean?
+    // aboutText seems to be missing from the new responses
+)
+
+// Models for .../Dealers/{dealerId}/Hours
+data class DealerHours(
+    @SerializedName("hours_type") val hoursType: String?,
+    @SerializedName("hourDetails") val hourDetails: List<HourDetails>?
+)
+
+data class HourDetails(
+    val day: String?,
+    @SerializedName("open_time") val openTime: String?,
+    @SerializedName("close_time") val closeTime: String?,
+    @SerializedName("is_close") val isClose: Boolean?
+)
+
+// A clean Amenities object for the UI
+data class Amenities(
     val isEntrance: Boolean?,
-    @SerializedName("isRestroom")
     val isRestroom: Boolean?,
-    @SerializedName("isSeating")
     val isSeating: Boolean?,
-    @SerializedName("isParking")
     val isParking: Boolean?,
-    @SerializedName("isKidsPlayArea")
     val isKidsPlayArea: Boolean?,
-    @SerializedName("isWifi")
     val isWifi: Boolean?
 )
 
-// A data class for each object inside the "lstBanner" list
-data class Banner(
-    @SerializedName("title")
-    val title: String?,
-    @SerializedName("url")
-    val url: String?,
-    @SerializedName("imagePath")
-    val imageUrl: String?
-)
-
-// A data class for each object inside the "dealerHours" list
-data class DealerHours(
-    @SerializedName("hours_type")
-    val hoursType: String?,
-    @SerializedName("hourDetails")
-    val hourDetails: List<HourDetails>?
-)
-
-// A data class for each object inside the "hourDetails" list
-data class HourDetails(
-    @SerializedName("day")
-    val day: String?,
-    @SerializedName("open_time")
-    val openTime: String?,
-    @SerializedName("close_time")
-    val closeTime: String?,
-    @SerializedName("is_close")
-    val isClose: Boolean?
+// A clean Category object for the UI
+data class DealerCategory(
+    val name: String?,
+    val businessSegment: String?
 )

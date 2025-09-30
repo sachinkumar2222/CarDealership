@@ -1,9 +1,8 @@
 package com.slt.cardealership.di
 
 import com.slt.cardealership.data.remote.auth.AuthRepositoryImpl
-import com.slt.cardealership.data.repo.ArticleRepositoryImpl
 import com.slt.cardealership.data.repo.DealerRepositoryImpl
-import com.slt.cardealership.domain.repo.ArticleRepository
+//import com.slt.cardealership.domain.repo.ArticleRepository
 import com.slt.cardealership.domain.repo.AuthRepository
 import com.slt.cardealership.domain.repo.DealerRepository
 import com.slt.cardealership.domain.usecase.SignInUseCase
@@ -15,6 +14,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 
 import dagger.hilt.components.SingletonComponent
+import retrofit2.Retrofit
 import javax.inject.Singleton
 
 @Module
@@ -25,9 +25,9 @@ abstract class AppModule {
     @Singleton
     abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
 
-    @Binds
-    @Singleton
-    abstract fun bindArticleRepository(impl: ArticleRepositoryImpl): ArticleRepository
+//    @Binds
+//    @Singleton
+//    abstract fun bindArticleRepository(impl: ArticleRepositoryImpl): ArticleRepository
 
     @Binds
     @Singleton
@@ -46,4 +46,6 @@ abstract class AppModule {
         @Singleton
         fun provideSignOutUseCase(repo: AuthRepository): SignOutUseCase = SignOutUseCase(repo)
     }
+
+
 }

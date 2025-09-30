@@ -38,12 +38,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Article
-import com.slt.cardealership.presentation.articles.AddEditArticleScreen
-import com.slt.cardealership.presentation.articles.ArticleScreen
-import com.slt.cardealership.presentation.articles.ArticleUiState
-import com.slt.cardealership.presentation.articles.ArticleViewModel
 import com.slt.cardealership.presentation.info.InfoScreen
 import com.slt.cardealership.presentation.navigation.Routes
+import com.slt.cardealership.presentation.photos.PhotoScreen
 import com.slt.cardealership.presentation.settings.SettingsScreen
 import com.slt.cardealership.ui.theme.CarDealershipTheme
 import kotlinx.coroutines.launch
@@ -54,20 +51,26 @@ import kotlinx.serialization.Serializable
 sealed class HomeRoutes {
     @Serializable
     object Dashboard : HomeRoutes()
+
     @Serializable
     object Info : HomeRoutes()
+
     @Serializable
     object Profile : HomeRoutes()
+
     @Serializable
     object Settings : HomeRoutes()
+
     @Serializable
     object Articles : HomeRoutes()
+
+    @Serializable
+    object Photos : HomeRoutes()
+
     @Serializable
     data class AddEditArticle(val articleId: String? = null) : HomeRoutes()
 }
 
-// --- Data Models for UI ---
-// CORRECTED: Added the 'route' property to fix the "Unresolved reference" error.
 data class DashboardItem(val title: String, val icon: ImageVector, val route: HomeRoutes)
 data class NavDrawerItem(val title: String, val icon: ImageVector)
 data class BottomNavItem(val title: String, val icon: ImageVector, val route: HomeRoutes)
@@ -79,12 +82,12 @@ fun HomeScreen(mainNavController: NavController) {
     val scope = rememberCoroutineScope()
     val homeNavController = rememberNavController() // For nested navigation
     val homeViewModel: HomeViewModel = hiltViewModel()
-    val articleViewModel: ArticleViewModel = hiltViewModel()
+    //val articleViewModel: ArticleViewModel = hiltViewModel()
 
     val navDrawerItems = listOf(
         NavDrawerItem("Home", Icons.Default.Home),
-        NavDrawerItem("Info", Icons.Default.Info)
-        // ... add other items here
+        NavDrawerItem("Info", Icons.Default.Info),
+        NavDrawerItem("Articles", Icons.Default.Article)
     )
 
     ModalNavigationDrawer(
@@ -118,22 +121,27 @@ fun HomeScreen(mainNavController: NavController) {
                 composable<HomeRoutes.Dashboard> {
                     DashboardContent(
                         navController = homeNavController,
-                        articleViewModel = articleViewModel
+                        //articleViewModel = articleViewModel
                     )
                 }
                 composable<HomeRoutes.Info> { InfoScreen() }
-                composable<HomeRoutes.Articles> { ArticleScreen(navController = homeNavController) }
+                composable<HomeRoutes.Articles> { //ArticleScreen(navController = homeNavController)
+                    // }
                 composable<HomeRoutes.AddEditArticle> { backStackEntry ->
                     // Extract the arguments from the navigation back stack
                     val args = backStackEntry.toRoute<HomeRoutes.AddEditArticle>()
                     // Pass the arguments to the screen
-                    AddEditArticleScreen(
-                        articleId = args.articleId,
-                        onNavigateBack = { homeNavController.popBackStack() }
-                    )
+//                    AddEditArticleScreen(
+//                        articleId = args.articleId,
+//                        onNavigateBack = { homeNavController.popBackStack() }
+//                    )
                 }
-                composable<HomeRoutes.Profile> { CenteredText("Profile Screen") }
+                composable<HomeRoutes.Profile> {
+                    CenteredText("Profile Screen")
+                }
+                }
                 composable<HomeRoutes.Settings> { SettingsScreen() }
+                composable<HomeRoutes.Photos> { PhotoScreen() }
 
             }
         }
@@ -141,13 +149,15 @@ fun HomeScreen(mainNavController: NavController) {
 }
 
 @Composable
-fun DashboardContent(navController: NavController, articleViewModel: ArticleViewModel) {
-    val articleState by articleViewModel.uiState.collectAsState()
-    // Each dashboard item now has a route associated with it for navigation
+fun DashboardContent(navController: NavController,
+                     //articleViewModel: ArticleViewModel
+) {
+   // val articleState by articleViewModel.uiState.collectAsState()
+
     val dashboardItems = listOf(
         DashboardItem("Info", Icons.Default.Business, HomeRoutes.Info),
         DashboardItem("Articles", Icons.Default.Article, HomeRoutes.Articles),
-        DashboardItem("My Websites", Icons.Default.Language, HomeRoutes.Dashboard),
+        DashboardItem("Photos", Icons.Default.Photo, HomeRoutes.Photos),
         DashboardItem("Services", Icons.Default.MiscellaneousServices, HomeRoutes.Dashboard),
         DashboardItem("Manage Classifieds", Icons.Default.ListAlt, HomeRoutes.Dashboard),
         DashboardItem("Analytics", Icons.Default.ShowChart, HomeRoutes.Dashboard)
@@ -169,16 +179,17 @@ fun DashboardContent(navController: NavController, articleViewModel: ArticleView
         }
         item(span = { GridItemSpan(maxLineSpan) }) { GoogleBusinessProfileCard() }
         item(span = { GridItemSpan(maxLineSpan) }) {
-            when (val state = articleState) {
-                is ArticleUiState.Success -> {
-                    // If the article list is not empty, get the first one and show the card
-                    state.articles.firstOrNull()?.let { article ->
-                        LatestArticleCard(article = article)
-                    }
-                }
-                // You can add Loading or Error states here if you wish
-                else -> { /* Do nothing for loading/error on the dashboard for now */ }
-            }
+//            when (val state = articleState) {
+//                is ArticleUiState.Success -> {
+//                    // If the article list is not empty, get the first one and show the card
+//                    state.articles.firstOrNull()?.let { article ->
+//                        LatestArticleCard(article = article)
+//                    }
+//                }
+//                // You can add Loading or Error states here if you wish
+//                else -> { /* Do nothing for loading/error on the dashboard for now */
+//                }
+//            }
         }
     }
 }
@@ -312,64 +323,33 @@ fun BottomNavigationBar(navController: NavController) {
         BottomNavItem("Profile", Icons.Default.Person, HomeRoutes.Profile),
         BottomNavItem("Settings", Icons.Default.Settings, HomeRoutes.Settings)
     )
+
     NavigationBar {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
-        // Get the current destination from the back stack
         val currentDestination = navBackStackEntry?.destination
 
         items.forEach { item ->
-            val itemRouteName = item.route::class.qualifiedName
-            val selected = currentDestination?.hierarchy?.any { it.route == itemRouteName } == true
             NavigationBarItem(
                 icon = { Icon(item.icon, item.title) },
                 label = { Text(item.title) },
-                // FIX 1: Check if the current route's hierarchy contains the item's route.
-                // This correctly highlights "Articles" even when you are on the "AddEditArticle" screen.
-                selected = selected,
+                // --- THIS IS THE FIX ---
+                // We compare the string name of the item's route with the string names
+                // in the current navigation hierarchy.
+                selected = currentDestination?.hierarchy?.any {
+                    it.route == item.route::class.qualifiedName
+                } == true,
                 onClick = {
-                    val backStack = navController.currentBackStack.value.joinToString(separator = "\n") { entry ->
-                        "  -> ${entry.destination.route}"
-                    }
-                    Log.d("NavDebug", "--- BottomBar Click ---")
-                    Log.d("NavDebug", "Clicked Item: ${item.title}")
-                    Log.d("NavDebug", "Current Destination: ${currentDestination?.route}")
-                    Log.d("NavDebug", "Is Item Selected? $selected")
-                    Log.d("NavDebug", "Back Stack Before:\n$backStack")
-                    // FIX 2: Check if you are already on the destination before navigating.
-                    // This prevents redundant navigation and allows returning to Home to work correctly.
-                    if (currentDestination?.route != itemRouteName) {
-                        navController.navigate(item.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
+                    navController.navigate(item.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
                         }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 }
             )
         }
     }
-
-//    NavigationBar {
-//        val navBackStackEntry by navController.currentBackStackEntryAsState()
-//        val currentRoute = navBackStackEntry?.destination?.route
-//
-//        items.forEach { item ->
-//            NavigationBarItem(
-//                icon = { Icon(item.icon, item.title) },
-//                label = { Text(item.title) },
-//                selected = currentRoute == item.route::class.qualifiedName,
-//                onClick = {
-//                    navController.navigate(item.route) {
-//                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-//                        launchSingleTop = true
-//                        restoreState = true
-//                    }
-//                }
-//            )
-//        }
-//    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

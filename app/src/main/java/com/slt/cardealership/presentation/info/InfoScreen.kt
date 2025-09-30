@@ -105,17 +105,41 @@ fun DealershipHeader(dealerInfo: DealerInfo) {
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Card(
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFE6F4EA))
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+        if (dealerInfo.isClaimed == true) {
+            Card(
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE6F4EA))
             ) {
-                Icon(Icons.Default.CheckCircle, "Verified", tint = Color(0xFF34A853))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Claimed & Verified", color = Color(0xFF34A853), fontWeight = FontWeight.SemiBold)
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.CheckCircle, "Verified", tint = Color(0xFF34A853))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Claimed & Verified",
+                        color = Color(0xFF34A853),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        } else {
+            Card(
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE6F4EA))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.ReportGmailerrorred, "Verified", tint = Color(0xFFBF2B2B))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "UnVerified",
+                        color = Color(0xFFBF2B2B),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
@@ -141,7 +165,6 @@ fun BasicInfoSection(dealerInfo: DealerInfo) {
             InfoRow(icon = Icons.Default.Phone, text = dealerInfo.phone ?: "N/A")
             InfoRow(icon = Icons.Default.DateRange, text = "Add business opening date") // Placeholder
             InfoRow(icon = Icons.Default.Link, text = dealerInfo.websiteUrl ?: "N/A")
-            InfoRow(icon = Icons.Default.Email, text = dealerInfo.email ?: "N/A")
             // ... other rows can be updated similarly when you add them to the data model
         }
     }
@@ -176,12 +199,10 @@ fun AmenitiesSection(dealerInfo: DealerInfo) {
     val amenities = dealerInfo.amenities
 
     if (showAccessibilityDialog) {
+        // This dialog can be updated later to use a ViewModel to save the data
         AccessibilityEditDialog(
             onDismiss = { showAccessibilityDialog = false },
-            onSave = {
-                Log.d("AmenitiesSection", "Save clicked!")
-                showAccessibilityDialog = false
-            }
+            onSave = { showAccessibilityDialog = false }
         )
     }
 
@@ -197,7 +218,7 @@ fun AmenitiesSection(dealerInfo: DealerInfo) {
                 onEditClick = { showAccessibilityDialog = true },
                 content = {
                     Column {
-                        // Use live data, with `?: false` as a safe fallback
+                        // All field names here are still correct in our new model
                         AmenityRow("Wheelchair accessible entrance", amenities?.isEntrance ?: false)
                         AmenityRow("Wheelchair accessible restroom", amenities?.isRestroom ?: false)
                         AmenityRow("Wheelchair accessible seating", amenities?.isSeating ?: false)
@@ -211,6 +232,8 @@ fun AmenitiesSection(dealerInfo: DealerInfo) {
                 onEditClick = { /* TODO */ },
                 content = {
                     Column {
+                        // --- THIS IS THE FIX ---
+                        // The field names in your UI model are isParking, isKidsPlayArea, and isWifi
                         AmenityRow("Parking", amenities?.isParking ?: false)
                         AmenityRow("Kids play area", amenities?.isKidsPlayArea ?: false)
                         AmenityRow("Wifi", amenities?.isWifi ?: false)

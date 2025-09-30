@@ -20,7 +20,6 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.slt.cardealership.presentation.articles.ArticleScreen
 import com.slt.cardealership.presentation.home.HomeScreen
 import com.slt.cardealership.presentation.auth.AuthEvent
 import com.slt.cardealership.presentation.auth.AuthViewModel

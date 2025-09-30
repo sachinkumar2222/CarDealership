@@ -4,25 +4,31 @@ import com.google.gson.GsonBuilder
 import com.slt.cardealership.data.remote.network.ApiService
 import com.slt.cardealership.data.remote.network.AuthInterceptor
 import dagger.Module
+
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
+import kotlin.math.log
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "https://backendapi-development.azurewebsites.net/api/v1/"
+    private const val BASE_URL = "https://backend-api-stg.sba.net/"
 
     @Provides
     @Singleton
     fun provideAuthInterceptor(authInterceptor: AuthInterceptor): OkHttpClient {
+        val logging = HttpLoggingInterceptor()
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY)
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .addInterceptor(logging)
             .build()
     }
 
@@ -41,4 +47,10 @@ object NetworkModule {
     fun provideApiService(retrofit: Retrofit): ApiService {
         return retrofit.create(ApiService::class.java)
     }
+
+//    @Provides
+//    @Singleton
+//    fun provideBannerApi(retrofit: Retrofit): BannerApi {
+//        return retrofit.create(BannerApi::class.java)
+//    }
 }

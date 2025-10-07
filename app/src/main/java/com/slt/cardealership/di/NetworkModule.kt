@@ -48,9 +48,4 @@ object NetworkModule {
         return retrofit.create(ApiService::class.java)
     }
 
-//    @Provides
-//    @Singleton
-//    fun provideBannerApi(retrofit: Retrofit): BannerApi {
-//        return retrofit.create(BannerApi::class.java)
-//    }
 }

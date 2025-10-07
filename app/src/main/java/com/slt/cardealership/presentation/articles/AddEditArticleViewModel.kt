@@ -1,121 +1,137 @@
-//package com.slt.cardealership.presentation.articles
-//
-//import android.net.Uri
-//import android.util.Log
-//import androidx.compose.runtime.*
-//import androidx.lifecycle.SavedStateHandle
-//import androidx.lifecycle.ViewModel
-//import androidx.lifecycle.viewModelScope
-//import com.auth0.android.jwt.JWT
-//import com.slt.cardealership.data.local.SessionManager
-//import com.slt.cardealership.domain.model.Article
-//import com.slt.cardealership.domain.repo.ArticleRepository
-//import com.slt.cardealership.utils.TokenParser
-//import dagger.hilt.android.lifecycle.HiltViewModel
-//import kotlinx.coroutines.flow.MutableStateFlow
-//import kotlinx.coroutines.flow.StateFlow
-//import kotlinx.coroutines.flow.asStateFlow
-//import kotlinx.coroutines.launch
-//import javax.inject.Inject
-//
-//@HiltViewModel
-//class AddEditArticleViewModel @Inject constructor(
-//    private val articleRepository: ArticleRepository,
-//    private val sessionManager: SessionManager,
-//    private val savedStateHandle: SavedStateHandle
-//) : ViewModel() {
-//
-//    // Get the articleId from navigation arguments. It will be null if this is a new article.
-//    private val articleId: String? = savedStateHandle["articleId"]
-//
-//    // Form state variables
-//    var articleTitle by mutableStateOf("")
-//    var slug by mutableStateOf("")
-//    var status by mutableStateOf("Draft")
-//    var domain by mutableStateOf("All Domains")
-//    var metaTitle by mutableStateOf("")
-//    var metaDescription by mutableStateOf("")
-//    var articleContent by mutableStateOf("")
-//    var featuredImageUri by mutableStateOf<Uri?>(null)
-//
-//    // A state to communicate the result of the save operation back to the UI
-//    private val _saveResult = MutableStateFlow<Result<Unit>?>(null)
-//    val saveResult: StateFlow<Result<Unit>?> = _saveResult.asStateFlow()
-//
-//    init {
-//        if (articleId != null) {
-//            // This is where you would load the existing article's data.
-//            // For now, we are focusing on the save functionality.
-//            println("Editing article with ID: $articleId")
-//            loadArticleDetails(articleId)
-//        }
-//    }
-//
-//    private fun loadArticleDetails(id: String) {
-//        viewModelScope.launch {
-//            val token = sessionManager.authToken
-//            val dealerId = getDealerIdFromToken(token!!)
-//
-//            if (dealerId == null) {
-//                // Handle error: couldn't get dealerId
-//                return@launch
-//            }
-//
-//            // Fetch the full list of articles to find the one we need
-//            articleRepository.getArticles(dealerId)
-//                .onSuccess { articles ->
-//                    val articleToEdit = articles.find { it.id == id }
-//                    if (articleToEdit != null) {
-//                        // Populate the form fields with the loaded data
-//                        articleTitle = articleToEdit.title
-//                        status = articleToEdit.status
-//                        domain = articleToEdit.domainName
-//                        // Note: Your Article model from the API doesn't have slug, meta fields yet.
-//                        // You will need to add them to the Article.kt data class to populate them here.
-//                    }
-//                }
-//                .onFailure {
-//                    Log.d("editviewmodel","failed")
-//                }
-//        }
-//    }
-//
-//    fun onSaveArticle() {
-//        viewModelScope.launch {
-//            // Construct the article object from the current form state
-//            val articleToSave = Article(
-//                id = articleId ?: "", // Use existing ID for update, or empty for new
-//                title = articleTitle,
-//                domainName = domain,
-//                status = status,
-//                createdOn = ""
-//            )
-//
-//            // Decide whether to call the add or update function based on articleId
-//            val result = if (articleId == null) {
-//                articleRepository.addArticle(articleToSave)
-//            } else {
-//                articleRepository.updateArticle(articleId, articleToSave)
-//            }
-//
-//            Log.d("addarticleviewmodel","article added")
-//
-//            // Post the result to the UI
-//            result.onSuccess {
-//                _saveResult.value = Result.success(Unit)
-//                Log.d("addarticleviewmodel","article added")
-//            }.onFailure {
-//                _saveResult.value = Result.failure(it)
-//            }
-//        }
-//    }
-//    private fun getDealerIdFromToken(token: String): String? {
-//        return try {
-//            val jwt = JWT(token)
-//            jwt.getClaim("extension_DealerId").asString()
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//            null
-//        }
-//    }
-//}
+package com.slt.cardealership.presentation.articles
+
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import androidx.compose.runtime.*
+import androidx.lifecycle.*
+import androidx.navigation.toRoute
+import com.slt.cardealership.data.local.SessionManager
+import com.slt.cardealership.domain.model.Post
+import com.slt.cardealership.domain.repo.PostRepository
+import com.slt.cardealership.presentation.home.HomeRoutes
+import com.slt.cardealership.utils.uriToFile // Make sure you have this utility function
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class AddEditArticleState(
+    val post: Post? = null,
+    val isLoading: Boolean = true, // For loading the initial article
+    val isSaving: Boolean = false, // For save/upload operations
+    val error: String? = null
+)
+
+@HiltViewModel
+class AddEditArticleViewModel @Inject constructor(
+    private val postRepository: PostRepository,
+    private val sessionManager: SessionManager,
+    savedStateHandle: SavedStateHandle
+) : ViewModel() {
+
+    var state by mutableStateOf(AddEditArticleState())
+        private set
+
+    private val articleArgs: HomeRoutes.AddEditArticle = savedStateHandle.toRoute()
+    private val articleId = articleArgs.articleId
+
+    private val _eventChannel = Channel<UiEvent>()
+    val events = _eventChannel.receiveAsFlow()
+
+    init {
+        if (articleId != null && articleId != "null") { // Handle "null" string case
+            loadArticle(articleId)
+        } else {
+            // Initialize a blank post for "Add" mode
+            state = state.copy(isLoading = false, post = Post(id = null, dealerId = null, name = "", slug = "", status = "published", metaTitle = "", metaDescription = "", image = null, content = "", createdOn = null))
+        }
+    }
+
+    private fun loadArticle(id: String) {
+        viewModelScope.launch {
+            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
+            postRepository.getPostById(dealerId, id)
+                .onSuccess { post -> state = state.copy(post = post, isLoading = false) }
+                .onFailure { state = state.copy(error = it.message, isLoading = false) }
+        }
+    }
+
+    // --- COMPLETED STATE UPDATE FUNCTIONS ---
+    fun onTitleChange(newValue: String) {
+        state = state.copy(post = state.post?.copy(name = newValue))
+    }
+    fun onSlugChange(newValue: String) {
+        state = state.copy(post = state.post?.copy(slug = newValue))
+    }
+    fun onMetaTitleChange(newValue: String) {
+        state = state.copy(post = state.post?.copy(metaTitle = newValue))
+    }
+    fun onMetaDescriptionChange(newValue: String) {
+        state = state.copy(post = state.post?.copy(metaDescription = newValue))
+    }
+    fun onContentChange(newValue: String) {
+        state = state.copy(post = state.post?.copy(content = newValue))
+    }
+
+    // --- NEW IMAGE HANDLING FUNCTIONS ---
+    fun onImageRemoved() {
+        state = state.copy(post = state.post?.copy(image = null))
+    }
+
+    fun onImageSelected(uri: Uri, context: Context) {
+        Log.d("ImagePicker", "Image URI: $uri")
+        viewModelScope.launch {
+            state = state.copy(isSaving = true) // Show loading indicator on image
+            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
+            val imageFile = uriToFile(context, uri) ?: return@launch
+
+            postRepository.uploadPostImage(dealerId, imageFile)
+                .onSuccess { imageUrl ->
+                    // Update the post's image URL with the one from the server
+                    state = state.copy(
+                        isSaving = false,
+                        post = state.post?.copy(image = imageUrl)
+                    )
+                }
+                .onFailure {
+                    state = state.copy(isSaving = false)
+                    _eventChannel.send(UiEvent.ShowSnackbar("Image upload failed."))
+                }
+        }
+    }
+
+    fun onSave() {
+        viewModelScope.launch {
+            state = state.copy(isSaving = true)
+            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
+            val currentPost = state.post ?: return@launch
+
+            // Basic validation
+            if (currentPost.name.isNullOrBlank()) {
+                _eventChannel.send(UiEvent.ShowSnackbar("Title cannot be empty."))
+                state = state.copy(isSaving = false)
+                return@launch
+            }
+
+            val result = if (articleId == null || articleId == "null") {
+                postRepository.addPost(dealerId, currentPost)
+            } else {
+                postRepository.updatePost(dealerId, articleId, currentPost)
+            }
+
+            result.onSuccess {
+                _eventChannel.send(UiEvent.NavigateBack)
+            }.onFailure {
+                _eventChannel.send(UiEvent.ShowSnackbar(it.message ?: "Error saving post."))
+            }
+            state = state.copy(isSaving = false)
+        }
+    }
+
+    sealed class UiEvent {
+        object NavigateBack : UiEvent()
+        data class ShowSnackbar(val message: String) : UiEvent()
+    }
+}

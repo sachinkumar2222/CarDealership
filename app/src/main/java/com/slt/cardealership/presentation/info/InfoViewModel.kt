@@ -35,34 +35,27 @@ class InfoViewModel @Inject constructor(
     fun fetchDealerInfo() {
         viewModelScope.launch {
             _uiState.value = InfoUiState.Loading
-            try {
-                // Get the saved dealer ID string from SessionManager
-                val dealerIdString = sessionManager.getDealerSlug()
 
-                if (dealerIdString.isNullOrBlank()) {
-                    _uiState.value = InfoUiState.Error("Could not find saved Dealer ID.")
-                    return@launch
-                }
-
-                // Convert the string to a Long
-                val dealerId = dealerIdString.toLongOrNull()
-                if (dealerId == null) {
-                    _uiState.value = InfoUiState.Error("Saved Dealer ID is not a valid number.")
-                    return@launch
-                }
-
-                // --- THIS IS THE CORRECTED LOGIC ---
-                // Call the suspend function directly. If it fails, the catch block will run.
-                val dealerInfo = dealerRepository.getDealerInfo(dealerId)
-
-                // If the call succeeds, this line will be reached.
-                _uiState.value = InfoUiState.Success(dealerInfo)
-
-            } catch (e: Exception) {
-                // If getDealerInfo fails, the exception is caught here.
-                Log.e("InfoViewModel", "Failed to fetch dealer info", e)
-                _uiState.value = InfoUiState.Error(e.message ?: "An unknown error occurred")
+            val dealerIdString = sessionManager.getDealerSlug()
+            val dealerId = dealerIdString?.toLongOrNull()
+            if (dealerId == null) {
+                _uiState.value = InfoUiState.Error("Could not find saved Dealer ID.")
+                return@launch
             }
+
+            // --- THIS IS THE CORRECTED LOGIC ---
+            // Call the repository function and handle the success or failure of the Result
+            dealerRepository.getCombinedDealerInfo(dealerId)
+                .onSuccess { combinedInfo ->
+                    // This block runs only if the API calls were successful.
+                    // 'combinedInfo' is the complete DealerInfo object.
+                    _uiState.value = InfoUiState.Success(combinedInfo)
+                }
+                .onFailure { error ->
+                    // This block runs if any of the API calls failed.
+                    Log.e("InfoViewModel", "Failed to fetch dealer info", error)
+                    _uiState.value = InfoUiState.Error(error.message ?: "An unknown error occurred")
+                }
         }
     }
 }

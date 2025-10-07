@@ -2,9 +2,11 @@ package com.slt.cardealership.di
 
 import com.slt.cardealership.data.remote.auth.AuthRepositoryImpl
 import com.slt.cardealership.data.repo.DealerRepositoryImpl
+import com.slt.cardealership.data.repo.PostRepositoryImpl
 //import com.slt.cardealership.domain.repo.ArticleRepository
 import com.slt.cardealership.domain.repo.AuthRepository
 import com.slt.cardealership.domain.repo.DealerRepository
+import com.slt.cardealership.domain.repo.PostRepository
 import com.slt.cardealership.domain.usecase.SignInUseCase
 import com.slt.cardealership.domain.usecase.SilentLoginUseCase
 import com.slt.cardealership.domain.usecase.SignOutUseCase
@@ -25,9 +27,9 @@ abstract class AppModule {
     @Singleton
     abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
 
-//    @Binds
-//    @Singleton
-//    abstract fun bindArticleRepository(impl: ArticleRepositoryImpl): ArticleRepository
+    @Binds
+    @Singleton
+    abstract fun bindPostRepository(impl: PostRepositoryImpl): PostRepository
 
     @Binds
     @Singleton

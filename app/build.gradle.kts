@@ -54,8 +54,10 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.5.3")
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
+    implementation("io.coil-kt:coil-gif:2.6.0")
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("androidx.compose.animation:animation-graphics:+")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
 
     implementation("com.google.dagger:hilt-android:2.56.2")

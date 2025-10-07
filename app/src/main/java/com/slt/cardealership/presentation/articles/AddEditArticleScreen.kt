@@ -1,225 +1,267 @@
-//package com.slt.cardealership.presentation.articles
-//
-//import android.net.Uri
-//import androidx.activity.compose.rememberLauncherForActivityResult
-//import androidx.activity.result.contract.ActivityResultContracts
-//import androidx.compose.foundation.background
-//import androidx.compose.foundation.border
-//import androidx.compose.foundation.clickable
-//import androidx.compose.foundation.layout.*
-//import androidx.compose.foundation.lazy.LazyColumn
-//import androidx.compose.foundation.shape.RoundedCornerShape
-//import androidx.compose.material.icons.Icons
-//import androidx.compose.material.icons.filled.AddPhotoAlternate
-//import androidx.compose.material.icons.filled.ArrowBack
-//import androidx.compose.material.icons.filled.ArrowDropDown
-//import androidx.compose.material3.*
-//import androidx.compose.runtime.*
-//import androidx.compose.ui.Alignment
-//import androidx.compose.ui.Modifier
-//import androidx.compose.ui.draw.clip
-//import androidx.compose.ui.graphics.Color
-//import androidx.compose.ui.layout.ContentScale
-//import androidx.compose.ui.text.font.FontWeight
-//import androidx.compose.ui.unit.dp
-//import androidx.hilt.navigation.compose.hiltViewModel
-//import coil3.compose.AsyncImage
-//
-//
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun AddEditArticleScreen(
-//    articleId: String?,
-//    onNavigateBack: () -> Unit,
-//    viewModel: AddEditArticleViewModel = hiltViewModel()
-//) {
-//    val isEditing = articleId != null
-//    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-//
-//    // Launcher for picking an image from the device gallery
-//    val imagePickerLauncher = rememberLauncherForActivityResult(
-//        contract = ActivityResultContracts.GetContent(),
-//        onResult = { uri: Uri? ->
-//            viewModel.featuredImageUri = uri
-//        }
-//    )
-//
-//    Box(modifier = Modifier.fillMaxSize())
-//    {
-//        LazyColumn(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .padding(horizontal = 16.dp),
-//            verticalArrangement = Arrangement.spacedBy(16.dp),
-//            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
-//        ) {
-//            item {
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-//                ) {
-//                    // Left Column for text fields
-//                    Column(
-//                        modifier = Modifier.weight(1f),
-//                        verticalArrangement = Arrangement.spacedBy(16.dp)
-//                    ) {
-//                        FormTextField(
-//                            label = "Article Title *",
-//                            value = viewModel.articleTitle,
-//                            onValueChange = { viewModel.articleTitle = it })
-//                        FormTextField(
-//                            label = "Article Slug *",
-//                            value = viewModel.slug,
-//                            onValueChange = { viewModel.slug = it })
-//                        FormDropdown(
-//                            label = "Status *",
-//                            selectedValue = viewModel.status,
-//                            options = listOf("Draft", "Published"),
-//                            onValueChange = { viewModel.status = it })
-//                        FormDropdown(
-//                            label = "Domain *",
-//                            selectedValue = viewModel.domain,
-//                            options = listOf("All Domains", "Domain A", "Domain B"),
-//                            onValueChange = { viewModel.domain = it })
-//                        FormTextField(
-//                            label = "Meta Title",
-//                            value = viewModel.metaTitle,
-//                            onValueChange = { viewModel.metaTitle = it })
-//                        FormTextField(
-//                            label = "Meta Description",
-//                            value = viewModel.metaDescription,
-//                            onValueChange = { viewModel.metaDescription = it })
-//                    }
-//                    // Right Column for image picker
-//                    FeaturedImagePicker(
-//                        imageUri = viewModel.featuredImageUri,
-//                        onAddClick = { imagePickerLauncher.launch("image/*") }
-//                    )
-//                }
-//            }
-//
-//            item {
-//                // Large text field for the main article content
-//                OutlinedTextField(
-//                    value = viewModel.articleContent,
-//                    onValueChange = { viewModel.articleContent = it },
-//                    label = { Text("Enter article text") },
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .height(250.dp)
-//                )
-//            }
-//        }
-//        Surface(
-//            shadowElevation = 8.dp,
-//            modifier = Modifier.align(Alignment.BottomCenter)
-//        ) {
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(horizontal = 16.dp, vertical = 8.dp),
-//                horizontalArrangement = Arrangement.End
-//            ) {
-//                OutlinedButton(onClick = onNavigateBack, modifier = Modifier.width(100.dp)) {
-//                    Text("Cancel")
-//                }
-//                Spacer(modifier = Modifier.width(8.dp))
-//                Button(
-//                    onClick = {
-//                        viewModel.onSaveArticle()
-//                        onNavigateBack()
-//                    },
-//                    modifier = Modifier.width(100.dp)
-//                ) {
-//                    Text("Save")
-//                }
-//            }
-//        }
-//    }
-//}
-//
-//@Composable
-//fun FormTextField(label: String, value: String, onValueChange: (String) -> Unit) {
-//    OutlinedTextField(
-//        value = value,
-//        onValueChange = onValueChange,
-//        label = { Text(label) },
-//        modifier = Modifier.fillMaxWidth(),
-//        shape = RoundedCornerShape(8.dp)
-//    )
-//}
-//
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun FormDropdown(
-//    label: String,
-//    selectedValue: String,
-//    options: List<String>,
-//    onValueChange: (String) -> Unit
-//) {
-//    var expanded by remember { mutableStateOf(false) }
-//
-//    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-//        OutlinedTextField(
-//            value = selectedValue,
-//            onValueChange = {},
-//            readOnly = true,
-//            label = { Text(label) },
-//            trailingIcon = { Icon(Icons.Default.ArrowDropDown, "Dropdown") },
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .menuAnchor(),
-//            shape = RoundedCornerShape(8.dp)
-//        )
-//        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-//            options.forEach { option ->
-//                DropdownMenuItem(
-//                    text = { Text(option) },
-//                    onClick = {
-//                        onValueChange(option)
-//                        expanded = false
-//                    }
-//                )
-//            }
-//        }
-//    }
-//}
-//
-//@Composable
-//fun FeaturedImagePicker(imageUri: Uri?, onAddClick: () -> Unit) {
-//    Column {
-//        Text(
-//            "Featured Image *",
-//            style = MaterialTheme.typography.bodyMedium,
-//            fontWeight = FontWeight.SemiBold
-//        )
-//        Spacer(modifier = Modifier.height(8.dp))
-//        Box(
-//            modifier = Modifier
-//                .size(180.dp)
-//                .clip(RoundedCornerShape(8.dp))
-//                .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
-//                .clickable { onAddClick() },
-//            contentAlignment = Alignment.Center
-//        ) {
-//            if (imageUri != null) {
-//                AsyncImage(
-//                    model = imageUri,
-//                    contentDescription = "Featured Image",
-//                    contentScale = ContentScale.Crop,
-//                    modifier = Modifier.fillMaxSize()
-//                )
-//            } else {
-//                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-//                    Icon(
-//                        Icons.Default.AddPhotoAlternate,
-//                        "Add Image",
-//                        tint = MaterialTheme.colorScheme.primary
-//                    )
-//                    Spacer(modifier = Modifier.height(8.dp))
-//                    Text("Add featured image", color = MaterialTheme.colorScheme.primary)
-//                }
-//            }
-//        }
-//    }
-//}
+package com.slt.cardealership.presentation.articles
+
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Title
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
+import com.slt.cardealership.domain.model.Post
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddEditArticleScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: AddEditArticleViewModel = hiltViewModel()
+) {
+    val state = viewModel.state
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(key1 = true) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is AddEditArticleViewModel.UiEvent.NavigateBack -> onNavigateBack()
+                is AddEditArticleViewModel.UiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message, withDismissAction = true)
+                }
+            }
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(if (state.post?.id == null) "Add Article" else "Edit Article", fontWeight = FontWeight.SemiBold) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.Close, "Close") }
+                },
+                actions = {
+                    Button(
+                        onClick = viewModel::onSave,
+                        enabled = !state.isSaving && !state.isLoading,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        // Show a small spinner inside the button when saving
+                        AnimatedVisibility(visible = state.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        AnimatedVisibility(visible = !state.isSaving) {
+                            Text("Save")
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color(0xFFF0F2F5)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (state.isLoading) {
+                CircularProgressIndicator()
+            } else if (state.error != null) {
+                Text(state.error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+            } else if (state.post != null) {
+                AddEditArticleForm(post = state.post, viewModel = viewModel)
+            }
+        }
+    }
+}
+
+@Composable
+fun AddEditArticleForm(post: Post, viewModel: AddEditArticleViewModel) {
+    val context = LocalContext.current
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.onImageSelected(it, context) }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        item {
+            FormCard(title = "Article Details") {
+                StyledTextField(
+                    value = post.name ?: "",
+                    onValueChange = viewModel::onTitleChange,
+                    label = "Article Title *",
+                    icon = Icons.Default.Title
+                )
+                StyledTextField(
+                    value = post.slug ?: "",
+                    onValueChange = viewModel::onSlugChange,
+                    label = "Article Slug",
+                    icon = Icons.Default.Link
+                )
+            }
+        }
+
+        item {
+            FormCard(title = "Meta Information (SEO)") {
+                StyledTextField(
+                    value = post.metaTitle ?: "",
+                    onValueChange = viewModel::onMetaTitleChange,
+                    label = "Meta Title (Max: 60)",
+                    icon = Icons.Default.TextFields
+                )
+                StyledTextField(
+                    value = post.metaDescription ?: "",
+                    onValueChange = viewModel::onMetaDescriptionChange,
+                    label = "Meta Description (Max: 160)",
+                    icon = Icons.Default.Description
+                )
+            }
+        }
+
+        item {
+            FormCard(title = "Featured Image *") {
+                FeaturedImageUploader(
+                    imageUrl = post.image,
+                    onImageAdd = { imagePickerLauncher.launch("image/*") },
+                    onImageRemove = viewModel::onImageRemoved
+                )
+            }
+        }
+
+        item {
+            FormCard(title = "Content") {
+                StyledTextField(
+                    value = post.content ?: "",
+                    onValueChange = viewModel::onContentChange,
+                    label = "Article Text",
+                    icon = Icons.Default.Notes,
+                    modifier = Modifier.height(300.dp)
+                )
+            }
+        }
+    }
+}
+
+// A reusable styled TextField with an icon
+@Composable
+fun StyledTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        leadingIcon = { Icon(icon, contentDescription = null) },
+        modifier = modifier.fillMaxWidth()
+    )
+}
+
+
+@Composable
+fun FormCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                content = content
+            )
+        }
+    }
+}
+
+@Composable
+fun FeaturedImageUploader(
+    imageUrl: String?,
+    onImageAdd: () -> Unit,
+    onImageRemove: () -> Unit
+) {
+    val borderColor = if (imageUrl.isNullOrBlank()) MaterialTheme.colorScheme.primary else Color.LightGray
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable(onClick = onImageAdd),
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageUrl.isNullOrBlank()) {
+            // Placeholder content when no image is selected
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.AddPhotoAlternate, "Add Image", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Add Featured Image", color = MaterialTheme.colorScheme.primary)
+                Text("(Recommended: 960 * 550)", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+            }
+        } else {
+            // Show the selected image
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Featured Image",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // Close button to remove the image
+            IconButton(
+                onClick = onImageRemove,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Remove Image", tint = Color.White)
+            }
+        }
+    }
+}

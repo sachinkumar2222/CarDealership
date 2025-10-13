@@ -67,7 +67,8 @@ fun App() {
                 startDestination = Routes.SplashScreen
             ) {
                 composable<Routes.LoginScreen> {
-                    LoginScreen(viewModel = authViewModel)
+                    LoginScreen(
+                            viewModel = authViewModel)
                 }
                 composable<Routes.HomeScreen>{
                     HomeScreen(mainNavController = navController)

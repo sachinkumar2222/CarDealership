@@ -1,5 +1,6 @@
 package com.slt.cardealership.presentation.articles
 
+import android.os.Build.VERSION.SDK_INT
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,12 +16,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
+import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.presentation.home.HomeRoutes
 
@@ -41,7 +47,7 @@ fun ArticleScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF0F8FF))
             )
         },
         floatingActionButton = {
@@ -57,11 +63,11 @@ fun ArticleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF0F2F5)),
+                .background(Color(0xFFF0F8FF)),
             contentAlignment = Alignment.Center
         ) {
             when (val state = uiState) {
-                is ArticleUiState.Loading -> CircularProgressIndicator()
+                is ArticleUiState.Loading -> LoadingAnimation()
                 is ArticleUiState.Error -> Text(state.message, color = MaterialTheme.colorScheme.error)
                 is ArticleUiState.Success -> {
                     if (state.articles.isEmpty()) {
@@ -202,4 +208,25 @@ fun EmptyArticleState() {
             color = Color.Gray
         )
     }
+}
+
+@Composable
+fun LoadingAnimation() {
+    // This builder is necessary for Coil to know how to handle GIFs
+    val imageLoader = ImageLoader.Builder(LocalContext.current)
+        .components {
+            if (SDK_INT >= 28) {
+                add(AnimatedImageDecoder.Factory())
+            } else {
+                add(GifDecoder.Factory())
+            }
+        }
+        .build()
+
+    AsyncImage(
+        model = R.drawable.loader, // <-- Replace 'loader' with your GIF file name
+        contentDescription = "Loading...",
+        imageLoader = imageLoader,
+        modifier = Modifier.size(180.dp) // Adjust size as needed
+    )
 }

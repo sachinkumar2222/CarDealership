@@ -1,5 +1,6 @@
 package com.slt.cardealership.di
 
+import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.data.remote.auth.AuthRepositoryImpl
 import com.slt.cardealership.data.repo.DealerRepositoryImpl
 import com.slt.cardealership.data.repo.PostRepositoryImpl
@@ -42,7 +43,8 @@ abstract class AppModule {
 
         @Provides
         @Singleton
-        fun provideSilentLoginUseCase(repo: AuthRepository): SilentLoginUseCase = SilentLoginUseCase(repo)
+        fun provideSilentLoginUseCase(repo: AuthRepository,
+                                      sessionManager: SessionManager): SilentLoginUseCase = SilentLoginUseCase(repo,sessionManager)
 
         @Provides
         @Singleton

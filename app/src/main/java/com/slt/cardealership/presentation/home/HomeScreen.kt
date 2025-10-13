@@ -3,7 +3,14 @@ package com.slt.cardealership.presentation.home
 import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,10 +28,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Photo
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.focusModifier
@@ -33,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,9 +68,11 @@ import com.slt.cardealership.domain.model.Article
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.presentation.articles.AddEditArticleScreen
 import com.slt.cardealership.presentation.articles.ArticleScreen
+import com.slt.cardealership.presentation.auth.AuthViewModel
 import com.slt.cardealership.presentation.info.InfoScreen
 import com.slt.cardealership.presentation.navigation.Routes
 import com.slt.cardealership.presentation.photos.PhotoScreen
+import com.slt.cardealership.presentation.profile.ProfileScreen
 import com.slt.cardealership.presentation.settings.SettingsScreen
 import com.slt.cardealership.ui.theme.CarDealershipTheme
 import kotlinx.coroutines.launch
@@ -95,55 +110,43 @@ data class BottomNavItem(val title: String, val icon: ImageVector, val route: Ho
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(mainNavController: NavController) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val homeNavController = rememberNavController() // For nested navigation
     val homeViewModel: HomeViewModel = hiltViewModel()
+    val authViewModel: AuthViewModel = hiltViewModel()
     //val articleViewModel: ArticleViewModel = hiltViewModel()
 
-    val navDrawerItems = listOf(
-        NavDrawerItem("Home", Icons.Default.Home),
-        NavDrawerItem("Info", Icons.Default.Info),
-        NavDrawerItem("Articles", Icons.Default.Article)
-    )
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            AppDrawerContent(
-                items = navDrawerItems,
-                onCloseDrawer = { scope.launch { drawerState.close() } }
-            )
-        }
-    ) {
-        Scaffold(
-            bottomBar = { AnimatedBottomBar(navController = homeNavController) },
-            modifier = Modifier.statusBarsPadding()
-        ) { paddingValues ->
-            NavHost(
-                navController = homeNavController,
-                startDestination = HomeRoutes.Dashboard,
-                modifier = Modifier.padding(paddingValues)
-            ) {
-                composable<HomeRoutes.Dashboard> {
-                    DashboardContent(
-                        navController = homeNavController,
-                        //articleViewModel = articleViewModel
-                    )
-                }
-                composable<HomeRoutes.Info> { InfoScreen(navController = homeNavController) }
-                composable<HomeRoutes.Articles> {
-                    ArticleScreen(navController = homeNavController)
-                }
-                composable<HomeRoutes.AddEditArticle> {
-                    AddEditArticleScreen(onNavigateBack = { homeNavController.popBackStack() })
-                }
-                composable<HomeRoutes.Profile> {
-                    CenteredText("Profile Screen")
-                }
-                composable<HomeRoutes.Settings> { SettingsScreen() }
-                composable<HomeRoutes.Photos> { PhotoScreen(navController = homeNavController) }
+    Scaffold(
+        bottomBar = { AnimatedBottomBar(navController = homeNavController) },
+        modifier = Modifier.statusBarsPadding()
+    ) { paddingValues ->
+        NavHost(
+            navController = homeNavController,
+            startDestination = HomeRoutes.Dashboard,
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            composable<HomeRoutes.Dashboard> {
+                DashboardContent(
+                    navController = homeNavController,
+                    //articleViewModel = articleViewModel
+                )
             }
+            composable<HomeRoutes.Info> { InfoScreen(navController = homeNavController) }
+            composable<HomeRoutes.Articles> {
+                ArticleScreen(navController = homeNavController)
+            }
+            composable<HomeRoutes.AddEditArticle> {
+                AddEditArticleScreen(onNavigateBack = { homeNavController.popBackStack() })
+            }
+            composable<HomeRoutes.Profile> {
+                ProfileScreen(
+                    navController = mainNavController,
+                    onSignOutClick = { authViewModel.signOut() }
+                )
+            }
+            composable<HomeRoutes.Settings> { SettingsScreen() }
+            composable<HomeRoutes.Photos> { PhotoScreen(navController = homeNavController) }
         }
     }
 }
@@ -151,9 +154,14 @@ fun HomeScreen(mainNavController: NavController) {
 
 @Composable
 fun DashboardContent(
-    navController: NavController, homeViewModel: HomeViewModel = hiltViewModel()
+    navController: NavController,
+    homeViewModel: HomeViewModel? = if (!LocalInspectionMode.current) hiltViewModel() else null
 ) {
-    val homeState by homeViewModel.uiState.collectAsState()
+    val homeState by homeViewModel?.uiState?.collectAsState() ?: remember {
+        mutableStateOf(
+            HomeUiState.Success(null)
+        )
+    }
     val dashboardItems = listOf(
         DashboardItem("Info", painterResource(R.drawable.info), HomeRoutes.Info),
         DashboardItem("Articles", painterResource(R.drawable.newspaper), HomeRoutes.Articles),
@@ -164,7 +172,11 @@ fun DashboardContent(
             painterResource(R.drawable.user_gear),
             HomeRoutes.Dashboard
         ),
-        DashboardItem("Analytics", painterResource(R.drawable.chart_histogram), HomeRoutes.Dashboard)
+        DashboardItem(
+            "Analytics",
+            painterResource(R.drawable.chart_histogram),
+            HomeRoutes.Dashboard
+        )
     )
 
     LazyVerticalGrid(
@@ -186,7 +198,7 @@ fun DashboardContent(
             // Show the latest post based on the state from the ViewModel
             when (val state = homeState) {
                 is HomeUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                    LatestPostShimmerCard()
                 }
 
                 is HomeUiState.Error -> {
@@ -305,7 +317,9 @@ fun InfoCardGridItem(title: String, icon: Painter, onClick: () -> Unit) {
 @Composable
 fun LatestPostCard(post: Post) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(14.dp),
         shape = RoundedCornerShape(24.dp), // More pronounced rounded corners
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -361,83 +375,81 @@ fun LatestPostCard(post: Post) {
     }
 }
 
-@SuppressLint("RestrictedApi")
 @Composable
-fun BottomNavigationBar(navController: NavController) {
-    val items = listOf(
-        BottomNavItem("Home", Icons.Default.Home, HomeRoutes.Dashboard),
-        BottomNavItem("Info", Icons.Default.Info, HomeRoutes.Info),
-        BottomNavItem("Profile", Icons.Default.Person, HomeRoutes.Profile),
-        BottomNavItem("Settings", Icons.Default.Settings, HomeRoutes.Settings)
-    )
+fun LatestPostShimmerCard() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(14.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Image Placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .shimmer() // <-- APPLY SHIMMER
+            )
+            Spacer(modifier = Modifier.height(16.dp))
 
-    NavigationBar {
-        val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentDestination = navBackStackEntry?.destination
+            // Title Placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .shimmer() // <-- APPLY SHIMMER
+            )
+            Spacer(modifier = Modifier.height(8.dp))
 
-        items.forEach { item ->
-            NavigationBarItem(
-                icon = { Icon(item.icon, item.title) },
-                label = { Text(item.title) },
-                // --- THIS IS THE FIX ---
-                // We compare the string name of the item's route with the string names
-                // in the current navigation hierarchy.
-                selected = currentDestination?.hierarchy?.any {
-                    it.route == item.route::class.qualifiedName
-                } == true,
-                onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
+            // Subtitle Placeholders
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .shimmer() // <-- APPLY SHIMMER
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.5f)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .shimmer() // <-- APPLY SHIMMER
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Bottom Text Placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(24.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .shimmer() // <-- APPLY SHIMMER
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AppDrawerContent(items: List<NavDrawerItem>, onCloseDrawer: () -> Unit) {
-    ModalDrawerSheet {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onCloseDrawer) {
-                    Icon(Icons.Default.Close, contentDescription = "Close Drawer")
-                }
-                Icon(
-                    imageVector = Icons.Default.Business,
-                    contentDescription = "Logo",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-            }
-            Divider()
-            LazyColumn {
-                items(items) { item ->
-                    NavigationDrawerItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = item.title == "Home",
-                        onClick = { /* Handle item click */ },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                }
-            }
-        }
-    }
-}
+
 
 @Composable
 fun WelcomeCard() {
+
+    val blueGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF2196F3), // Light Blue
+            Color(0xFF1565C0)  // Dark Blue
+        )
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -455,7 +467,10 @@ fun WelcomeCard() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF000000))
+                .background(
+                   // Color(0xFF000000)
+                    blueGradient
+                )
         ) {
             Image(
                 painter = painterResource(R.drawable.earth),
@@ -548,114 +563,135 @@ fun GoogleBusinessProfileCard() {
     }
 }
 
-@Composable
-fun CenteredText(text: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text, style = MaterialTheme.typography.headlineMedium)
-    }
-}
+
 
 @Composable
 fun AnimatedBottomBar(navController: NavController) {
-    // Re-use the same items from your old BottomNavigationBar
     val items = listOf(
-        BottomNavItem("Home", Icons.Default.Home, HomeRoutes.Dashboard),
-        BottomNavItem("Info", Icons.Default.Info, HomeRoutes.Info),
-        BottomNavItem("Profile", Icons.Default.Person, HomeRoutes.Profile),
-        BottomNavItem("Settings", Icons.Default.Settings, HomeRoutes.Settings)
+        BottomNavItem("Home", Icons.Outlined.Home, HomeRoutes.Dashboard),
+        BottomNavItem("Info", Icons.Outlined.Info, HomeRoutes.Info),
+        BottomNavItem("Profile", Icons.Outlined.Photo, HomeRoutes.Profile),
+        BottomNavItem("Settings", Icons.Outlined.Settings, HomeRoutes.Settings)
+    )
+    val blueGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF2196F3), // Light Blue
+            Color(0xFF1565C0)  // Dark Blue
+        )
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // This is the main container, styled like the HTML version
-    Row(
+    val selectedIndex = items.indexOfFirst { item ->
+        currentDestination?.hierarchy?.any {
+            it.route == item.route::class.qualifiedName
+        } == true
+    }.coerceAtLeast(0)
+    val bottomBarShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp) // Padding around the bar
-            .shadow(elevation = 8.dp, shape = RoundedCornerShape(40.dp))
-            .background(color = Color.White, shape = RoundedCornerShape(40.dp))
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
+            .shadow(elevation = 0.dp, shape = bottomBarShape)
+            .background(blueGradient, shape = bottomBarShape),
+        color = Color.Transparent,
+        shape = bottomBarShape
     ) {
-        items.forEach { item ->
-            val isSelected = currentDestination?.hierarchy?.any {
-                it.route == item.route::class.qualifiedName
-            } == true
+        BoxWithConstraints(
+            modifier = Modifier.height(80.dp)
+        ) {
+            val itemWidth = maxWidth / items.size
+            val indicatorOffset by animateDpAsState(
+                targetValue = (itemWidth * selectedIndex) + (itemWidth / 2) - 18.dp,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "indicatorOffset"
+            )
 
-            // Each icon is an item in the bar
-            AnimatedBottomBarItem(
-                item = item,
-                isSelected = isSelected,
-                onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
+            Box(
+                modifier = Modifier
+                    .padding(bottom = 8.dp)
+                    .align(Alignment.BottomStart)
+                    .offset(x = indicatorOffset)
+                    .width(36.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color.Black)
+            )
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                items.forEachIndexed { index, item ->
+                    val isSelected = index == selectedIndex
+                    val iconColor by animateColorAsState(
+                        targetValue = if (isSelected) Color(0xFF042A2B) else Color(0xFFDADADA),
+                        label = "iconColor"
+                    )
+
+                    val iconSize by animateDpAsState(
+                        targetValue = if (isSelected) 34.dp else 26.dp,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "iconSize"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable(
+                                onClick = {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.title,
+                            tint = iconColor,
+                            modifier = Modifier.size(iconSize)
+                        )
                     }
                 }
-            )
+            }
         }
     }
 }
 
-@Composable
-fun AnimatedBottomBarItem(
-    item: BottomNavItem,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    // Define the gradient for the active state
-    val activeGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF0D6EFD), Color(0xFF0A58CA))
+fun Modifier.shimmer(): Modifier = composed {
+    val transition = rememberInfiniteTransition(label = "Shimmer Transition")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "Shimmer Animation"
     )
 
-    // Animate the background based on selection
-    val background by animateDpAsState(
-        targetValue = if (isSelected) 48.dp else 0.dp,
-        animationSpec = tween(300), label = ""
+    val brush = Brush.linearGradient(
+        colors = listOf(
+            Color.LightGray.copy(alpha = 0.9f),
+            Color.LightGray.copy(alpha = 0.4f),
+            Color.LightGray.copy(alpha = 0.9f)
+        ),
+        start = androidx.compose.ui.geometry.Offset.Zero,
+        end = androidx.compose.ui.geometry.Offset(x = translateAnim, y = translateAnim)
     )
 
-    // Animate the icon color based on selection
-    val iconColor by animateColorAsState(
-        targetValue = if (isSelected) Color.White else Color.Black.copy(alpha = 0.7f),
-        animationSpec = tween(300), label = ""
-    )
-
-    Box(
-        modifier = Modifier
-            .size(48.dp) // Wrapper to hold the animated background and icon
-            .clickable(
-                onClick = onClick,
-                indication = null, // Disable ripple effect
-                interactionSource = remember { MutableInteractionSource() }
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // This is the animated background circle
-        Box(
-            modifier = Modifier
-                .size(background)
-                .clip(CircleShape)
-                .background(
-                    if (isSelected) activeGradient else Brush.horizontalGradient(
-                        listOf(
-                            Color.Transparent,
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-
-        // The icon itself
-        Icon(
-            imageVector = item.icon,
-            contentDescription = item.title,
-            tint = iconColor,
-            modifier = Modifier.size(32.dp)
-        )
-    }
+    background(brush)
 }
 
 @Preview(showBackground = true)
@@ -663,11 +699,22 @@ fun AnimatedBottomBarItem(
 fun HomeScreenLayoutPreview() {
     Scaffold(
         topBar = { TopBar(onMenuClick = {}, onLogoutClick = {}) },
-        bottomBar = { BottomNavigationBar(navController = rememberNavController()) }
+        bottomBar = { AnimatedBottomBar(navController = rememberNavController()) }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             DashboardContent(navController = rememberNavController())
         }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun AnimatedBottomBarPreview() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center
+    ) {
+        AnimatedBottomBar(navController = rememberNavController())
     }
 }
 

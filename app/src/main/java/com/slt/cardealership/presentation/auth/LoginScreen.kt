@@ -1,18 +1,35 @@
+@file:JvmName("LoginScreenKt")
+
 package com.slt.cardealership.presentation.auth
 
 import android.util.Log
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -20,107 +37,104 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.slt.cardealership.R
 import com.slt.cardealership.common.ResultState
-import com.slt.cardealership.ui.theme.CarDealershipTheme
+import com.slt.cardealership.presentation.navigation.Routes
 
 @Composable
 fun LoginScreen(
-    viewModel: AuthViewModel = hiltViewModel()
-) {
-    val state by viewModel.authState.collectAsState()
-    val activity = LocalActivity.current
-    val isLoading = state is ResultState.Loading
+    viewModel: AuthViewModel = hiltViewModel()) {
+        val state by viewModel.authState.collectAsState()
+        val activity = LocalActivity.current
+    val blueGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF2196F3), // Light Blue
+            Color(0xFF1565C0)  // Dark Blue
+        )
+    )
 
-    // A modern, clean background
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFFF0F2F5), Color.White)
-                )
-            ),
-        contentAlignment = Alignment.Center
+            .background(color=Color.White),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
+        // Top 60%: Image
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .weight(0.6f), // 60% of screen height
+            contentAlignment = Alignment.Center
         ) {
-
-            // App Logo
             Image(
-                painter = painterResource(id = R.drawable.splash), // Re-using the splash screen logo
-                contentDescription = "App Logo",
-                modifier = Modifier.size(200.dp)
+                painter = painterResource(id = R.drawable.bac),
+                contentDescription = "Car Dealership background",
+                modifier = Modifier.fillMaxSize(0.9f),
+                contentScale = ContentScale.Fit
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Welcome Text
-            Text(
-                text = "Welcome Back",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1A202C)
+            // Login image slightly bigger
+            Image(
+                painter = painterResource(id = R.drawable.login),
+                contentDescription = "Car Dealership Logo",
+                modifier = Modifier
+                    .fillMaxWidth(0.9f) // slightly bigger than 0.8f
+                    .aspectRatio(1f),   // maintain square ratio
+                contentScale = ContentScale.Fit
             )
+        }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Sign in to manage your dealership",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.Gray,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            // A single, clear Sign-In Button
-            Button(
-                onClick = { viewModel.signIn(activity) },
-                // Disable the button while loading
+        // Bottom 40%: Texts + Button
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(0.4f), // 40% of screen height
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF0078D4), // Microsoft's blue
-                    contentColor = Color.White
-                )
+                    .padding(horizontal = 32.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Sign In",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
+                    text = "Access Your Dealer Portal",
+                    lineHeight = 44.sp,
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Display any error messages below the button
-            if (state is ResultState.Error) {
                 Text(
-                    text = (state as ResultState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    text = "Manage your inventory, leads, and sales pipeline.",
+                    fontSize = 18.sp,
+                    lineHeight = 24.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 32.dp)
                 )
-                Log.d("LoginScreen", "Error: ${(state as ResultState.Error).message}")
+
+                Button(
+                    onClick = { viewModel.signIn(activity) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .background(blueGradient, shape = RoundedCornerShape(12.dp))
+                ) {
+                    Text(
+                        text = "SECURE SIGN-IN",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun LoginScreenPreview() {
-    CarDealershipTheme(darkTheme = false) {
-        // You can add a preview resource for the Microsoft icon if needed
-        // For now, it might show a warning in the preview, but it will work in the app.
-        LoginScreen()
     }
 }

@@ -1,5 +1,6 @@
 package com.slt.cardealership.presentation.info
 
+import android.os.Build.VERSION.SDK_INT
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -30,7 +32,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Amenities
 import com.slt.cardealership.domain.model.DealerCategory
@@ -63,7 +68,7 @@ fun InfoScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF0F2F5))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF0F8FF))
             )
         }
     ) { paddingValues ->
@@ -72,11 +77,11 @@ fun InfoScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues) // Use padding from Scaffold
-                .background(Color(0xFFF0F2F5)),
+                .background(Color(0xFFF0F8FF)),
             contentAlignment = Alignment.Center
         ) {
             when (val state = uiState) {
-                is InfoUiState.Loading -> CircularProgressIndicator()
+                is InfoUiState.Loading -> LoadingAnimation()
                 is InfoUiState.Error -> {
                     Text(
                         text = "Error: ${state.message}",
@@ -875,6 +880,28 @@ fun HomeDeliveryDialog(
             }
         }
     }
+}
+
+
+@Composable
+fun LoadingAnimation() {
+    // This builder is necessary for Coil to know how to handle GIFs
+    val imageLoader = ImageLoader.Builder(LocalContext.current)
+        .components {
+            if (SDK_INT >= 28) {
+                add(AnimatedImageDecoder.Factory())
+            } else {
+                add(GifDecoder.Factory())
+            }
+        }
+        .build()
+
+    AsyncImage(
+        model = R.drawable.loader, // <-- Replace 'loader' with your GIF file name
+        contentDescription = "Loading...",
+        imageLoader = imageLoader,
+        modifier = Modifier.size(180.dp) // Adjust size as needed
+    )
 }
 
 

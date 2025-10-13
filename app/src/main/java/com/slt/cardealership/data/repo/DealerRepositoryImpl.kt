@@ -15,6 +15,11 @@ import com.slt.cardealership.domain.repo.DealerRepository
 import com.slt.cardealership.domain.model.Post
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import javax.inject.Inject
 
 class DealerRepositoryImpl @Inject constructor(
@@ -99,9 +104,88 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun addBanner(
+        dealerId: Long,
+        title: String,
+        url: String,
+        startDate: String,
+        imageFile: File
+    ): Result<Unit> {
+        return try {
+            // Convert strings to RequestBody
+            val titlePart = title.toRequestBody("text/plain".toMediaTypeOrNull())
+            val urlPart = url.toRequestBody("text/plain".toMediaTypeOrNull())
+            val startDatePart = startDate.toRequestBody("text/plain".toMediaTypeOrNull())
+
+            // TODO: Replace "630" with the actual logged-in user ID
+            val userPart = "630".toRequestBody("text/plain".toMediaTypeOrNull())
+
+            // Convert file to RequestBody
+            val imageReqBody = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
+            val imagePart = MultipartBody.Part.createFormData("file", imageFile.name, imageReqBody)
+
+            apiService.addBanner(
+                dealerId = dealerId,
+                title = titlePart,
+                url = urlPart,
+                startDate = startDatePart,
+                image = imagePart,
+                createdBy = userPart,
+                updatedBy = userPart
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getBanners(dealerId: Long): Result<List<Banner>> {
         return try {
-            Result.success(apiService.getBanners(dealerId))
+            val response = apiService.getBanners(dealerId)
+            Result.success(response.list) // <-- FIX: Extract the list from the response object
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
+    override suspend fun getBannerDetails(dealerId: Long, bannerId: String): Result<Banner> {
+        return try {
+            Result.success(apiService.getBannerDetails(dealerId, bannerId))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateBanner(
+        dealerId: Long,
+        bannerId: String,
+        title: String,
+        url: String,
+        startDate: String,
+        imageFile: File?
+    ): Result<Unit> {
+        return try {
+            val titlePart = title.toRequestBody("text/plain".toMediaTypeOrNull())
+            val urlPart = url.toRequestBody("text/plain".toMediaTypeOrNull())
+            val startDatePart = startDate.toRequestBody("text/plain".toMediaTypeOrNull())
+            val userPart = "630".toRequestBody("text/plain".toMediaTypeOrNull()) // TODO: Use real user ID
+
+            val imagePart = imageFile?.let {
+                val requestBody = it.asRequestBody("image/*".toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("file", it.name, requestBody)
+            }
+
+            apiService.updateBanner(
+                dealerId = dealerId,
+                bannerId = bannerId,
+                title = titlePart,
+                url = urlPart,
+                startDate = startDatePart,
+                image = imagePart,
+                updatedBy = userPart
+            )
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -109,7 +193,26 @@ class DealerRepositoryImpl @Inject constructor(
 
     override suspend fun getGalleryImages(dealerId: Long): Result<List<GalleryImage>> {
         return try {
-            Result.success(apiService.getGalleryImages(dealerId))
+            // 1. Get the single response object from the API
+            val responseObject = apiService.getGalleryImages(dealerId)
+
+            // 2. Transform the 'images' list from that object into the list the UI needs
+            val imageList = responseObject.images?.map { imageUrl ->
+                GalleryImage(id = responseObject.id, imageUrl = imageUrl)
+            } ?: emptyList() // If 'images' is null, return an empty list
+
+            Result.success(imageList)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun addGalleryImage(dealerId: Long, imageFile: File): Result<Unit> {
+        return try {
+            val requestBody = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
+            val imagePart = MultipartBody.Part.createFormData("file", imageFile.name, requestBody)
+            apiService.addGalleryImage(dealerId, imagePart)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }

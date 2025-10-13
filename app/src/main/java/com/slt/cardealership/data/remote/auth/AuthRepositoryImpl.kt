@@ -1,4 +1,3 @@
-
 package com.slt.cardealership.data.remote.auth
 
 import android.app.Activity
@@ -11,6 +10,7 @@ import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.domain.repo.AuthRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -26,7 +26,6 @@ class AuthRepositoryImpl @Inject constructor(
     private val sessionManager: SessionManager
 ) : AuthRepository {
 
-    // This local variable is now only used for the CURRENT session
     private var msalApp: IPublicClientApplication? = null
 
     private suspend fun getMsalApp(): IPublicClientApplication = withContext(Dispatchers.IO) {
@@ -36,8 +35,6 @@ class AuthRepositoryImpl @Inject constructor(
         msalApp!!
     }
 
-    // --- NEW FUNCTION TO GET CACHED ACCOUNT ---
-    // This function checks the device for any previously signed-in accounts.
     private suspend fun getSignedInAccount(): IAccount? {
         val app = getMsalApp()
         return suspendCancellableCoroutine { continuation ->
@@ -49,7 +46,7 @@ class AuthRepositoryImpl @Inject constructor(
                     override fun onError(exception: MsalException?) {
                         continuation.resumeWithException(exception ?: RuntimeException("Failed to load accounts"))
                     }
-                }) ?: continuation.resume(null) // If it's not a multi-account app, assume no account
+                }) ?: continuation.resume(null)
             } catch (e: Exception) {
                 continuation.resumeWithException(e)
             }
@@ -68,8 +65,7 @@ class AuthRepositoryImpl @Inject constructor(
                 .withScopes(scopes)
                 .withCallback(object : AuthenticationCallback {
                     override fun onSuccess(result: IAuthenticationResult) {
-                        Log.d("AuthRepo", "Successfully received token: ${result.accessToken}")
-                        sessionManager.authToken = result.accessToken
+                        runBlocking { sessionManager.saveAuthToken(result.accessToken) }
                         continuation.resume(Result.success(result.accessToken))
                     }
 
@@ -86,10 +82,7 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    // --- UPDATED acquireTokenSilent ---
-    // This now uses our new function to find the user first.
     override suspend fun acquireTokenSilent(): Result<String> {
-        // First, try to get the account from the device cache
         val currentAccount = getSignedInAccount()
             ?: return Result.failure(IllegalStateException("No cached account found."))
 
@@ -101,13 +94,12 @@ class AuthRepositoryImpl @Inject constructor(
             )
             val parameters = AcquireTokenSilentParameters.Builder()
                 .forAccount(currentAccount)
-                .fromAuthority(currentAccount.authority)
+                 .fromAuthority(currentAccount.authority) // This is correctly commented out
                 .withScopes(scopes)
                 .withCallback(object : SilentAuthenticationCallback {
                     override fun onSuccess(result: IAuthenticationResult) {
-                        sessionManager.authToken = result.accessToken
+                        runBlocking { sessionManager.saveAuthToken(result.accessToken) }
                         continuation.resume(Result.success(result.accessToken))
-                        Log.d("AuthRepo", "Successfully received token: ${result.accessToken}")
                     }
 
                     override fun onError(exception: MsalException) {
@@ -129,7 +121,9 @@ class AuthRepositoryImpl @Inject constructor(
                     currentAccount,
                     object : IMultipleAccountPublicClientApplication.RemoveAccountCallback {
                         override fun onRemoved() {
-                            sessionManager.authToken = null // CLEAR THE TOKEN
+                            // --- THIS IS THE FIX ---
+                            // Call clearSession to wipe the persistent DataStore
+                            runBlocking { sessionManager.clearSession() }
                             continuation.resume(Unit)
                         }
 
@@ -138,7 +132,8 @@ class AuthRepositoryImpl @Inject constructor(
                         }
                     }
                 ) ?: run {
-                    sessionManager.authToken = null // CLEAR THE TOKEN
+                    // Also clear the session for single-account apps
+                    runBlocking { sessionManager.clearSession() }
                     continuation.resume(Unit)
                 }
             }

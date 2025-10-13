@@ -55,8 +55,11 @@ class AuthViewModel @Inject constructor(
             val result = signInUseCase(activity)
             _authState.value = result.fold(
                 onSuccess = { token ->
+                    sessionManager.saveAuthToken(token)
+
                     val user = TokenParser.parse(token)
                     _userState.value = user
+
 
                     TokenParser.getDealerIdFromToken(token)?.let { dealerId ->
                         sessionManager.saveDealerSlug(dealerId.toString())
@@ -79,6 +82,7 @@ class AuthViewModel @Inject constructor(
             silentLoginUseCase().fold(
                 onSuccess = { token ->
                     // --- ALSO CALL THE PARSER HERE ---
+                    sessionManager.saveAuthToken(token)
                     val user = TokenParser.parse(token)
                     _userState.value = user // Store the parsed user
                     TokenParser.getDealerIdFromToken(token)?.let { dealerId ->
@@ -100,10 +104,17 @@ class AuthViewModel @Inject constructor(
 
     fun signOut() {
         viewModelScope.launch {
+            // You can show a loading state here if you want
             val result = signOutUseCase()
             _authState.value = result.fold(
                 onSuccess = {
-                    _events.send(AuthEvent.ShowSnackbar("Signed out successfully"))
+                    // --- FIX 1: CLEAR ALL SAVED DATA ---
+                    sessionManager.clearSession() // You need to create this function
+
+                    // --- FIX 2: SEND NAVIGATION EVENT ---
+                    // Navigate back to login instead of just showing a snackbar
+                    _events.send(AuthEvent.NavigateToLogin)
+
                     ResultState.Success("Signed out")
                 },
                 onFailure = { e ->

@@ -17,8 +17,25 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore by preferencesDataStore(name = "user_preferences")
 @Singleton
 class SessionManager @Inject constructor( @ApplicationContext private val context: Context) {
-    var authToken: String? = null
+
+    private val AUTH_TOKEN = stringPreferencesKey("auth_token")
     private val USER_DEALER_SLUG = stringPreferencesKey("user_dealer_slug")
+
+
+    var authToken: String? = null
+
+    suspend fun saveAuthToken(token: String) {
+        context.dataStore.edit { preferences ->
+            preferences[AUTH_TOKEN] = token
+        }
+    }
+
+    suspend fun getAuthToken(): String? {
+        return context.dataStore.data.map { preferences ->
+            preferences[AUTH_TOKEN]
+        }.first()
+    }
+
     suspend fun getDealerSlug(): String? {
         return context.dataStore.data.map { preferences ->
             preferences[USER_DEALER_SLUG]
@@ -27,6 +44,13 @@ class SessionManager @Inject constructor( @ApplicationContext private val contex
     suspend fun saveDealerSlug(slug: String) {
         context.dataStore.edit { preferences ->
             preferences[USER_DEALER_SLUG] = slug
+        }
+    }
+
+
+    suspend fun clearSession() {
+        context.dataStore.edit { preferences ->
+            preferences.clear()
         }
     }
 

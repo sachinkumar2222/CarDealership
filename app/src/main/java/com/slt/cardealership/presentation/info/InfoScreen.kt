@@ -897,7 +897,7 @@ fun LoadingAnimation() {
         .build()
 
     AsyncImage(
-        model = R.drawable.loader, // <-- Replace 'loader' with your GIF file name
+        model = R.drawable.newloading, // <-- Replace 'loader' with your GIF file name
         contentDescription = "Loading...",
         imageLoader = imageLoader,
         modifier = Modifier.size(180.dp) // Adjust size as needed

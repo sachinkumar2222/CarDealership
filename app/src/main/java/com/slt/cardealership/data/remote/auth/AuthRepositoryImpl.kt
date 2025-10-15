@@ -87,6 +87,9 @@ class AuthRepositoryImpl @Inject constructor(
             ?: return Result.failure(IllegalStateException("No cached account found."))
 
         val app = getMsalApp()
+
+        val authority = app.configuration.defaultAuthority.authorityURL.toString()
+
         return suspendCoroutine { continuation ->
             val scopes = listOf(
                 "https://sbamybuissness.onmicrosoft.com/23dbe00b-9486-4e40-be6c-3db22237ac57/tasks.read",
@@ -94,7 +97,7 @@ class AuthRepositoryImpl @Inject constructor(
             )
             val parameters = AcquireTokenSilentParameters.Builder()
                 .forAccount(currentAccount)
-                 .fromAuthority(currentAccount.authority) // This is correctly commented out
+                 .fromAuthority(authority) // This is correctly commented out
                 .withScopes(scopes)
                 .withCallback(object : SilentAuthenticationCallback {
                     override fun onSuccess(result: IAuthenticationResult) {
@@ -111,35 +114,40 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    // In: AuthRepositoryImpl.kt
+// FALLBACK IMPLEMENTATION - Use only if dependency update fails
+
     override suspend fun signOut(): Result<Unit> {
         return try {
-            val currentAccount = getSignedInAccount() ?: return Result.success(Unit) // Already signed out
             val app = getMsalApp()
+            val currentAccount = getSignedInAccount()
 
-            suspendCancellableCoroutine<Unit> { continuation ->
-                (app as? IMultipleAccountPublicClientApplication)?.removeAccount(
-                    currentAccount,
-                    object : IMultipleAccountPublicClientApplication.RemoveAccountCallback {
-                        override fun onRemoved() {
-                            // --- THIS IS THE FIX ---
-                            // Call clearSession to wipe the persistent DataStore
-                            runBlocking { sessionManager.clearSession() }
-                            continuation.resume(Unit)
+            // If there is an account, remove it from MSAL
+            if (currentAccount != null) {
+                suspendCancellableCoroutine<Unit> { continuation ->
+                    (app as? IMultipleAccountPublicClientApplication)?.removeAccount(
+                        currentAccount,
+                        object : IMultipleAccountPublicClientApplication.RemoveAccountCallback {
+                            override fun onRemoved() {
+                                continuation.resume(Unit)
+                            }
+                            override fun onError(exception: MsalException) {
+                                continuation.resumeWithException(exception)
+                            }
                         }
-
-                        override fun onError(exception: MsalException) {
-                            continuation.resumeWithException(exception)
-                        }
-                    }
-                ) ?: run {
-                    // Also clear the session for single-account apps
-                    runBlocking { sessionManager.clearSession() }
-                    continuation.resume(Unit)
+                    ) ?: continuation.resume(Unit) // Fallback for single account app
                 }
             }
+
+            // The most important step: ALWAYS clear your app's local storage
+            runBlocking {
+                sessionManager.clearSession()
+            }
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
 }

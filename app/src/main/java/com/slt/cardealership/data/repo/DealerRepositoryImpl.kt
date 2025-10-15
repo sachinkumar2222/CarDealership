@@ -11,7 +11,7 @@ import com.slt.cardealership.domain.model.GalleryImage
 import com.slt.cardealership.domain.model.HomeDelivery
 import com.slt.cardealership.domain.model.HomeTestDrive
 import com.slt.cardealership.domain.repo.DealerRepository
-
+import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.Post
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -21,6 +21,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import javax.inject.Inject
+
 
 class DealerRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
@@ -207,12 +208,115 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addGalleryImage(dealerId: Long, imageFile: File): Result<Unit> {
+    override suspend fun addGalleryImage(dealerId: Long, imageFile: File, existingUrls: List<String>): Result<Unit> {
         return try {
             val requestBody = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
             val imagePart = MultipartBody.Part.createFormData("file", imageFile.name, requestBody)
-            apiService.addGalleryImage(dealerId, imagePart)
-            Result.success(Unit)
+
+            val urlsRequestBody = existingUrls.joinToString(",").toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val response = apiService.addGalleryImage(dealerId, urlsRequestBody, imagePart)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to add gallery image. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteBanner(dealerId: Long, bannerId: String): Result<Unit> {
+        return try {
+            val response = apiService.deleteBanner(dealerId, bannerId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete banner. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteGalleryImage(dealerId: Long, imageId: String): Result<Unit> {
+        return try {
+            val response = apiService.deleteGalleryImage(dealerId, imageId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete gallery image. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getVehicles(dealerId: Long): Result<List<Vehicle>> {
+        return try {
+            val response = apiService.getVehicles(dealerId)
+            Result.success(response.list)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getVehicleDetails(dealerId: Long, vehicleId: String): Result<Vehicle> {
+        return try {
+            val vehicle = apiService.getVehicleDetails(dealerId, vehicleId)
+            Result.success(vehicle)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun addVehicle(dealerId: Long, vehicle: Vehicle): Result<Vehicle> {
+        return try {
+            val response = apiService.addVehicle(dealerId, vehicle)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to add vehicle. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateVehicle(dealerId: Long, vehicleId: String, vehicle: Vehicle): Result<Vehicle> {
+        return try {
+            val response = apiService.updateVehicle(dealerId, vehicleId, vehicle)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to update vehicle. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteVehicle(dealerId: Long, vehicleId: String): Result<Unit> {
+        return try {
+            val response = apiService.deleteVehicle(dealerId, vehicleId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete vehicle. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun decodeVin(vin: String): Result<Vehicle> {
+        return try {
+            val response = apiService.decodeVin(vin)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Failed to decode VIN. Code: ${response.code()}"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

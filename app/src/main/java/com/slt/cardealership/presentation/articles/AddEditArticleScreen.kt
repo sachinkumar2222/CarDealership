@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import com.slt.cardealership.presentation.articles.UiEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,23 +35,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.slt.cardealership.domain.model.Post
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditArticleScreen(
+    navController: NavController,
     onNavigateBack: () -> Unit,
     viewModel: AddEditArticleViewModel = hiltViewModel()
 ) {
     val state = viewModel.state
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(key1 = true) {
+    LaunchedEffect(snackbarHostState) {
         viewModel.events.collect { event ->
             when (event) {
-                is AddEditArticleViewModel.UiEvent.NavigateBack -> onNavigateBack()
-                is AddEditArticleViewModel.UiEvent.ShowSnackbar -> {
+                // Now references the top-level UiEvent
+                is UiEvent.NavigateBack -> {
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("should_refresh", true)
+                    onNavigateBack()
+                }
+                is UiEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message, withDismissAction = true)
                 }
             }
@@ -171,7 +180,7 @@ fun AddEditArticleForm(post: Post, viewModel: AddEditArticleViewModel) {
                     onValueChange = viewModel::onContentChange,
                     label = "Article Text",
                     icon = Icons.Default.Notes,
-                    modifier = Modifier.height(300.dp)
+                    modifier = Modifier.height(100.dp)
                 )
             }
         }
@@ -192,7 +201,8 @@ fun StyledTextField(
         onValueChange = onValueChange,
         label = { Text(label) },
         leadingIcon = { Icon(icon, contentDescription = null) },
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp)
     )
 }
 

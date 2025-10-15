@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -77,6 +78,16 @@ import com.slt.cardealership.presentation.settings.SettingsScreen
 import com.slt.cardealership.ui.theme.CarDealershipTheme
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+// Add these imports at the top of your file
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import com.slt.cardealership.presentation.inventory.InventoryScreen
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.yield
+
 
 // --- Nested Navigation Routes for the Bottom Bar ---
 @Serializable
@@ -91,7 +102,7 @@ sealed class HomeRoutes {
     object Profile : HomeRoutes()
 
     @Serializable
-    object Settings : HomeRoutes()
+    object Inventory : HomeRoutes()
 
     @Serializable
     object Articles : HomeRoutes()
@@ -137,7 +148,9 @@ fun HomeScreen(mainNavController: NavController) {
                 ArticleScreen(navController = homeNavController)
             }
             composable<HomeRoutes.AddEditArticle> {
-                AddEditArticleScreen(onNavigateBack = { homeNavController.popBackStack() })
+                AddEditArticleScreen(
+                    navController = homeNavController,
+                    onNavigateBack = { homeNavController.popBackStack() })
             }
             composable<HomeRoutes.Profile> {
                 ProfileScreen(
@@ -145,8 +158,9 @@ fun HomeScreen(mainNavController: NavController) {
                     onSignOutClick = { authViewModel.signOut() }
                 )
             }
-            composable<HomeRoutes.Settings> { SettingsScreen() }
             composable<HomeRoutes.Photos> { PhotoScreen(navController = homeNavController) }
+
+            composable<HomeRoutes.Inventory> { InventoryScreen(navController = homeNavController) }
         }
     }
 }
@@ -159,14 +173,14 @@ fun DashboardContent(
 ) {
     val homeState by homeViewModel?.uiState?.collectAsState() ?: remember {
         mutableStateOf(
-            HomeUiState.Success(null)
+            HomeUiState.Success(emptyList())
         )
     }
     val dashboardItems = listOf(
         DashboardItem("Info", painterResource(R.drawable.info), HomeRoutes.Info),
         DashboardItem("Articles", painterResource(R.drawable.newspaper), HomeRoutes.Articles),
         DashboardItem("Photos", painterResource(R.drawable.picture), HomeRoutes.Photos),
-        DashboardItem("Services", painterResource(R.drawable.user_headset), HomeRoutes.Dashboard),
+        DashboardItem("Inventory", painterResource(R.drawable.invent), HomeRoutes.Inventory),
         DashboardItem(
             "Manage Classifieds",
             painterResource(R.drawable.user_gear),
@@ -207,8 +221,12 @@ fun DashboardContent(
 
                 is HomeUiState.Success -> {
                     // If a post exists, show the card for it
-                    state.latestPost?.let { post ->
-                        LatestPostCard(post = post)
+//                    state.latestPost?.let { post ->
+//                        LatestPostCard(post = post)
+//                    }
+                    if (state.latestPosts.isNotEmpty()) {
+                        // Call the new slideshow composable
+                        LatestArticlesSlideshow(posts = state.latestPosts)
                     }
                 }
             }
@@ -315,7 +333,7 @@ fun InfoCardGridItem(title: String, icon: Painter, onClick: () -> Unit) {
 }
 
 @Composable
-fun LatestPostCard(post: Post) {
+fun LatestPostCard(post: Post, modifier: Modifier = Modifier) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -380,7 +398,7 @@ fun LatestPostShimmerCard() {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(14.dp),
+            .padding(22.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -439,7 +457,6 @@ fun LatestPostShimmerCard() {
 }
 
 
-
 @Composable
 fun WelcomeCard() {
 
@@ -468,7 +485,7 @@ fun WelcomeCard() {
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                   // Color(0xFF000000)
+                    // Color(0xFF000000)
                     blueGradient
                 )
         ) {
@@ -564,14 +581,15 @@ fun GoogleBusinessProfileCard() {
 }
 
 
-
 @Composable
 fun AnimatedBottomBar(navController: NavController) {
     val items = listOf(
         BottomNavItem("Home", Icons.Outlined.Home, HomeRoutes.Dashboard),
         BottomNavItem("Info", Icons.Outlined.Info, HomeRoutes.Info),
-        BottomNavItem("Profile", Icons.Outlined.Photo, HomeRoutes.Profile),
-        BottomNavItem("Settings", Icons.Outlined.Settings, HomeRoutes.Settings)
+        BottomNavItem("Photos", Icons.Outlined.Photo, HomeRoutes.Photos),
+        BottomNavItem(
+            "Profile", Icons.Outlined.Person, HomeRoutes.Profile
+        )
     )
     val blueGradient = Brush.horizontalGradient(
         colors = listOf(
@@ -646,7 +664,9 @@ fun AnimatedBottomBar(navController: NavController) {
                             .clickable(
                                 onClick = {
                                     navController.navigate(item.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -692,6 +712,71 @@ fun Modifier.shimmer(): Modifier = composed {
     )
 
     background(brush)
+}
+
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun LatestArticlesSlideshow(posts: List<Post>) {
+    // Return early if the list is empty to prevent crashes
+    if (posts.isEmpty()) {
+        return
+    }
+
+    val pagerState = rememberPagerState(pageCount = { posts.size })
+
+    // This effect creates a timer that runs as long as the slideshow is on screen
+    LaunchedEffect(Unit) {
+        while (true) {
+            // Wait for 5 seconds before scrolling
+            delay(3000)
+
+            // This is a good practice for smooth animations
+            yield()
+
+            // Calculate the next page index, looping back to the start
+            val nextPage = (pagerState.currentPage + 1) % pagerState.pageCount
+
+            // Trigger the smooth scroll to the next page
+            pagerState.animateScrollToPage(nextPage)
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            pageSpacing = 8.dp,
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) { page ->
+            LatestPostCard(
+                post = posts[page],
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // The indicator dots remain the same
+        Row(
+            Modifier.height(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            repeat(posts.size) { iteration ->
+                val color =
+                    if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else Color.LightGray
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(color)
+                        .size(10.dp)
+                )
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true)

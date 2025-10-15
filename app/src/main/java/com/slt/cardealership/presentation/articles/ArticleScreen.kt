@@ -11,9 +11,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -38,6 +40,31 @@ fun ArticleScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val currentBackStackEntry = navController.currentBackStackEntry
+
+    val refreshKey by currentBackStackEntry
+        ?.savedStateHandle
+        ?.getLiveData<Boolean>("should_refresh")
+        ?.observeAsState(initial = false) ?: remember { mutableStateOf(false) }
+
+    // --- THIS IS THE FIX ---
+    // The LaunchedEffect now ONLY re-runs when 'refreshKey' changes its value.
+    LaunchedEffect(refreshKey) {
+        if (refreshKey == true) {
+            viewModel.fetchArticles()
+            // Reset the key so it doesn't trigger again
+            currentBackStackEntry?.savedStateHandle?.set("should_refresh", false)
+        }
+    }
+
+
+    val blueGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF2196F3), // Light Blue
+            Color(0xFF1565C0)  // Dark Blue
+        )
+    )
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -53,7 +80,7 @@ fun ArticleScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate(HomeRoutes.AddEditArticle()) },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = Color(0xFF2196F3)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Article", tint = Color.White)
             }
@@ -109,13 +136,14 @@ fun ArticleItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .height(120.dp)
             .clickable(onClick = onEditClick), // Make the whole card clickable for editing
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.height(IntrinsicSize.Min), // Ensures row children can fill height
+          // modifier = Modifier.height(IntrinsicSize.Min), // Ensures row children can fill height
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Image
@@ -224,7 +252,7 @@ fun LoadingAnimation() {
         .build()
 
     AsyncImage(
-        model = R.drawable.loader, // <-- Replace 'loader' with your GIF file name
+        model = R.drawable.newloading, // <-- Replace 'loader' with your GIF file name
         contentDescription = "Loading...",
         imageLoader = imageLoader,
         modifier = Modifier.size(180.dp) // Adjust size as needed

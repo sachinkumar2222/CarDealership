@@ -40,17 +40,27 @@ class PostRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addPost(dealerId: Long, post: Post): Result<Post> {
+    override suspend fun addPost(dealerId: Long, post: Post): Result<Unit> {
         return try {
-            Result.success(apiService.addPost(dealerId, post))
+            val response = apiService.addPost(dealerId, post)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to add post. Code: ${response.code()}"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    override suspend fun updatePost(dealerId: Long, postId: String, post: Post): Result<Post> {
+    override suspend fun updatePost(dealerId: Long, postId: String, post: Post): Result<Unit> {
         return try {
-            Result.success(apiService.updatePost(dealerId, postId, post))
+            val response = apiService.updatePost(dealerId, postId, post)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update post. Code: ${response.code()}"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

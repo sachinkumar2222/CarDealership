@@ -9,6 +9,8 @@ import com.slt.cardealership.domain.model.GalleryListResponse
 import com.slt.cardealership.domain.model.GalleryResponseObject
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.PostListResponse
+import com.slt.cardealership.domain.model.Vehicle
+import com.slt.cardealership.domain.model.VehicleListResponse
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -64,14 +66,14 @@ interface ApiService {
 
 
     @POST("dealer-api/dealers/{dealerId}/posts")
-    suspend fun addPost(@Path("dealerId") dealerId: Long, @Body post: Post): Post
+    suspend fun addPost(@Path("dealerId") dealerId: Long, @Body post: Post): Response<Unit>
 
     @PUT("dealer-api/dealers/{dealerId}/posts/{postId}")
     suspend fun updatePost(
         @Path("dealerId") dealerId: Long,
         @Path("postId") postId: String,
         @Body post: Post
-    ): Post
+    ): Response<Unit>
 
     @DELETE("dealer-api/dealers/{dealerId}/posts/{postId}")
     suspend fun deletePost(
@@ -108,6 +110,12 @@ interface ApiService {
         @Path("bannerId") bannerId: String
     ): Banner
 
+    @DELETE("dealer-api/dealers/{dealerId}/banners/{bannerId}")
+    suspend fun deleteBanner(
+        @Path("dealerId") dealerId: Long,
+        @Path("bannerId") bannerId: String
+    ): Response<Unit>
+
     @GET("dealer-api/dealers/{dealerId}/Gallery")
     suspend fun getGalleryImages(@Path("dealerId") dealerId: Long): GalleryResponseObject
 
@@ -115,7 +123,51 @@ interface ApiService {
     @POST("dealer-api/dealers/{dealerId}/Gallery")
     suspend fun addGalleryImage(
         @Path("dealerId") dealerId: Long,
-        @Part image: MultipartBody.Part
+        @Part("image_urls") imageUrls: RequestBody,
+        @Part gallery: MultipartBody.Part
     ): Response<Unit>
+
+    @DELETE("dealer-api/dealers/{dealerId}/Gallery/{imageId}")
+    suspend fun deleteGalleryImage(
+        @Path("dealerId") dealerId: Long,
+        @Path("imageId") imageId: String
+    ): Response<Unit>
+
+    @GET("dealer-api/dealers/{dealerId}/inventory")
+    suspend fun getVehicles(
+        @Path("dealerId") dealerId: Long
+        // Add query parameters for sorting, filtering, and pagination as needed
+        // @Query("sort_by") sortBy: String,
+        // @Query("page") page: Int
+    ): VehicleListResponse
+
+    @GET("dealer-api/dealers/{dealerId}/inventory/{vehicleId}")
+    suspend fun getVehicleDetails(
+        @Path("dealerId") dealerId: Long,
+        @Path("vehicleId") vehicleId: String
+    ): Vehicle // Assuming the API returns a single vehicle object
+
+    @POST("dealer-api/dealers/{dealerId}/inventory")
+    suspend fun addVehicle(
+        @Path("dealerId") dealerId: Long,
+        @Body vehicle: Vehicle
+    ): Response<Vehicle> // Assuming API returns the created vehicle
+
+    @PUT("dealer-api/dealers/{dealerId}/inventory/{vehicleId}")
+    suspend fun updateVehicle(
+        @Path("dealerId") dealerId: Long,
+        @Path("vehicleId") vehicleId: String,
+        @Body vehicle: Vehicle
+    ): Response<Vehicle> // Assuming API returns the updated vehicle
+
+    @DELETE("dealer-api/dealers/{dealerId}/inventory/{vehicleId}")
+    suspend fun deleteVehicle(
+        @Path("dealerId") dealerId: Long,
+        @Path("vehicleId") vehicleId: String
+    ): Response<Unit>
+
+    // Assuming a VIN decoding endpoint
+    @GET("dealer-api/vin-decoder/{vin}")
+    suspend fun decodeVin(@Path("vin") vin: String): Response<Vehicle>
 
 }

@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 sealed class HomeUiState {
     object Loading : HomeUiState()
-    data class Success(val latestPost: Post?) : HomeUiState()
+    data class Success(val latestPosts: List<Post>) : HomeUiState()
     data class Error(val message: String) : HomeUiState()
 }
 
@@ -52,7 +52,7 @@ class HomeViewModel @Inject constructor(
 
             dealerRepository.getPosts(dealerId)
                 .onSuccess { posts ->
-                    _uiState.value = HomeUiState.Success(posts.firstOrNull())
+                    _uiState.value = HomeUiState.Success(posts)
                 }
                 .onFailure {
                     _uiState.value = HomeUiState.Error(it.message ?: "Failed to load posts.")

@@ -24,6 +24,11 @@ data class AddEditArticleState(
     val error: String? = null
 )
 
+sealed class UiEvent {
+    object NavigateBack : UiEvent()
+    data class ShowSnackbar(val message: String) : UiEvent()
+}
+
 @HiltViewModel
 class AddEditArticleViewModel @Inject constructor(
     private val postRepository: PostRepository,
@@ -37,8 +42,8 @@ class AddEditArticleViewModel @Inject constructor(
     private val articleArgs: HomeRoutes.AddEditArticle = savedStateHandle.toRoute()
     private val articleId = articleArgs.articleId
 
-    private val _eventChannel = Channel<UiEvent>()
-    val events = _eventChannel.receiveAsFlow()
+    private val _events = Channel<UiEvent>()
+    val events = _events.receiveAsFlow()
 
     init {
         if (articleId != null && articleId != "null") { // Handle "null" string case
@@ -97,10 +102,13 @@ class AddEditArticleViewModel @Inject constructor(
                 }
                 .onFailure {
                     state = state.copy(isSaving = false)
-                    _eventChannel.send(UiEvent.ShowSnackbar("Image upload failed."))
+                    _events.send(UiEvent.ShowSnackbar("Image upload failed."))
                 }
         }
     }
+
+
+// In: AddEditArticleViewModel.kt
 
     fun onSave() {
         viewModelScope.launch {
@@ -108,9 +116,8 @@ class AddEditArticleViewModel @Inject constructor(
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
             val currentPost = state.post ?: return@launch
 
-            // Basic validation
             if (currentPost.name.isNullOrBlank()) {
-                _eventChannel.send(UiEvent.ShowSnackbar("Title cannot be empty."))
+                _events.send(UiEvent.ShowSnackbar("Title cannot be empty."))
                 state = state.copy(isSaving = false)
                 return@launch
             }
@@ -121,17 +128,17 @@ class AddEditArticleViewModel @Inject constructor(
                 postRepository.updatePost(dealerId, articleId, currentPost)
             }
 
+            // --- THIS IS THE FIX ---
+            // The state is now only updated AFTER the result is received.
             result.onSuccess {
-                _eventChannel.send(UiEvent.NavigateBack)
+                _events.send(UiEvent.ShowSnackbar("Article saved successfully!"))
+                _events.send(UiEvent.NavigateBack)
             }.onFailure {
-                _eventChannel.send(UiEvent.ShowSnackbar(it.message ?: "Error saving post."))
+                _events.send(UiEvent.ShowSnackbar(it.message ?: "Error saving post."))
+                // IMPORTANT: Only set isSaving to false on failure.
+                state = state.copy(isSaving = false)
             }
-            state = state.copy(isSaving = false)
         }
     }
 
-    sealed class UiEvent {
-        object NavigateBack : UiEvent()
-        data class ShowSnackbar(val message: String) : UiEvent()
-    }
 }

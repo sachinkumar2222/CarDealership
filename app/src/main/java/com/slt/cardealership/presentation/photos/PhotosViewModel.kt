@@ -1,4 +1,3 @@
-
 package com.slt.cardealership.presentation.photos
 
 import android.content.Context
@@ -19,27 +18,25 @@ import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
-// --- REFACTORED: Consolidated state for managing the dialog and deletion ---
+// --- CORRECTED STATE CLASS ---
 data class PhotosUiState(
     val selectedTab: Int = 1,
     val banners: List<Banner> = emptyList(),
     val galleryImages: List<GalleryImage> = emptyList(),
-    val isBannersLoading: Boolean = false, // <-- ADD THIS
-    val isGalleryLoading: Boolean = false, // <-- ADD THIS
+    val isBannersLoading: Boolean = false,
+    val isGalleryLoading: Boolean = false,
     val error: String? = null,
-
-    // State for the "Manage Banner" Dialog (Add & Edit)
     val isManageBannerDialogVisible: Boolean = false,
     val isEditingBanner: Boolean = false,
     val bannerIdToEdit: String? = null,
     val bannerTitle: String = "",
     val bannerUrl: String = "",
-    val bannerImageUri: Uri? = null,       // For a newly selected image
-    val bannerExistingImageUrl: String? = null, // For an existing image in edit mode
-
-    // State for the Delete Confirmation Dialog
+    val bannerImageUri: Uri? = null,
+    val bannerExistingImageUrl: String? = null,
+    // States for both Banner and Gallery delete confirmations
     val showDeleteConfirmDialog: Boolean = false,
-    val bannerToDeleteId: String? = null
+    val itemToDeleteId: String? = null,
+    val isDeletingBanner: Boolean = true // To differentiate which delete dialog is for
 )
 
 @HiltViewModel
@@ -71,40 +68,20 @@ class PhotosViewModel @Inject constructor(
     }
 
     fun fetchGalleryImages() {
-        Log.d("GalleryImages", "Attempting to fetch images...")
         viewModelScope.launch {
             _uiState.update { it.copy(isGalleryLoading = true) }
-            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull()
-
-            if (dealerId == null) {
-                _uiState.update { it.copy(isGalleryLoading = true, error = "Dealer ID not found.") }
-                Log.e("GalleryImages", "Fetch failed: Dealer ID was null.")
-                return@launch
-            }
-
+            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
             dealerRepository.getGalleryImages(dealerId)
-                .onSuccess { images ->
-                    // This log will tell us if the call succeeded and how many images were parsed
-                    Log.d("GalleryImages", "SUCCESS: Fetched and parsed ${images.size} images.")
-                    _uiState.update { it.copy(isGalleryLoading = false, galleryImages = images) }
-                }
-                .onFailure { error ->
-                    // This log will show the exact error if something went wrong
-                    Log.e("GalleryImages", "FAILURE: Could not fetch gallery images.", error)
-                    _uiState.update { it.copy(isGalleryLoading = false, error = error.message) }
-                }
+                .onSuccess { images -> _uiState.update { it.copy(isGalleryLoading = false, galleryImages = images) } }
+                .onFailure { error -> _uiState.update { it.copy(isGalleryLoading = false, error = error.message) } }
         }
     }
-
-    // --- REFACTORED: Functions to manage the Add/Edit dialog ---
 
     fun onAddBannerClicked() {
         _uiState.update {
             it.copy(
-                isManageBannerDialogVisible = true,
-                isEditingBanner = false,
-                bannerIdToEdit = null, bannerTitle = "", bannerUrl = "",
-                bannerImageUri = null, bannerExistingImageUrl = null, error = null
+                isManageBannerDialogVisible = true, isEditingBanner = false, bannerIdToEdit = null,
+                bannerTitle = "", bannerUrl = "", bannerImageUri = null, bannerExistingImageUrl = null, error = null
             )
         }
     }
@@ -117,7 +94,8 @@ class PhotosViewModel @Inject constructor(
                 .onSuccess { banner ->
                     _uiState.update {
                         it.copy(
-                            isBannersLoading = true,
+                            // --- FIX: SET LOADING TO FALSE ---
+                            isBannersLoading = false,
                             isManageBannerDialogVisible = true,
                             isEditingBanner = true,
                             bannerIdToEdit = banner.id,
@@ -130,7 +108,8 @@ class PhotosViewModel @Inject constructor(
                     }
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(isBannersLoading = true, error = error.message) }
+                    // --- FIX: SET LOADING TO FALSE ---
+                    _uiState.update { it.copy(isBannersLoading = false, error = error.message) }
                 }
         }
     }
@@ -143,35 +122,6 @@ class PhotosViewModel @Inject constructor(
     fun onBannerUrlChanged(url: String) { _uiState.update { it.copy(bannerUrl = url) } }
     fun onBannerImageSelected(uri: Uri) { _uiState.update { it.copy(bannerImageUri = uri) } }
 
-    // --- ADDED: Functions to manage the Delete dialog ---
-
-    fun onDeleteBannerClicked(bannerId: String) {
-        _uiState.update { it.copy(showDeleteConfirmDialog = true, bannerToDeleteId = bannerId) }
-    }
-
-    fun onDismissDeleteDialog() {
-        _uiState.update { it.copy(showDeleteConfirmDialog = false, bannerToDeleteId = null) }
-    }
-
-//    fun confirmDeleteBanner() {
-//        viewModelScope.launch {
-//            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull()
-//            val bannerId = _uiState.value.bannerToDeleteId
-//            if (dealerId == null || bannerId == null) return@launch
-//
-//            _uiState.update { it.copy(isLoading = true) }
-//            dealerRepository.deleteBanner(dealerId, bannerId)
-//                .onSuccess {
-//                    onDismissDeleteDialog()
-//                    fetchBanners()
-//                }
-//                .onFailure { error ->
-//                    _uiState.update { it.copy(isLoading = false, error = error.message) }
-//                }
-//        }
-//    }
-
-    // --- ADDED: Single save function that decides to add or update ---
     fun onSaveBanner(context: Context) {
         if (_uiState.value.isEditingBanner) {
             updateBanner(context)
@@ -182,64 +132,151 @@ class PhotosViewModel @Inject constructor(
 
     private fun addBanner(context: Context) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isManageBannerDialogVisible = true) }
+            _uiState.update { it.copy(isBannersLoading = true) }
+            val currentState = _uiState.value
+            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull()
+            val imageFile = currentState.bannerImageUri?.let { uriToFile(context, it) }
+
+            if (dealerId == null || imageFile == null || currentState.bannerTitle.isBlank()) {
+                _uiState.update { it.copy(isBannersLoading = false, error = "Title and Image are required.") }
+                return@launch
+            }
+            val startDate = (System.currentTimeMillis() / 1000).toString()
+
+            dealerRepository.addBanner(dealerId, currentState.bannerTitle, currentState.bannerUrl, startDate, imageFile)
+                .onSuccess {
+                    onDismissManageBannerDialog()
+                    fetchBanners()
+                }.onFailure { error ->
+                    _uiState.update { it.copy(isBannersLoading = false, error = error.message) }
+                }
         }
     }
 
     private fun updateBanner(context: Context) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isBannersLoading = true) }
             val currentState = _uiState.value
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull()
             val bannerId = currentState.bannerIdToEdit
 
-            if (dealerId == null || bannerId == null || currentState.bannerTitle.isBlank() || currentState.bannerUrl.isBlank()) {
-                _uiState.update { it.copy(error = "Title and URL are required.") }
+            if (dealerId == null || bannerId == null) {
+                _uiState.update { it.copy(isBannersLoading = false, error = "Cannot update banner.") }
                 return@launch
             }
-
-            _uiState.update { it.copy(isBannersLoading = true) }
             val imageFile = currentState.bannerImageUri?.let { uriToFile(context, it) }
             val startDate = (System.currentTimeMillis() / 1000).toString()
 
-            dealerRepository.updateBanner(
-                dealerId = dealerId, bannerId = bannerId, title = currentState.bannerTitle,
-                url = currentState.bannerUrl, startDate = startDate, imageFile = imageFile
-            ).onSuccess {
-                onDismissManageBannerDialog()
-                fetchBanners()
-            }.onFailure { error ->
-                _uiState.update { it.copy(isBannersLoading = true, error = error.message) }
-            }
+            dealerRepository.updateBanner(dealerId, bannerId, currentState.bannerTitle, currentState.bannerUrl, startDate, imageFile)
+                .onSuccess {
+                    onDismissManageBannerDialog()
+                    fetchBanners()
+                }.onFailure { error ->
+                    // --- FIX: SET LOADING TO FALSE ON FAILURE ---
+                    _uiState.update { it.copy(isBannersLoading = false, error = error.message) }
+                }
         }
     }
+
+    // --- ADDED: Full Delete Functionality ---
+    fun onDeleteBannerClicked(bannerId: String) {
+        _uiState.update { it.copy(showDeleteConfirmDialog = true, itemToDeleteId = bannerId, isDeletingBanner = true) }
+    }
+
+    fun onDeleteGalleryImageClicked(imageId: String) {
+        Log.d("PhotosViewModel", "onDeleteGalleryImageClicked: $imageId")
+        _uiState.update { it.copy(showDeleteConfirmDialog = true, itemToDeleteId = imageId, isDeletingBanner = false) }
+    }
+
+    fun onDismissDeleteDialog() {
+        _uiState.update { it.copy(showDeleteConfirmDialog = false, itemToDeleteId = null) }
+    }
+
+    fun confirmDelete() {
+        if (_uiState.value.isDeletingBanner) {
+            confirmDeleteBanner()
+        } else {
+            confirmDeleteGalleryImage()
+        }
+    }
+
+    private fun confirmDeleteBanner() {
+        viewModelScope.launch {
+            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull()
+            val bannerId = _uiState.value.itemToDeleteId
+            if (dealerId == null || bannerId == null) return@launch
+
+            _uiState.update { it.copy(isBannersLoading = true) }
+            dealerRepository.deleteBanner(dealerId, bannerId)
+                .onSuccess {
+                    onDismissDeleteDialog()
+                    fetchBanners()
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isBannersLoading = false, error = error.message) }
+                }
+        }
+    }
+
+    private fun confirmDeleteGalleryImage() {
+        viewModelScope.launch {
+            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull()
+            val imageId = _uiState.value.itemToDeleteId
+            if (dealerId == null || imageId == null) return@launch
+
+            _uiState.update { it.copy(isGalleryLoading = true) }
+            dealerRepository.deleteGalleryImage(dealerId, imageId)
+                .onSuccess {
+                    onDismissDeleteDialog()
+                    fetchGalleryImages()
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isGalleryLoading = false, error = error.message) }
+                }
+        }
+    }
+
+    // In: presentation/photos/PhotosViewModel.kt
 
     fun uploadGalleryImages(context: Context, uris: List<Uri>) {
         viewModelScope.launch {
             _uiState.update { it.copy(isGalleryLoading = true) }
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull()
             if (dealerId == null) {
-                _uiState.update { it.copy(isGalleryLoading = true, error = "Dealer ID not found.") }
+                _uiState.update { it.copy(isGalleryLoading = false, error = "Dealer ID not found.") }
                 return@launch
             }
 
-            // This will track if any upload fails
-            var didFail = false
+            // This variable will hold the most recent list of image URLs.
+            var currentImageUrls = _uiState.value.galleryImages.mapNotNull { it.imageUrl }
 
-            // Upload each file
-            uris.forEach { uri ->
+            // Upload each selected file one at a time.
+            for (uri in uris) {
                 val file = uriToFile(context, uri)
                 if (file != null) {
-                    dealerRepository.addGalleryImage(dealerId, file)
+                    // Call the repository with the new file AND the current list of URLs.
+                    val result = dealerRepository.addGalleryImage(dealerId, file, currentImageUrls)
+
+                    if (result.isFailure) {
+                        _uiState.update { it.copy(error = result.exceptionOrNull()?.message, isGalleryLoading = false) }
+                        return@launch // Stop the process if any upload fails.
+                    }
+
+                    // After a successful upload, we must get the new, updated list from the server
+                    // so that the *next* upload includes the image we just added.
+                    dealerRepository.getGalleryImages(dealerId)
+                        .onSuccess { updatedImages ->
+                            currentImageUrls = updatedImages.mapNotNull { it.imageUrl }
+                        }
                         .onFailure { error ->
-                            didFail = true
-                            _uiState.update { it.copy(error = error.message) }
+                            _uiState.update { it.copy(error = error.message, isGalleryLoading = false) }
+                            return@launch
                         }
                 }
             }
 
-            // After all uploads are attempted, refresh the list
+            // After all uploads are finished, do a final refresh to ensure UI is consistent.
             fetchGalleryImages()
         }
     }
-
 }

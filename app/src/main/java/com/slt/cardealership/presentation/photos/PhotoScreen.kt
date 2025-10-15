@@ -1,6 +1,7 @@
 package com.slt.cardealership.presentation.photos
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -55,6 +56,15 @@ fun PhotoScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    if (uiState.showDeleteConfirmDialog) {
+        DeleteConfirmationDialog(
+            title = if (uiState.isDeletingBanner) "Delete Banner" else "Delete Image",
+            text = "Are you sure you want to permanently delete this item?",
+            onDismiss = viewModel::onDismissDeleteDialog,
+            onConfirm = viewModel::confirmDelete
+        )
+    }
+
     if (uiState.isManageBannerDialogVisible) {
         ManageBannerDialog(
             uiState = uiState,
@@ -62,7 +72,7 @@ fun PhotoScreen(
             onTitleChange = viewModel::onBannerTitleChanged,
             onUrlChange = viewModel::onBannerUrlChanged,
             onImageSelected = viewModel::onBannerImageSelected,
-            onSave = { viewModel.onSaveBanner(context) }
+            onSave = { viewModel.onSaveBanner(context) },
         )
     }
 
@@ -124,12 +134,14 @@ fun PhotoScreen(
                     banners = uiState.banners,
                     onAddBanner = viewModel::onAddBannerClicked,
                     onEditBanner = viewModel::onEditBannerClicked,
+                    onDeleteBanner = viewModel::onDeleteBannerClicked
                 )
 
                 2 -> GalleryContent(
                     isLoading = uiState.isGalleryLoading,
                     images = uiState.galleryImages,
                     onAddImages = { uris -> viewModel.uploadGalleryImages(context, uris) },
+                    onDeleteImage = viewModel::onDeleteGalleryImageClicked
                 )
             }
         }
@@ -184,7 +196,8 @@ fun BannerContent(
     isLoading: Boolean,
     banners: List<Banner>,
     onEditBanner: (String) -> Unit,
-    onAddBanner: () -> Unit
+    onAddBanner: () -> Unit,
+    onDeleteBanner: (String) -> Unit
 ) {
     val blueGradient = Brush.horizontalGradient(
         colors = listOf(
@@ -203,7 +216,7 @@ fun BannerContent(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .background(blueGradient,RoundedCornerShape(12.dp))
+                .background(blueGradient, RoundedCornerShape(12.dp))
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Banner")
             Spacer(modifier = Modifier.width(8.dp))
@@ -229,7 +242,8 @@ fun BannerContent(
                 items(banners) { banner ->
                     BannerItemCard(
                         banner = banner,
-                        onEditClick = { banner.id?.let { onEditBanner(it) } }
+                        onEditClick = { banner.id?.let { onEditBanner(it) } },
+                        onDeleteClick = { banner.id?.let { onDeleteBanner(it) } }
                     )
                 }
             }
@@ -280,109 +294,110 @@ fun ManageBannerDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState())
+                modifier = Modifier.padding(24.dp)
             ) {
-                // Header
+                // 1. HEADER
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Manage Banner",
+                        // Dynamic title for Add vs. Edit
+                        text = if (uiState.isEditingBanner) "Edit Banner" else "Add New Banner",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null) }
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
 
-                // Form Fields
-                OutlinedTextField(
-                    value = uiState.bannerTitle,
-                    onValueChange = onTitleChange,
-                    label = { Text("Title *") },
-                    modifier = Modifier.fillMaxWidth()
-                )
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = uiState.bannerUrl,
-                    onValueChange = onUrlChange,
-                    label = { Text("URL *") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
 
-                // Image Uploader
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(
-                            1.dp,
-                            MaterialTheme.colorScheme.primary,
-                            RoundedCornerShape(8.dp)
-                        )
-                        .clickable { imagePickerLauncher.launch("image/*") },
-                    contentAlignment = Alignment.Center
+                // 2. SCROLLABLE CONTENT AREA
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    val imageToShow = uiState.bannerImageUri ?: uiState.bannerExistingImageUrl
-                    if (uiState.bannerImageUri == null) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.UploadFile,
-                                contentDescription = "Upload Image",
-                                modifier = Modifier.size(40.dp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = uiState.bannerTitle,
+                        onValueChange = onTitleChange,
+                        label = { Text("Title *") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = uiState.bannerUrl,
+                        onValueChange = onUrlChange,
+                        label = { Text("URL *") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    // 3. CORRECTED IMAGE UPLOADER
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline,
+                                RoundedCornerShape(12.dp)
                             )
-                            Text("Upload Image")
+                            .clickable { imagePickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // This single variable correctly handles all states
+                        val imageToShow = uiState.bannerImageUri ?: uiState.bannerExistingImageUrl
+
+                        if (imageToShow == null) {
+                            // Placeholder content when no image is selected or exists
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.UploadFile,
+                                    contentDescription = "Upload Image",
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text("Upload Image", color = MaterialTheme.colorScheme.primary)
+                            }
+                        } else {
+                            // Show the newly selected image OR the existing one from edit mode
+                            AsyncImage(
+                                model = imageToShow,
+                                contentDescription = "Banner Image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
                         }
-                    } else {
-                        AsyncImage(
-                            model = uiState.bannerImageUri,
-                            contentDescription = "Selected Banner",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    if (imageToShow == null) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.UploadFile, contentDescription = null)
-                            Text("Upload Image")
-                        }
-                    } else {
-                        AsyncImage(
-                            model = imageToShow, // <-- Shows new or existing image
-                            contentDescription = "Banner Image",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
                     }
                 }
-                // ... (Add validation text if needed)
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Error Message
+                // 4. FOOTER with Error and Action Buttons
                 if (uiState.error != null) {
-                    Text(uiState.error, color = MaterialTheme.colorScheme.error)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = uiState.error,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                 }
 
-                // Action Buttons
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     if (uiState.isBannersLoading) {
                         CircularProgressIndicator()
                     } else {
-                        OutlinedButton(
-                            onClick = onDismiss,
-                            shape = RoundedCornerShape(8.dp)
-                        ) { Text("Cancel") }
+                        OutlinedButton(onClick = onDismiss) { Text("Cancel") }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = onSave, shape = RoundedCornerShape(8.dp)) { Text("Save") }
+                        Button(onClick = onSave) { Text("Save") }
                     }
                 }
             }
@@ -395,6 +410,7 @@ fun GalleryContent(
     isLoading: Boolean,
     images: List<GalleryImage>,
     onAddImages: (List<Uri>) -> Unit,
+    onDeleteImage: (String) -> Unit
 ) {
 
     val blueGradient = Brush.horizontalGradient(
@@ -433,13 +449,15 @@ fun GalleryContent(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                Button(onClick = { galleryImagePickerLauncher.launch("image/*") },
+                Button(
+                    onClick = { galleryImagePickerLauncher.launch("image/*") },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Transparent, // Sets the background color of the button
                         contentColor = Color.White    // Sets the color of the Icon and Text
                     ),
                     modifier = Modifier
-                        .background(blueGradient,RoundedCornerShape(12.dp))) {
+                        .background(blueGradient, RoundedCornerShape(12.dp))
+                ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Images")
                     Spacer(modifier = Modifier.width(4.dp))
 
@@ -468,6 +486,19 @@ fun GalleryContent(
                             .clip(RoundedCornerShape(12.dp)),
                         contentScale = ContentScale.Crop
                     )
+                    IconButton(
+                        onClick = { image.id?.let { onDeleteImage(it) } }, // <-- Use the handler
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Image",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
@@ -476,7 +507,10 @@ fun GalleryContent(
 }
 
 @Composable
-fun BannerItemCard(banner: Banner, onEditClick: () -> Unit) {
+fun BannerItemCard(
+    banner: Banner, onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -522,7 +556,8 @@ fun BannerItemCard(banner: Banner, onEditClick: () -> Unit) {
                 IconButton(onClick = onEditClick) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit")
                 }
-                IconButton(onClick = { /* TODO: Handle Delete */ }) {
+                IconButton(onClick = { onDeleteClick }) {
+                    Log.d("BannerItemCard", "onDeleteClick: $onDeleteClick")
                     Icon(Icons.Default.Delete, contentDescription = "Delete")
                 }
             }
@@ -608,4 +643,31 @@ fun EmptyContent(title: String, message: String) {
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(message, color = Color.Gray)
     }
+}
+
+@Composable
+fun DeleteConfirmationDialog(
+    title: String,
+    text: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(text) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

@@ -1,5 +1,6 @@
 package com.slt.cardealership.data.remote.network
 
+import android.util.Log
 import com.slt.cardealership.data.local.SessionManager
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -10,22 +11,37 @@ class AuthInterceptor @Inject constructor(
     private val sessionManager: SessionManager
 ) : Interceptor {
 
+
     override fun intercept(chain: Interceptor.Chain): Response {
-        var token = runBlocking {
+        Log.d("AuthInterceptor", "--- INTERCEPTOR IS RUNNING ---")
+
+        // 1. Get the original token
+        val originalToken = runBlocking {
             sessionManager.getAuthToken()
         }
+        Log.d("AuthInterceptor", "Found token in SessionManager: $originalToken")
+
+        // 2. Decide what token to send (the real one or the test one)
+        var tokenToSend = originalToken
 
         // --- TEMPORARY CODE FOR TESTING ---
-        // This line forces a 401 error so you can test your TokenAuthenticator.
-//        if (!token.isNullOrBlank()) {
-//            token += "invalidate"
+//        if (!tokenToSend.isNullOrBlank()) {
+//            Log.d("AuthInterceptor", "Invalidating token for the test...")
+//            tokenToSend += "invalidate" // Corrupt the token
 //        }
         // ------------------------------------
 
-        val request = chain.request().newBuilder()
-        if (!token.isNullOrBlank()) {
-            request.addHeader("Authorization", "Bearer $token")
+        val requestBuilder = chain.request().newBuilder()
+
+        // 3. Add the (now corrupted) token to the header
+        if (!tokenToSend.isNullOrBlank()) {
+            Log.d("AuthInterceptor", "Adding corrupted Authorization header for test.")
+            requestBuilder.addHeader("Authorization", "Bearer $tokenToSend")
+        } else {
+            Log.w("AuthInterceptor", "No token found. Proceeding without Authorization header.")
         }
-        return chain.proceed(request.build())
+
+        return chain.proceed(requestBuilder.build())
     }
+
 }

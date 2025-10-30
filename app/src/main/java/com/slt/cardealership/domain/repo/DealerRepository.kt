@@ -1,11 +1,22 @@
 package com.slt.cardealership.domain.repo
 
+import com.slt.cardealership.domain.model.Advertisement
+import com.slt.cardealership.domain.model.AdvertisementDomain
+import com.slt.cardealership.domain.model.AdvertisementGoal
+import com.slt.cardealership.domain.model.AdvertisementGoalType
+import com.slt.cardealership.domain.model.AdvertisementImage
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.DealerMetasResponse
+import com.slt.cardealership.domain.model.EvoxImageResponse
 import com.slt.cardealership.domain.model.GalleryImage
+import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.Post
+import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.Vehicle
+import com.slt.cardealership.domain.model.VehicleGalleryResponse
+import com.slt.cardealership.domain.model.VehicleModel
+import com.slt.cardealership.domain.model.VehicleOptionsResponse
 import java.io.File
 
 interface DealerRepository {
@@ -23,6 +34,7 @@ interface DealerRepository {
         startDate: String,
         imageFile: File
     ): Result<Unit>
+
     suspend fun updateBanner(
         dealerId: Long,
         bannerId: String,
@@ -31,17 +43,72 @@ interface DealerRepository {
         startDate: String,
         imageFile: File?
     ): Result<Unit>
+
     suspend fun deleteBanner(dealerId: Long, bannerId: String): Result<Unit> // <-- ADD THIS LINE
 
     // Gallery Functions
     suspend fun getGalleryImages(dealerId: Long): Result<List<GalleryImage>>
-    suspend fun addGalleryImage(dealerId: Long, imageFile: File, existingUrls: List<String>): Result<Unit>
-    suspend fun deleteGalleryImage(dealerId: Long, imageId: String): Result<Unit> // <-- ADD THIS LINE
+    suspend fun addGalleryImage(
+        dealerId: Long,
+        imageFile: File,
+        existingUrls: List<String>
+    ): Result<Unit>
+
+    suspend fun deleteGalleryImage(
+        dealerId: Long,
+        imageId: String
+    ): Result<Unit> // <-- ADD THIS LINE
 
     suspend fun getVehicles(dealerId: Long): Result<List<Vehicle>>
     suspend fun getVehicleDetails(dealerId: Long, vehicleId: String): Result<Vehicle>
-    suspend fun addVehicle(dealerId: Long, vehicle: Vehicle): Result<Vehicle>
+    suspend fun addVehicle(dealerId: Long, vehicle: Vehicle): Result<Vehicle> // <-- This is the one for the new API
     suspend fun updateVehicle(dealerId: Long, vehicleId: String, vehicle: Vehicle): Result<Vehicle>
     suspend fun deleteVehicle(dealerId: Long, vehicleId: String): Result<Unit>
     suspend fun decodeVin(vin: String): Result<Vehicle>
+
+
+    //new inventory
+    suspend fun getResearchVehicles(
+        dealerId: Int,
+        page: Int,
+        itemsPerPage: Int
+        // Add filters/sorting params if needed
+    ): Result<List<Vehicle>>
+
+    suspend fun getResearchVehicleDetails(vehicleId: String): Result<Vehicle>
+
+    // Using PUT as the main edit method
+    suspend fun editResearchVehicle(vehicleId: String, vehicle: Vehicle): Result<Vehicle>
+
+    suspend fun getVehicleGallery(vehicleId: String): Result<VehicleGalleryResponse>
+
+    suspend fun uploadVehicleGalleryImages(vehicleId: String, imageFiles: List<File>): Result<Unit>
+
+    suspend fun uploadVehicleGallerySingleImage(imageFile: File): Result<GalleryImageUploadResponse>
+
+    suspend fun getTrimListPost(vin: String): Result<TrimListResponse>
+
+    suspend fun getTrimListByVin(vin: String): Result<TrimListResponse>
+
+    suspend fun getEvoxImages(vin: String): Result<EvoxImageResponse>
+
+    suspend fun getVehicleOptionsAndPackages(vin: String): Result<VehicleOptionsResponse>
+
+    suspend fun getDecodedDataByTrim(trimId: String): Result<Vehicle>
+
+    suspend fun getModelsForMake(makeId: Int): Result<List<VehicleModel>>
+
+
+    // --- *** NEW ADVERTISEMENT FUNCTIONS START HERE *** ---
+    suspend fun getAdvertisements(dealerId: Long): Result<List<Advertisement>>
+    suspend fun getAdvertisementDetails(dealerId: Long, advertisementId: String): Result<Advertisement>
+    suspend fun deleteAdvertisement(dealerId: Long, advertisementId: String): Result<Unit>
+    suspend fun getAdvertisementGoals(): Result<List<AdvertisementGoal>>
+    suspend fun getAdvertisementGoalTypes(goalId: Int): Result<List<AdvertisementGoalType>>
+    suspend fun addAdvertisement(dealerId: Long, advertisement: Advertisement): Result<Advertisement>
+    suspend fun updateAdvertisement(dealerId: Long, advertisementId: String, advertisement: Advertisement): Result<Advertisement>
+   // suspend fun getAdvertisementDomains(dealerId: Long, advertisementId: String): Result<List<AdvertisementDomain>>
+    suspend fun updateAdvertisementDomains(dealerId: Long, advertisementId: String, domainIds: List<String>): Result<Unit>
+    suspend fun getAdvertisementGallery(dealerId: Long, advertisementId: String): Result<List<AdvertisementImage>>
+    suspend fun updateAdvertisementGallery(dealerId: Long, advertisementId: String, imageFiles: List<File>): Result<Unit>
 }

@@ -1,16 +1,30 @@
 package com.slt.cardealership.data.remote.network
 
+
+import com.slt.cardealership.domain.model.Advertisement
+import com.slt.cardealership.domain.model.AdvertisementGalleryResponse
+import com.slt.cardealership.domain.model.AdvertisementGoal
+import com.slt.cardealership.domain.model.AdvertisementGoalType
+import com.slt.cardealership.domain.model.AdvertisementListResponse
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.BannerListResponse
 import com.slt.cardealership.domain.model.DealerDetailsResponse
 import com.slt.cardealership.domain.model.DealerHours
 import com.slt.cardealership.domain.model.DealerMetasResponse
+import com.slt.cardealership.domain.model.EvoxImageResponse
+import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.GalleryListResponse
 import com.slt.cardealership.domain.model.GalleryResponseObject
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.PostListResponse
+import com.slt.cardealership.domain.model.TrimListResponse
+import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import com.slt.cardealership.domain.model.Vehicle
+import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleListResponse
+import com.slt.cardealership.domain.model.VehicleModel
+import com.slt.cardealership.domain.model.VehicleOptionsResponse
+import com.slt.cardealership.domain.model.VinRequest
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -24,6 +38,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
 
@@ -133,32 +148,29 @@ interface ApiService {
         @Path("imageId") imageId: String
     ): Response<Unit>
 
+    @POST("research-api/vehicleInventory/add")
+    suspend fun addVehicle(
+        @Body vehicle: Vehicle
+    ): Response<Vehicle>
+
+
     @GET("dealer-api/dealers/{dealerId}/inventory")
     suspend fun getVehicles(
         @Path("dealerId") dealerId: Long
-        // Add query parameters for sorting, filtering, and pagination as needed
-        // @Query("sort_by") sortBy: String,
-        // @Query("page") page: Int
     ): VehicleListResponse
 
     @GET("dealer-api/dealers/{dealerId}/inventory/{vehicleId}")
     suspend fun getVehicleDetails(
         @Path("dealerId") dealerId: Long,
         @Path("vehicleId") vehicleId: String
-    ): Vehicle // Assuming the API returns a single vehicle object
-
-    @POST("dealer-api/dealers/{dealerId}/inventory")
-    suspend fun addVehicle(
-        @Path("dealerId") dealerId: Long,
-        @Body vehicle: Vehicle
-    ): Response<Vehicle> // Assuming API returns the created vehicle
+    ): Vehicle
 
     @PUT("dealer-api/dealers/{dealerId}/inventory/{vehicleId}")
     suspend fun updateVehicle(
         @Path("dealerId") dealerId: Long,
         @Path("vehicleId") vehicleId: String,
         @Body vehicle: Vehicle
-    ): Response<Vehicle> // Assuming API returns the updated vehicle
+    ): Response<Vehicle>
 
     @DELETE("dealer-api/dealers/{dealerId}/inventory/{vehicleId}")
     suspend fun deleteVehicle(
@@ -166,8 +178,162 @@ interface ApiService {
         @Path("vehicleId") vehicleId: String
     ): Response<Unit>
 
-    // Assuming a VIN decoding endpoint
     @GET("dealer-api/vin-decoder/{vin}")
     suspend fun decodeVin(@Path("vin") vin: String): Response<Vehicle>
+
+    @GET("research-api/vehicleInventory")
+    suspend fun getResearchVehicles(
+        // *** ADDED Query Parameters ***
+        @Query("dealer_id") dealerId: Int,
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("is_active") isActive: String = "yes", // Example filter, add others if needed
+        @Query("is_deleted") isDeleted: String = "no"  // Example filter
+        // Add other query params like sort_by, search_term etc. if your API supports them
+    ): VehicleListResponse
+
+
+    @GET("research-api/vehicleInventory/get/{id}")
+    suspend fun getResearchVehicleDetails(
+        @Path("id") vehicleId: String
+    ): Vehicle
+
+    @POST("research-api/vehicleInventory/edit/{id}")
+    suspend fun editResearchVehiclePOST(
+        @Path("id") vehicleId: String,
+        @Body vehicle: Vehicle
+    ): Response<Vehicle> // Reusing model
+
+    @PUT("research-api/vehicleInventory/edit/{id}")
+    suspend fun editResearchVehiclePUT(
+        @Path("id") vehicleId: String,
+        @Body vehicle: Vehicle
+    ): Response<Vehicle> // Reusing model
+
+
+
+
+    @GET("research-api/vehicleInventory/{id}/gallery")
+    suspend fun getVehicleGallery(
+        @Path("id") vehicleId: String
+    ): VehicleGalleryResponse // Using new model
+
+    // This is "Edit / Post Vehicle Galleries" AND "Upload Multiple Images"
+    @Multipart
+    @POST("research-api/vehicleInventory/{id}/gallery")
+    suspend fun uploadVehicleGalleryImages(
+        @Path("id") vehicleId: String,
+        @Part images: List<MultipartBody.Part>
+    ): Response<Unit>
+
+    // Upload Single Image
+    @Multipart
+    @POST("research-api/vehicleInventory/gallery")
+    suspend fun uploadVehicleGallerySingleImage(
+        @Part image: MultipartBody.Part
+    ): Response<GalleryImageUploadResponse> // Using new model
+
+
+
+    @POST("research-api/vin-decoder-api/GetMappedDecoderData")
+    suspend fun getTrimListPost(
+        @Body vinRequest: VinRequest // Using new model
+    ): TrimListResponse // Using new model
+
+    @GET("research-api/vin-decoder-api/GetTrimListByVIN")
+    suspend fun getTrimListByVin(
+        @Query("vin") vin: String
+    ): TrimListResponse // Using new model
+
+    @GET("research-api/vin-decoder-api/GetEvoxImagesForAddEdit")
+    suspend fun getEvoxImages(
+        @Query("vin") vin: String // Assuming VIN is the query param
+    ): EvoxImageResponse // Using new model
+
+    @GET("research-api/vin-decoder-api/GetVehicleOptionsPackagesForEdit")
+    suspend fun getVehicleOptionsAndPackages(
+        @Query("vin") vin: String // Assuming VIN is the query param
+    ): VehicleOptionsResponse // Using new model
+
+    @GET("research-api/vin-decoder-api/GetDecodedDataByTrim")
+    suspend fun getDecodedDataByTrim(
+        @Query("trimId") trimId: String
+    ): Vehicle
+
+    @GET("research-api/models/getAll")
+    suspend fun getModelsForMake(
+        @Query("make_id") makeId: Int,
+        @Query("is_active") isActive: String = "yes", // Default query params
+        @Query("is_deleted") isDeleted: String = "no"  // Default query params
+    ): List<VehicleModel>
+
+
+    //advertisement
+
+
+    @GET("dealer-api/dealers/{dealer_id}/advertisements")
+    suspend fun getAdvertisements(
+        @Path("dealer_id") dealerId: Long,
+        @Query("page") page: Int = 1,
+        @Query("item_per_page") itemsPerPage: Int = 20
+    ): AdvertisementListResponse // Correctly returns the wrapper
+
+    @GET("dealer-api/dealers/{dealer_id}/advertisements/{id}")
+    suspend fun getAdvertisementDetails(
+        @Path("dealer_id") dealerId: Long,
+        @Path("id") advertisementId: String
+    ): Advertisement // API returns the single ad object directly
+
+    @DELETE("dealer-api/dealers/{dealer_id}/advertisements/{id}")
+    suspend fun deleteAdvertisement(
+        @Path("dealer_id") dealerId: Long,
+        @Path("id") advertisementId: String
+    ): Response<Unit>
+
+    @GET("systems-api/dealer-advertisement-goal/getGoalList")
+    suspend fun getAdvertisementGoals(): List<AdvertisementGoal> // Correct: returns direct list []
+
+    @GET("systems-api/dealer-advertisement-goal/getGoalTypeList/{id}")
+    suspend fun getAdvertisementGoalTypes(
+        @Path("id") goalId: Int // Changed to Int to match AdvertisementGoal.id
+    ): List<AdvertisementGoalType> // Assuming direct list []
+
+    @POST("dealer-api/dealers/{dealer_id}/advertisements")
+    suspend fun addAdvertisement(
+        @Path("dealer_id") dealerId: Long,
+        @Body advertisement: Advertisement // We will build this object in the ViewModel
+    ): Response<Advertisement>
+
+    @PUT("dealer-api/dealers/{dealer_id}/advertisements/{adv_id}")
+    suspend fun updateAdvertisement(
+        @Path("dealer_id") dealerId: Long,
+        @Path("adv_id") advertisementId: String,
+        @Body advertisement: Advertisement
+    ): Response<Advertisement>
+
+    @POST("dealer-api/dealers/{dealer_id}/advertisements/{id}/domains")
+    suspend fun updateAdvertisementDomains(
+        @Path("dealer_id") dealerId: Long,
+        @Path("id") advertisementId: String,
+        @Body request: UpdateDomainsRequest
+    ): Response<Unit>
+
+    // --- Ad Gallery APIs ---
+    @GET("dealer-api/dealers/{dealer_id}/advertisements/{id}/gallery")
+    suspend fun getAdvertisementGallery(
+        @Path("dealer_id") dealerId: Long,
+        @Path("id") advertisementId: String
+    ): AdvertisementGalleryResponse
+
+    @Multipart
+    @POST("dealer-api/dealers/{dealer_id}/advertisements/{id}/gallery")
+    suspend fun updateAdvertisementGallery(
+        @Path("dealer_id") dealerId: Long,
+        @Path("id") advertisementId: String,
+        @Part images: List<MultipartBody.Part>
+    ): Response<Unit>
+
+
+
 
 }

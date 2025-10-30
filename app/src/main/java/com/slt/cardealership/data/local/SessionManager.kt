@@ -3,9 +3,11 @@ package com.slt.cardealership.data.local
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.auth0.android.jwt.JWT
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -51,6 +53,21 @@ class SessionManager @Inject constructor( @ApplicationContext private val contex
     suspend fun clearSession() {
         context.dataStore.edit { preferences ->
             preferences.clear()
+        }
+    }
+
+    suspend fun getDealerId(): Int? {
+        val token = getAuthToken() ?: return null
+        return try {
+            val jwt = JWT(token)
+            // *** Use the claim name from your logs ***
+            val dealerIdString = jwt.getClaim("extension_DealerId").asString()
+            val dealerId = dealerIdString?.toIntOrNull()
+            Log.d("SessionManager", "Parsed Dealer ID (extension_DealerId): $dealerId")
+            dealerId
+        } catch (e: Exception) {
+            Log.e("SessionManager", "Error parsing token for Dealer ID (extension_DealerId)", e)
+            null
         }
     }
 

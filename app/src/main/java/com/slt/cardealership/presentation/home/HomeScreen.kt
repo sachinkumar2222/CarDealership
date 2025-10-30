@@ -84,6 +84,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import com.slt.cardealership.presentation.ads.AddAdsScreen
+import com.slt.cardealership.presentation.ads.AdsScreen
+import com.slt.cardealership.presentation.inventory.AddVehicleScreen
 import com.slt.cardealership.presentation.inventory.InventoryScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
@@ -105,10 +108,19 @@ sealed class HomeRoutes {
     object Inventory : HomeRoutes()
 
     @Serializable
+    object Ads : HomeRoutes()
+
+    @Serializable
     object Articles : HomeRoutes()
 
     @Serializable
     object Photos : HomeRoutes()
+
+    @Serializable
+    object AddVehicleScreen : HomeRoutes()
+
+    @Serializable
+    object AddAdsScreen : HomeRoutes()
 
     @Serializable
     data class AddEditArticle(val articleId: String? = null) : HomeRoutes()
@@ -161,6 +173,15 @@ fun HomeScreen(mainNavController: NavController) {
             composable<HomeRoutes.Photos> { PhotoScreen(navController = homeNavController) }
 
             composable<HomeRoutes.Inventory> { InventoryScreen(navController = homeNavController) }
+
+            composable<HomeRoutes.AddVehicleScreen> {
+                AddVehicleScreen(navController = homeNavController)
+            }
+
+            composable<HomeRoutes.Ads> {AdsScreen(navController = homeNavController)}
+            composable<HomeRoutes.AddAdsScreen> {
+                AddAdsScreen(navController = homeNavController)
+            }
         }
     }
 }
@@ -180,11 +201,11 @@ fun DashboardContent(
         DashboardItem("Info", painterResource(R.drawable.info), HomeRoutes.Info),
         DashboardItem("Articles", painterResource(R.drawable.newspaper), HomeRoutes.Articles),
         DashboardItem("Photos", painterResource(R.drawable.picture), HomeRoutes.Photos),
-        DashboardItem("Inventory", painterResource(R.drawable.invent), HomeRoutes.Inventory),
+        DashboardItem("Inventory", painterResource(R.drawable.inventory), HomeRoutes.Inventory),
         DashboardItem(
-            "Manage Classifieds",
-            painterResource(R.drawable.user_gear),
-            HomeRoutes.Dashboard
+            "Ad Manager",
+            painterResource(R.drawable.ads_manage),
+            HomeRoutes.Ads
         ),
         DashboardItem(
             "Analytics",

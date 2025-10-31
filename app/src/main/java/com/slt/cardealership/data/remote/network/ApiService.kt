@@ -39,21 +39,32 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
+import retrofit2.http.FieldMap
+import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
+import retrofit2.http.PartMap
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
 
+    @FormUrlEncoded // <-- FIX 1: Change to @Multipart
     @PATCH("dealer-api/Dealers/{dealerId}")
     suspend fun updateDealerInfo(
         @Path("dealerId") dealerId: Long,
-        @Body body: Map<String, Any> // <-- FIX: Change to <String, Any>
+        @FieldMap body: Map<String, String> // <-- FIX 2: Use @PartMap and RequestBody
+    ): Response<Unit>
+
+    @FormUrlEncoded // <-- FIX 1: Use @Multipart
+    @PATCH("dealer-api/dealer-metas/{dealerId}")
+    suspend fun updateDealerMetas(
+        @Path("dealerId") dealerId: Long,
+        @FieldMap body: Map<String, String>
     ): Response<Unit>
 
     @GET("dealer-api/Dealers/{dealerId}")

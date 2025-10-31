@@ -39,6 +39,7 @@ import java.io.File
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.MapSeoTagsRequest
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
+import okhttp3.RequestBody
 import org.json.JSONObject
 import retrofit2.HttpException
 import retrofit2.Response
@@ -63,8 +64,9 @@ class DealerRepositoryImpl @Inject constructor(
         return apiService.getDealerMetas(dealerId)
     }
 
-    override suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, Any>): Result<Unit> {
+    override suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, String>): Result<Unit> {
         return try {
+            // This now correctly calls the @FormUrlEncoded function
             val response = apiService.updateDealerInfo(dealerId, updateMap)
             if (response.isSuccessful) {
                 Result.success(Unit)
@@ -72,6 +74,29 @@ class DealerRepositoryImpl @Inject constructor(
                 Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to update info")))
             }
         } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun updateDealerMetas(dealerId: Long, updateMap: Map<String, String>): Result<Unit> {
+        return try {
+            val response = apiService.updateDealerMetas(dealerId, updateMap)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                // --- LOGGING ADDED ---
+                val errorBody = response.errorBody()?.string() ?: "No error body"
+                Log.e(
+                    "DealerRepository",
+                    "updateDealerMetas FAILED. Code: ${response.code()}, Error: $errorBody"
+                )
+                // ---------------------
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to update metadata")))
+            }
+        } catch (e: Exception) {
+            // --- LOGGING ADDED ---
+            Log.e("DealerRepository", "updateDealerMetas CRASHED", e)
+            // ---------------------
             Result.failure(Exception(getErrorMessage(e)))
         }
     }

@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.domain.model.DealerInfo
-import com.slt.cardealership.domain.model.HomeDelivery
+import com.slt.cardealership.domain.model.HomeTestDrive
 import com.slt.cardealership.domain.repo.DealerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
 // --- Events for showing snackbars/toasts ---
@@ -45,7 +48,6 @@ class InfoViewModel @Inject constructor(
     private val _events = Channel<InfoEvent>()
     val events = _events.receiveAsFlow()
 
-    // Store the dealer ID to avoid passing it around
     private var currentDealerId: Long? = null
 
     init {
@@ -61,7 +63,7 @@ class InfoViewModel @Inject constructor(
                 _uiState.value = InfoUiState.Error("Could not find saved Dealer ID.")
                 return@launch
             }
-            currentDealerId = dealerId // Save the dealer ID for later
+            currentDealerId = dealerId
 
             dealerRepository.getCombinedDealerInfo(dealerId)
                 .onSuccess { combinedInfo ->
@@ -75,40 +77,10 @@ class InfoViewModel @Inject constructor(
     }
 
     /**
-     * Generic function to update a single field using the PATCH API.
-     * @param fieldName The JSON key (e.g., "phone", "name", "is_virtual")
-     * @param value The new value (e.g., "12345", "New Name", true)
+     * Updates fields on the main /dealer-api/Dealers/{id} endpoint (FormUrlEncoded).
+     * Use this for: name, phone, website_url, description, address, city_name
      */
-    fun updateField(fieldName: String, value: Any) {
-        val updateMap = mapOf(fieldName to value)
-        saveUpdates(updateMap, "Info updated")
-    }
-
-    /**
-     * Specific function to update Home Delivery settings.
-     * This is needed because the UI sends 3 separate values.
-     */
-    fun updateHomeDelivery(isAvailable: Boolean, isNationWide: Boolean, radius: String) {
-        // Here you must decide what the API expects. Does it take a complex object
-        // or individual fields? I'll assume individual fields based on the HomeDelivery model.
-        val updateMap = mapOf(
-            "home_delivery_available" to isAvailable, // Guessed API key
-            "home_delivery_nationwide" to isNationWide, // Guessed API key
-            "home_delivery_radius" to (radius.toIntOrNull() ?: 0) // Guessed API key
-        )
-        // TODO: You MUST confirm the API keys above (e.g., "home_delivery_available")
-        Log.w(TAG, "updateHomeDelivery: API keys are guessed. Please verify them.")
-        saveUpdates(updateMap, "Home Delivery updated")
-    }
-
-    // You would add another function here for updateHomeTestDrive, etc.
-
-    /**
-     * The master save function that all other update functions call.
-     * It handles showing the loading spinner, making the API call,
-     * and refreshing the data on success.
-     */
-    internal fun saveUpdates(updateMap: Map<String, Any>, successMessage: String) {
+    fun saveDealerUpdates(updateMap: Map<String, Any>, successMessage: String) {
         viewModelScope.launch {
             val currentState = _uiState.value
             if (currentState !is InfoUiState.Success) return@launch
@@ -119,23 +91,102 @@ class InfoViewModel @Inject constructor(
                 return@launch
             }
 
-            // 1. Show loading spinner
             _uiState.value = currentState.copy(isSaving = true)
-            Log.d(TAG, "Updating dealer info with: $updateMap")
 
-            // 2. Call the repository
-            dealerRepository.updateDealerInfo(dealerId, updateMap)
+            // Convert to Map<String, String> for FormUrlEncoded
+            val stringUpdateMap = updateMap.mapValues { it.value.toString() }
+
+            Log.d(TAG, "Updating dealer info (FormUrlEncoded): $stringUpdateMap")
+
+            dealerRepository.updateDealerInfo(dealerId, stringUpdateMap)
                 .onSuccess {
                     Log.d(TAG, "Update successful")
                     _events.send(InfoEvent.ShowSuccess(successMessage))
-                    // 3. Refresh all data on success
-                    fetchDealerInfo() // This will reset isSaving to false
+                    fetchDealerInfo() // Refresh data
                 }
                 .onFailure { error ->
                     Log.e(TAG, "Update failed", error)
-                    _uiState.value = currentState.copy(isSaving = false) // Stop loading on fail
+                    _uiState.value = currentState.copy(isSaving = false)
                     _events.send(InfoEvent.ShowError(error.message ?: "Update failed"))
                 }
         }
+    }
+
+    /**
+     * Updates fields on the /dealer-api/dealer-metas/{id} endpoint (Multipart).
+     * Use this for: amenities, home_delivery, home_test_drive, is_virtual
+     */
+    fun saveMetasUpdates(updateMap: Map<String, Any>, successMessage: String) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState !is InfoUiState.Success) return@launch
+
+            val dealerId = currentDealerId
+            if (dealerId == null) {
+                _events.send(InfoEvent.ShowError("User session error."))
+                return@launch
+            }
+
+            _uiState.value = currentState.copy(isSaving = true)
+
+            // --- THIS IS THE FIX ---
+            // Convert to Map<String, RequestBody> for Multipart
+            val requestBodyMap: Map<String, String> = updateMap.mapValues { it.value.toString() }
+            // -----------------------
+
+            Log.d(TAG, "Updating dealer metas (Multipart): $requestBodyMap")
+
+            // This now passes the correct RequestBody map to the repository
+            dealerRepository.updateDealerMetas(dealerId, requestBodyMap)
+                .onSuccess {
+                    Log.d(TAG, "Update successful")
+                    _events.send(InfoEvent.ShowSuccess(successMessage))
+                    fetchDealerInfo() // Refresh data
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Update failed", error) // This log is already here
+                    _uiState.value = currentState.copy(isSaving = false)
+                    _events.send(InfoEvent.ShowError(error.message ?: "Update failed"))
+                }
+        }
+    }
+
+    /**
+     * Specific function for Home Delivery.
+     * Uses the 'home_delivery' key from your log.
+     */
+    fun updateHomeDelivery(isAvailable: Boolean, isNationWide: Boolean, radius: String) {
+        val value = if (!isAvailable) "not_available" else if (isNationWide) "nation_wide" else radius
+        val updateMap = mapOf("home_delivery" to (value ?: "not_available"))
+
+        Log.d(TAG, "Updating Home Delivery: $updateMap")
+        saveMetasUpdates(updateMap, "Home Delivery updated")
+    }
+
+    /**
+     * Specific function for Home Test Drive.
+     */
+    fun updateHomeTestDrive(isAvailable: Boolean, radius: String) {
+        // TODO: Verify these API keys! I am guessing.
+        val updateMap = mapOf(
+            "home_test_drive_available" to isAvailable,
+            "home_test_drive_radius" to (radius.toIntOrNull() ?: 0)
+        )
+        Log.w(TAG, "updateHomeTestDrive: API keys are guessed. Please verify them.")
+        saveMetasUpdates(updateMap, "Test Drive updated")
+    }
+
+    /**
+     * Specific function for Amenities.
+     */
+    fun updateAmenities(wifi: Boolean, parking: Boolean, kidsArea: Boolean) {
+        // Keys from your log: "parking", "kids_play_area", "wifi"
+        val updateMap = mapOf(
+            "wifi" to wifi,
+            "parking" to parking,
+            "kids_play_area" to kidsArea
+        )
+        Log.d(TAG, "Updating Amenities: $updateMap")
+        saveMetasUpdates(updateMap, "Amenities updated")
     }
 }

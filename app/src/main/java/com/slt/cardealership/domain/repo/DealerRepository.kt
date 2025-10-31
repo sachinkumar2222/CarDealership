@@ -21,6 +21,7 @@ import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleModel
 import com.slt.cardealership.domain.model.VehicleOptionsResponse
+import okhttp3.RequestBody
 import java.io.File
 
 interface DealerRepository {
@@ -80,7 +81,8 @@ interface DealerRepository {
     ): Result<List<Vehicle>>
 
     suspend fun getResearchVehicleDetails(vehicleId: String): Result<Vehicle>
-    suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, Any>): Result<Unit>
+    suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, String>): Result<Unit>
+    suspend fun updateDealerMetas(dealerId: Long, updateMap: Map<String, String>): Result<Unit>
 
     // Using PUT as the main edit method
     suspend fun editResearchVehicle(vehicleId: String, vehicle: Vehicle): Result<Vehicle>

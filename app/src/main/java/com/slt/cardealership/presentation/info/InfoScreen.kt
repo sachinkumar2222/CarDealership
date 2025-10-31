@@ -131,11 +131,9 @@ fun DealerInfoContent(
     val partsHours = dealerInfo.dealerHours?.find { it.hoursType == "parts" }
     val serviceHours = dealerInfo.dealerHours?.find { it.hoursType == "service" }
 
-    // --- REMOVED: Local state 'isVirtual' ---
-
     var showDeliveryDialog by remember { mutableStateOf(false) }
     var showTestDriveDialog by remember { mutableStateOf(false) }
-
+    var showAmenitiesDialog by remember { mutableStateOf(false) } // <-- ADDED
 
     if (showDeliveryDialog && dealerInfo.homeDelivery != null) {
         HomeDeliveryDialog(
@@ -151,8 +149,31 @@ fun DealerInfoContent(
         )
     }
 
-    // TODO: Add HomeTestDriveDialog logic here
+    // --- ADDED: Show Home Test Drive Dialog ---
+    if (showTestDriveDialog && dealerInfo.homeTestDrive != null) {
+        HomeTestDriveDialog(
+            initialState = dealerInfo.homeTestDrive,
+            isSaving = isSaving,
+            onDismiss = { showTestDriveDialog = false },
+            onSave = { isAvailable, radius ->
+                viewModel.updateHomeTestDrive(isAvailable, radius)
+                showTestDriveDialog = false
+            }
+        )
+    }
 
+    // --- ADDED: Show Amenities Dialog ---
+    if (showAmenitiesDialog && dealerInfo.amenities != null) {
+        AmenitiesEditDialog(
+            initialState = dealerInfo.amenities,
+            isSaving = isSaving,
+            onDismiss = { showAmenitiesDialog = false },
+            onSave = { wifi, parking, kidsArea ->
+                viewModel.updateAmenities(wifi, parking, kidsArea)
+                showAmenitiesDialog = false
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -174,22 +195,23 @@ fun DealerInfoContent(
                 DeliveryAndTestDriveCard(
                     dealerInfo = dealerInfo,
                     onEditDelivery = { showDeliveryDialog = true },
-                    onEditTestDrive = { /* showTestDriveDialog = true */ }
+                    onEditTestDrive = { showTestDriveDialog = true } // <-- CONNECTED
                 )
                 AdditionalFeaturesCard(
-                    // --- CONNECTED ---
                     isVirtual = dealerInfo.isVirtual ?: false, // <-- Use data from dealerInfo
                     onVirtualToggled = { newStatus ->
                         // --- CONNECTED ---
-                        // "is_virtual" is a guessed API key, update if incorrect
-                        // Based on your previous models, this key might be "isVirtual"
-                        viewModel.updateField("is_virtual", newStatus)
+                        // This is a "meta" field, so we call saveMetasUpdates
+                        // TODO: Verify API key "is_virtual"
+                        viewModel.saveMetasUpdates(mapOf("is_virtual" to newStatus), "Feature updated")
                     },
                     viewModel = viewModel
-                    // -----------------
                 )
                 BusinessTypeCard(dealerInfo, viewModel, isSaving)
-                AccessibilityAndAmenitiesCard(dealerInfo.amenities, viewModel)
+                AccessibilityAndAmenitiesCard(
+                    amenities = dealerInfo.amenities,
+                    onEditClick = { showAmenitiesDialog = true } // <-- CONNECTED
+                )
                 BusinessHoursCard(businessHours, partsHours, serviceHours)
                 AboutCard(dealerInfo, viewModel, isSaving)
             }
@@ -268,7 +290,6 @@ fun HeaderImage(dealerInfo: DealerInfo) {
                     }
                 }
             }
-
         }
     }
 }
@@ -278,8 +299,8 @@ fun HeaderImage(dealerInfo: DealerInfo) {
 @Composable
 fun BusinessTypeCard(
     dealerInfo: DealerInfo,
-    viewModel: InfoViewModel, // <-- ADDED
-    isSaving: Boolean // <-- ADDED
+    viewModel: InfoViewModel,
+    isSaving: Boolean
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var fieldsToEdit by remember { mutableStateOf<List<EditFieldState>>(emptyList()) }
@@ -288,10 +309,11 @@ fun BusinessTypeCard(
         MultiFieldEditDialog(
             title = "Edit Business Type",
             fields = fieldsToEdit,
-            isSaving = isSaving, // <-- Pass saving state
+            isSaving = isSaving,
             onDismiss = { showEditDialog = false },
             onSave = { updatedFields ->
                 // --- CONNECTED ---
+                // These are main dealer fields, so we call saveDealerUpdates
                 // TODO: You must confirm the API keys for these fields
                 val updateMap = updatedFields.associate {
                     val apiKey = when (it.label) {
@@ -304,7 +326,7 @@ fun BusinessTypeCard(
                 }.filter { it.key.isNotBlank() }
 
                 Log.d("InfoScreen", "Saving Business Type: $updateMap")
-                viewModel.saveUpdates(updateMap, "Business Type updated")
+                viewModel.saveDealerUpdates(updateMap, "Business Type updated")
                 showEditDialog = false
                 // -----------------
             }
@@ -341,7 +363,7 @@ fun BusinessHoursCard(general: DealerHours?, parts: DealerHours?, service: Deale
     InfoCard(
         title = "Business Hours",
         icon = Icons.Default.Schedule,
-        onEditClick = { /* TODO */ }
+        onEditClick = { /* TODO: Implement editing hours. This is complex. */ }
     ) {
         Column(modifier = Modifier.padding(top = 8.dp)) {
             TabRow(
@@ -382,17 +404,13 @@ fun HoursColumn(hoursData: DealerHours?) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Day of the week (e.g., "Monday")
                     Text(
                         text = day.day ?: "N/A",
                         color = Color.DarkGray,
                         fontSize = 12.sp,
                         modifier = Modifier.width(90.dp)
                     )
-
-                    // --- THIS IS THE NEW CUSTOMIZED LOGIC ---
                     if (day.isClose == true) {
-                        // Display 'Closed' icon and text
                         Image(
                             painter = painterResource(R.drawable.close),
                             contentDescription = null,
@@ -403,7 +421,6 @@ fun HoursColumn(hoursData: DealerHours?) {
                         )
 
                     } else {
-                        // Display 'Open' icon and timings
                         Image(
                             painter = painterResource(R.drawable.open),
                             contentDescription = null,
@@ -426,11 +443,14 @@ fun HoursColumn(hoursData: DealerHours?) {
 }
 
 @Composable
-fun AccessibilityAndAmenitiesCard(amenities: Amenities?, viewModel: InfoViewModel) { // <-- Added ViewModel
+fun AccessibilityAndAmenitiesCard(
+    amenities: Amenities?,
+    onEditClick: () -> Unit // <-- CHANGED
+) {
     InfoCard(
         title = "Amenities",
         icon = Icons.Default.Deck,
-        onEditClick = { /* TODO: Implement amenities edit dialog */ }
+        onEditClick = onEditClick // <-- CONNECTED
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
             CheckmarkRow("Wi-Fi", amenities?.isWifi)
@@ -442,11 +462,12 @@ fun AccessibilityAndAmenitiesCard(amenities: Amenities?, viewModel: InfoViewMode
         }
     }
 }
+
 @Composable
 fun AboutCard(
     dealerInfo: DealerInfo,
-    viewModel: InfoViewModel, // <-- ADDED
-    isSaving: Boolean // <-- ADDED
+    viewModel: InfoViewModel,
+    isSaving: Boolean
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var fieldsToEdit by remember { mutableStateOf<List<EditFieldState>>(emptyList()) }
@@ -455,13 +476,14 @@ fun AboutCard(
         MultiFieldEditDialog(
             title = "Edit About",
             fields = fieldsToEdit,
-            isSaving = isSaving, // <-- Pass saving state
+            isSaving = isSaving,
             onDismiss = { showEditDialog = false },
             onSave = { updatedFields ->
                 // --- CONNECTED ---
-                // TODO: Confirm the API key for the 'about' text. I'm guessing "description".
+                // This is a main dealer field, so we call saveDealerUpdates
+                // TODO: Confirm the API key is "description"
                 val aboutText = updatedFields.firstOrNull()?.value ?: ""
-                viewModel.updateField("description", aboutText)
+                viewModel.saveDealerUpdates(mapOf("description" to aboutText), "About section updated")
                 showEditDialog = false
                 // -----------------
             }
@@ -472,10 +494,8 @@ fun AboutCard(
         title = "About",
         icon = Icons.Default.Info,
         onEditClick = {
-            // --- CONNECTED ---
             fieldsToEdit = listOf(EditFieldState("About", dealerInfo.aboutText ?: ""))
             showEditDialog = true
-            // -----------------
         }
     ) {
         Text(
@@ -559,11 +579,11 @@ private val previewDealerInfo = DealerInfo(
 fun MultiFieldEditDialog(
     title: String,
     fields: List<EditFieldState>,
-    isSaving: Boolean, // <-- ADDED
+    isSaving: Boolean,
     onDismiss: () -> Unit,
     onSave: (List<EditFieldState>) -> Unit
 ) {
-    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) { // <-- Prevent dismiss while saving
+    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -576,7 +596,6 @@ fun MultiFieldEditDialog(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                // 1. A more stylish header with an icon and close button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -596,14 +615,13 @@ fun MultiFieldEditDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = onDismiss, enabled = !isSaving) { // <-- Disable
+                    IconButton(onClick = onDismiss, enabled = !isSaving) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
 
                 Divider(modifier = Modifier.padding(vertical = 12.dp))
 
-                // 2. The scrollable content area for the fields
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(vertical = 8.dp)
@@ -615,28 +633,26 @@ fun MultiFieldEditDialog(
                             label = { Text(field.label) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(20.dp),
-                            enabled = !isSaving // <-- Disable field while saving
+                            enabled = !isSaving
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(1f, fill = false)) // Pushes buttons to the bottom
+                Spacer(modifier = Modifier.weight(1f, fill = false))
 
-                // 3. A footer with clearly styled action buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onDismiss, enabled = !isSaving) { // <-- Disable button
+                    TextButton(onClick = onDismiss, enabled = !isSaving) {
                         Text("Cancel")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { onSave(fields) },
-                        enabled = !isSaving, // <-- Disable button
+                        enabled = !isSaving,
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFC0657FA))
                     ) {
-                        // --- CONNECTED: Show loading spinner ---
                         if (isSaving) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
@@ -646,7 +662,6 @@ fun MultiFieldEditDialog(
                         } else {
                             Text("Save")
                         }
-                        // -------------------------------------
                     }
                 }
             }
@@ -670,8 +685,8 @@ fun SmallIconButton(icon: ImageVector, onClick: () -> Unit) {
 @Composable
 fun DealerDetailsCard(
     dealerInfo: DealerInfo,
-    viewModel: InfoViewModel, // <-- ADDED
-    isSaving: Boolean // <-- ADDED
+    viewModel: InfoViewModel,
+    isSaving: Boolean
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var fieldsToEdit by remember { mutableStateOf<List<EditFieldState>>(emptyList()) }
@@ -680,11 +695,10 @@ fun DealerDetailsCard(
         MultiFieldEditDialog(
             title = "Edit Details",
             fields = fieldsToEdit,
-            isSaving = isSaving, // <-- Pass saving state
+            isSaving = isSaving,
             onDismiss = { showEditDialog = false },
             onSave = { updatedFields ->
                 // --- CONNECTED ---
-                // Create a map of API keys to new values
                 val updateMap = updatedFields.associate {
                     val apiKey = when (it.label) {
                         "Name" -> "name"
@@ -695,26 +709,25 @@ fun DealerDetailsCard(
                         else -> ""
                     }
                     apiKey to it.value
-                }.filter { it.key.isNotBlank() } // Filter out any unknown labels
+                }.filter { it.key.isNotBlank() }
 
                 Log.d("InfoScreen", "Saving Details: $updateMap")
-                viewModel.saveUpdates(updateMap, "Details updated")
+                // --- CONNECTED: Calls the correct save function ---
+                viewModel.saveDealerUpdates(updateMap, "Details updated")
                 showEditDialog = false
                 // -----------------
             }
         )
     }
 
-    // Main Card container with title and subtle styling from the image
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFBFBFF)), // A very light, almost white color
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFBFBFF)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.05f))
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp, horizontal = 20.dp)) {
-            // Card Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -738,28 +751,23 @@ fun DealerDetailsCard(
             HorizontalDivider(color = Color.Black.copy(alpha = 0.1f))
             Spacer(modifier = Modifier.height(8.dp))
 
-            // List of details using the new reusable row composable
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 DetailInfoRow(
                     icon = painterResource(R.drawable.personn),
                     label = "Name",
                     value = dealerInfo.name ?: "N/A",
                     onEditClick = {
-                        // --- CONNECTED ---
                         fieldsToEdit = listOf(EditFieldState("Name", dealerInfo.name ?: ""))
                         showEditDialog = true
-                        // -----------------
                     }
                 )
                 DetailInfoRow(
                     icon = painterResource(R.drawable.linkk),
                     label = "Website",
-                    value = dealerInfo.websiteUrl ?: "Not Available", // Placeholder from image
+                    value = dealerInfo.websiteUrl ?: "Not Available",
                     onEditClick = {
-                        // --- CONNECTED ---
                         fieldsToEdit = listOf(EditFieldState("Website", dealerInfo.websiteUrl ?: ""))
                         showEditDialog = true
-                        // -----------------
                     }
                 )
                 DetailInfoRow(
@@ -767,10 +775,8 @@ fun DealerDetailsCard(
                     label = "Phone Number",
                     value = dealerInfo.phone ?: "N/A",
                     onEditClick = {
-                        // --- CONNECTED ---
                         fieldsToEdit = listOf(EditFieldState("Phone Number", dealerInfo.phone ?: ""))
                         showEditDialog = true
-                        // -----------------
                     }
                 )
                 DetailInfoRow(
@@ -778,13 +784,11 @@ fun DealerDetailsCard(
                     label = "Address",
                     value = "${dealerInfo.address}, ${dealerInfo.city}",
                     onEditClick = {
-                        // --- CONNECTED ---
                         fieldsToEdit = listOf(
                             EditFieldState("Address", dealerInfo.address ?: ""),
                             EditFieldState("City", dealerInfo.city ?: "")
                         )
                         showEditDialog = true
-                        // -----------------
                     }
                 )
             }
@@ -805,7 +809,6 @@ fun DetailInfoRow(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Icon with a styled background
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -818,13 +821,11 @@ fun DetailInfoRow(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // Column for Label and Value
         Column(modifier = Modifier.weight(1f)) {
             Text(text = label, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
         }
 
-        // Edit Icon Button
         SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
     }
 }
@@ -853,7 +854,6 @@ fun InfoCard(
         border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.05f))
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp, horizontal = 20.dp)) {
-            // Card Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -877,7 +877,6 @@ fun InfoCard(
             HorizontalDivider(color = Color.Black.copy(alpha = 0.1f))
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Unique content for each card goes here
             content()
         }
     }
@@ -887,7 +886,7 @@ fun InfoCard(
 fun AdditionalFeaturesCard(
     isVirtual: Boolean,
     onVirtualToggled: (Boolean) -> Unit,
-    viewModel: InfoViewModel // <-- ADDED
+    viewModel: InfoViewModel
 ) {
     InfoCard(
         title = "Additional Features",
@@ -907,32 +906,28 @@ fun AdditionalFeaturesCard(
 
             HorizontalDivider(color = Color.Black.copy(alpha = 0.05f))
 
-            // A placeholder for the "Virtual Appointment" toggle
             ToggleRow(
                 label = "Virtual Appointment",
                 description = "Enable or disable virtual appointments",
                 isChecked = false, // TODO: Get this value from dealerInfo when API supports it
                 onCheckedChange = {
                     // --- CONNECTED ---
+                    // This is a "meta" field, so we call saveMetasUpdates
                     // TODO: Verify API key "is_virtual_appointment"
-                    viewModel.updateField("is_virtual_appointment", it)
-                    // -----------------
+                    viewModel.saveMetasUpdates(mapOf("is_virtual_appointment" to it), "Feature updated")
                 }
             )
         }
     }
 }
 
-/**
- * A reusable row for a label, description, and a toggle switch.
- */
 @Composable
 fun ToggleRow(
     label: String,
     description: String,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true // <-- ADDED enabled parameter
+    enabled: Boolean = true
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -947,7 +942,7 @@ fun ToggleRow(
         Switch(
             checked = isChecked,
             onCheckedChange = onCheckedChange,
-            enabled = enabled // <-- Pass enabled state to Switch
+            enabled = enabled
         )
     }
 }
@@ -964,7 +959,6 @@ fun DeliveryAndTestDriveCard(
         onEditClick = { /* Can be a general edit button */ }
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
-            // Row for Home Delivery
             FeatureRow(
                 icon = Icons.Default.LocalShipping,
                 title = "Home Delivery",
@@ -974,18 +968,16 @@ fun DeliveryAndTestDriveCard(
 
             HorizontalDivider(color = Color.Black.copy(alpha = 0.05f))
 
-            // Row for Home Test Drive
             FeatureRow(
                 icon = Icons.Default.DriveEta,
                 title = "Home Test Drive",
                 status = if (dealerInfo.homeTestDrive?.isAvailable == true) "Available" else "Not Available",
-                onEditClick = onEditTestDrive
+                onEditClick = onEditTestDrive // <-- CONNECTED
             )
         }
     }
 }
 
-// --- 2. A REUSABLE ROW FOR EACH FEATURE ---
 @Composable
 fun FeatureRow(icon: ImageVector, title: String, status: String, onEditClick: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -1000,12 +992,11 @@ fun FeatureRow(icon: ImageVector, title: String, status: String, onEditClick: ()
 }
 
 
-// --- 3. THE DIALOG FOR HOME DELIVERY ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeDeliveryDialog(
     initialState: HomeDelivery,
-    isSaving: Boolean, // <-- ADDED
+    isSaving: Boolean,
     onDismiss: () -> Unit,
     onSave: (isAvailable: Boolean, isNationWide: Boolean, radius: String) -> Unit
 ) {
@@ -1013,16 +1004,15 @@ fun HomeDeliveryDialog(
     var isNationWide by remember { mutableStateOf(initialState.isNationWide) }
     var radius by remember { mutableStateOf(initialState.radius.toString()) }
 
-    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) { // <-- Prevent dismiss
+    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
         Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Home Delivery", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    IconButton(onClick = onDismiss, enabled = !isSaving) { Icon(Icons.Default.Close, null) } // <-- Disable
+                    IconButton(onClick = onDismiss, enabled = !isSaving) { Icon(Icons.Default.Close, null) }
                 }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-                // --- CONNECTED: Disable controls while saving ---
                 ToggleRow(
                     label = "Do you have the facility of Home Delivery?",
                     isChecked = isAvailable,
@@ -1044,20 +1034,18 @@ fun HomeDeliveryDialog(
                     label = { Text("Please Enter The Distance (radius)") },
                     trailingIcon = { Text("Miles", color = Color.Gray) },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isSaving // <-- Disable
+                    enabled = !isSaving
                 )
-                // --- END CONNECTION ---
 
                 Spacer(modifier = Modifier.height(24.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp), enabled = !isSaving) { Text("Close") } // <-- Disable
+                    OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp), enabled = !isSaving) { Text("Close") }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { onSave(isAvailable, isNationWide, radius) },
                         shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving // <-- Disable
+                        enabled = !isSaving
                     ) {
-                        // --- CONNECTED: Show loading spinner ---
                         if (isSaving) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
@@ -1067,7 +1055,142 @@ fun HomeDeliveryDialog(
                         } else {
                             Text("Save")
                         }
-                        // -------------------------------------
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- NEW DIALOG FOR HOME TEST DRIVE ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeTestDriveDialog(
+    initialState: HomeTestDrive,
+    isSaving: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (isAvailable: Boolean, radius: String) -> Unit
+) {
+    var isAvailable by remember { mutableStateOf(initialState.isAvailable) }
+    var radius by remember { mutableStateOf(initialState.radius.toString()) }
+
+    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Home Test Drive", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    IconButton(onClick = onDismiss, enabled = !isSaving) { Icon(Icons.Default.Close, null) }
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                ToggleRow(
+                    label = "Do you have the facility of Home Test Drive?",
+                    isChecked = isAvailable,
+                    onCheckedChange = { isAvailable = it },
+                    description = "",
+                    enabled = !isSaving
+                )
+
+                OutlinedTextField(
+                    value = radius,
+                    onValueChange = { radius = it },
+                    label = { Text("Please Enter The Distance (radius)") },
+                    trailingIcon = { Text("Miles", color = Color.Gray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp), enabled = !isSaving) { Text("Close") }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { onSave(isAvailable, radius) },
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !isSaving
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Save")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- NEW DIALOG FOR AMENITIES ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AmenitiesEditDialog(
+    initialState: Amenities,
+    isSaving: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (wifi: Boolean, parking: Boolean, kidsArea: Boolean) -> Unit
+) {
+    var isWifi by remember { mutableStateOf(initialState.isWifi ?: false) }
+    var isParking by remember { mutableStateOf(initialState.isParking ?: false) }
+    var isKidsPlayArea by remember { mutableStateOf(initialState.isKidsPlayArea ?: false) }
+    // TODO: Add state for isEntrance, isRestroom, isSeating
+
+    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Edit Amenities", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    IconButton(onClick = onDismiss, enabled = !isSaving) { Icon(Icons.Default.Close, null) }
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                // Using keys from your API log: wifi, parking, kids_play_area
+                ToggleRow(
+                    label = "Wi-Fi",
+                    description = "Is Wi-Fi available?",
+                    isChecked = isWifi,
+                    onCheckedChange = { isWifi = it },
+                    enabled = !isSaving
+                )
+                ToggleRow(
+                    label = "Parking",
+                    description = "Is parking available?",
+                    isChecked = isParking,
+                    onCheckedChange = { isParking = it },
+                    enabled = !isSaving
+                )
+                ToggleRow(
+                    label = "Kids Play Area",
+                    description = "Is a kids play area available?",
+                    isChecked = isKidsPlayArea,
+                    onCheckedChange = { isKidsPlayArea = it },
+                    enabled = !isSaving
+                )
+
+                // TODO: Add toggles for isEntrance, isRestroom, isSeating
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp), enabled = !isSaving) { Text("Close") }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { onSave(isWifi, isParking, isKidsPlayArea) },
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !isSaving
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Save")
+                        }
                     }
                 }
             }
@@ -1102,8 +1225,6 @@ fun LoadingAnimation() {
 @Composable
 fun InfoScreenPreview() {
     CarDealershipTheme(darkTheme = false) {
-        // Preview will show basic layout as it has no data
-        //InfoScreen()
         DealerInfoContent()
     }
 }

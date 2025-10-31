@@ -1,6 +1,7 @@
 package com.slt.cardealership.data.remote.network
 
 
+import com.slt.cardealership.domain.model.AddSeoTagRequest
 import com.slt.cardealership.domain.model.Advertisement
 import com.slt.cardealership.domain.model.AdvertisementGalleryResponse
 import com.slt.cardealership.domain.model.AdvertisementGoal
@@ -12,11 +13,17 @@ import com.slt.cardealership.domain.model.DealerDetailsResponse
 import com.slt.cardealership.domain.model.DealerHours
 import com.slt.cardealership.domain.model.DealerMetasResponse
 import com.slt.cardealership.domain.model.EvoxImageResponse
+import com.slt.cardealership.domain.model.FaqDetails
+import com.slt.cardealership.domain.model.FaqListResponse
+import com.slt.cardealership.domain.model.FaqRequest
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.GalleryListResponse
 import com.slt.cardealership.domain.model.GalleryResponseObject
+import com.slt.cardealership.domain.model.MapSeoTagsRequest
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.PostListResponse
+import com.slt.cardealership.domain.model.SeoTag
+import com.slt.cardealership.domain.model.SeoTagListResponse
 import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import com.slt.cardealership.domain.model.Vehicle
@@ -34,6 +41,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
@@ -41,6 +49,12 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
+
+    @PATCH("dealer-api/Dealers/{dealerId}")
+    suspend fun updateDealerInfo(
+        @Path("dealerId") dealerId: Long,
+        @Body body: Map<String, Any> // <-- FIX: Change to <String, Any>
+    ): Response<Unit>
 
     @GET("dealer-api/Dealers/{dealerId}")
     suspend fun getDealerDetails(@Path("dealerId") dealerId: Long): DealerDetailsResponse
@@ -302,7 +316,7 @@ interface ApiService {
     suspend fun addAdvertisement(
         @Path("dealer_id") dealerId: Long,
         @Body advertisement: Advertisement // We will build this object in the ViewModel
-    ): Response<Advertisement>
+    ): Response<String>
 
     @PUT("dealer-api/dealers/{dealer_id}/advertisements/{adv_id}")
     suspend fun updateAdvertisement(
@@ -333,7 +347,108 @@ interface ApiService {
         @Part images: List<MultipartBody.Part>
     ): Response<Unit>
 
+    // --- SEO Tags ---
 
+    /**
+     * Get the master list of all available SEO tags
+     * GET {base_url}/dealer-api/dealer-seo-tags
+     */
+    @GET("dealer-api/dealer-seo-tags")
+    suspend fun getSeoTags(
+        @Query("dealer_id") dealerId: Long, // <-- FIX: Add parameters
+        @Query("page") page: Int = 1,
+        @Query("item_per_page") itemsPerPage: Int = 50 // Get up to 50
+    ): SeoTagListResponse // <-- FIX: Return the wrapper object
 
+    /**
+     * Delete an SEO tag from the master list by its ID
+     * DELETE {base_url}/dealer-api/dealer-seo-tags/{id}
+     */
+    @DELETE("dealer-api/dealer-seo-tags/{id}")
+    suspend fun deleteSeoTag(
+        @Path("id") tagId: String // <-- FIX: ID is a String
+    ): Response<Unit>
+
+    /**
+     * Add a new SEO tag to the master list
+     * POST {base_url}/dealer-api/dealer-seo-tags
+     */
+    @POST("dealer-api/dealer-seo-tags")
+    suspend fun addSeoTag(
+        @Body request: AddSeoTagRequest // <-- FIX: Use new request model
+    ): Response<Unit> // Assuming it returns the newly created tag
+
+    /**
+     * Get the list of tags already mapped to a specific dealer and domain
+     * GET {base_url}/dealer-api/dealer-seo-tags/getfordomain/{dealer_id}/{domain_id}
+     */
+    @GET("dealer-api/dealer-seo-tags/getfordomain/{dealer_id}/{domain_id}")
+    suspend fun getMappedSeoTags(
+        @Path("dealer_id") dealerId: Long,
+        @Path("domain_id") domainId: Int
+    ): List<SeoTag> // This was correct, returns a direct list
+
+    /**
+     * Map a list of SEO tag IDs to a dealer/domain
+     * POST {base_url}/dealer-api/dealer-seo-tags/addtodomain
+     */
+    @POST("dealer-api/dealer-seo-tags/addtodomain/{dealer_id}/{domain_id}")
+    suspend fun mapSeoTagsToDomain(
+        @Path("dealer_id") dealerId: Long,
+        @Path("domain_id") domainId: Int,
+        @Body request: MapSeoTagsRequest // <-- FIX: Uses List<String>
+    ): Response<Unit>
+
+    // --- FAQ ---
+
+    /**
+     * Get all FAQs for a dealer
+     * GET {base_url}/dealer-api/dealer-faqs
+     */
+    @GET("dealer-api/dealer-faqs")
+    suspend fun getFaqs(
+        @Query("dealer_id") dealerId: Long,
+        @Query("domain_id") domainId: Int = 0,
+        @Query("page") page: Int = 1,
+        @Query("item_per_page") itemsPerPage: Int = 20
+    ): FaqListResponse // Returns the paginated wrapper
+
+    /**
+     * Get a specific FAQ by ID
+     * GET {base_url}/dealer-api/dealer-faqs/{id}
+     */
+    @GET("dealer-api/dealer-faqs/{id}")
+    suspend fun getFaqDetails(
+        @Path("id") faqId: Int
+    ): FaqDetails // Returns the detailed object
+
+    /**
+     * Add a new FAQ
+     * POST {base_url}/dealer-api/dealer-faqs
+     */
+    @POST("dealer-api/dealer-faqs")
+    suspend fun addFaq(
+        @Body faqRequest: FaqRequest
+    ): Response<Unit> // Returns 201 Created with an empty body
+
+    /**
+     * Edit an existing FAQ by ID
+     * PUT {base_url}/dealer-api/dealer-faqs/{id}
+     */
+    @PUT("dealer-api/dealer-faqs/{id}")
+    suspend fun updateFaq(
+        @Path("id") faqId: Int,
+        @Body faqRequest: FaqRequest
+    ): Response<Unit> // Returns 201 Created with an empty body
+
+    /**
+     * Delete an FAQ by ID and type
+     * DELETE {base_url}/dealer-api/dealer-faqs/{id}?type={type}
+     */
+    @DELETE("dealer-api/dealer-faqs/{id}")
+    suspend fun deleteFaq(
+        @Path("id") faqId: Int,
+        @Query("type") type: String // You will need to determine what this 'type' is
+    ): Response<Unit>
 
 }

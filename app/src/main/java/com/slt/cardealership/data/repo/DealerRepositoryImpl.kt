@@ -2,8 +2,10 @@ package com.slt.cardealership.data.repo
 
 import android.util.Log
 import com.slt.cardealership.data.remote.network.ApiService
+import com.slt.cardealership.domain.model.AddSeoTagRequest
 import com.slt.cardealership.domain.model.Advertisement
 import com.slt.cardealership.domain.model.Amenities
+import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleOptionsResponse
@@ -13,9 +15,12 @@ import com.slt.cardealership.domain.model.AdvertisementGoal
 import com.slt.cardealership.domain.model.AdvertisementImage
 import com.slt.cardealership.domain.model.EvoxImageResponse
 import com.slt.cardealership.domain.model.DealerCategory
+import com.slt.cardealership.domain.model.FaqItem
+import com.slt.cardealership.domain.model.FaqDetails
 import com.slt.cardealership.domain.model.VehicleModel
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.DealerMetasResponse
+import com.slt.cardealership.domain.model.FaqRequest
 import com.slt.cardealership.domain.model.GalleryImage
 import com.slt.cardealership.domain.model.HomeDelivery
 import com.slt.cardealership.domain.model.HomeTestDrive
@@ -32,6 +37,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
+import com.slt.cardealership.domain.model.MapSeoTagsRequest
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import org.json.JSONObject
 import retrofit2.HttpException
@@ -55,6 +61,19 @@ class DealerRepositoryImpl @Inject constructor(
 
     override suspend fun getDealerMetas(dealerId: Long): DealerMetasResponse {
         return apiService.getDealerMetas(dealerId)
+    }
+
+    override suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, Any>): Result<Unit> {
+        return try {
+            val response = apiService.updateDealerInfo(dealerId, updateMap)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to update info")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
     }
 
     override suspend fun getCombinedDealerInfo(dealerId: Long): Result<DealerInfo> {
@@ -557,11 +576,11 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addAdvertisement(dealerId: Long, advertisement: Advertisement): Result<Advertisement> {
+    override suspend fun addAdvertisement(dealerId: Long, advertisement: Advertisement): Result<String> { // <-- FIX
         return try {
             val response = apiService.addAdvertisement(dealerId, advertisement)
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                Result.success(response.body()!!) // <-- FIX: Return the String
             } else {
                 Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to add advertisement")))
             }
@@ -628,6 +647,139 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    // In DealerRepositoryImpl.kt
+
+    // In DealerRepositoryImpl.kt
+
+    // --- SEO Tags ---
+
+    override suspend fun getSeoTags(dealerId: Long): Result<List<SeoTag>> { // <-- FIX: Added dealerId
+        return try {
+            // FIX: Pass dealerId and get the 'list' from the response object
+            val response = apiService.getSeoTags(dealerId = dealerId)
+            Result.success(response.list)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun deleteSeoTag(id: String): Result<Unit> { // <-- FIX: ID is a String
+        return try {
+            val response = apiService.deleteSeoTag(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to delete tag")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun addSeoTag(dealerId: Long, tagName: String, tagUrl: String): Result<Unit> { // <-- FIX: Added dealerId
+        return try {
+            // FIX: Pass all required fields
+            val request = AddSeoTagRequest(tagName = tagName, tagUrl = tagUrl, dealerId = dealerId)
+            val response = apiService.addSeoTag(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to add tag")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun getMappedSeoTags(dealerId: Long, domainId: Int): Result<List<SeoTag>> {
+        return try {
+            val response = apiService.getMappedSeoTags(dealerId, domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun mapSeoTagsToDomain(dealerId: Long, domainId: Int, tagIds: List<String>): Result<Unit> { // <-- FIX: ID is a String
+        return try {
+            val request = MapSeoTagsRequest(tagIds = tagIds)
+            val response = apiService.mapSeoTagsToDomain(dealerId, domainId, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to map tags")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    // In DealerRepositoryImpl.kt
+
+    // ... (after updateAdvertisementGallery)
+
+    // --- FAQ ---
+
+    override suspend fun getFaqs(dealerId: Long, domainId: Int): Result<List<FaqItem>> {
+        return try {
+            // We pass the domainId and dealerId as required by the API
+            val response = apiService.getFaqs(dealerId = dealerId, domainId = domainId)
+            Result.success(response.list) // Extract the list from the wrapper
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun getFaqDetails(faqId: Int): Result<FaqDetails> {
+        return try {
+            val response = apiService.getFaqDetails(faqId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun addFaq(faqRequest: FaqRequest): Result<Unit> {
+        return try {
+            val response = apiService.addFaq(faqRequest)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to add FAQ")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun updateFaq(faqId: Int, faqRequest: FaqRequest): Result<Unit> {
+        return try {
+            val response = apiService.updateFaq(faqId, faqRequest)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to update FAQ")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun deleteFaq(faqId: Int, type: String): Result<Unit> {
+        return try {
+            val response = apiService.deleteFaq(faqId, type)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to delete FAQ")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    // ... (before getErrorMessageFromResponse)
+
     private fun <T> getErrorMessageFromResponse(response: Response<T>, defaultMessage: String): String {
         return response.errorBody()?.string()?.let {
             try {
@@ -640,6 +792,7 @@ class DealerRepositoryImpl @Inject constructor(
             }
         } ?: "$defaultMessage. Code: ${response.code()}"
     }
+
 
 
 }

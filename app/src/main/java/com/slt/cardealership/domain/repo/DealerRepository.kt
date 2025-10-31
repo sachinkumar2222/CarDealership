@@ -9,9 +9,13 @@ import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.DealerMetasResponse
 import com.slt.cardealership.domain.model.EvoxImageResponse
+import com.slt.cardealership.domain.model.FaqDetails
+import com.slt.cardealership.domain.model.FaqItem
+import com.slt.cardealership.domain.model.FaqRequest
 import com.slt.cardealership.domain.model.GalleryImage
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.Post
+import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
@@ -76,6 +80,7 @@ interface DealerRepository {
     ): Result<List<Vehicle>>
 
     suspend fun getResearchVehicleDetails(vehicleId: String): Result<Vehicle>
+    suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, Any>): Result<Unit>
 
     // Using PUT as the main edit method
     suspend fun editResearchVehicle(vehicleId: String, vehicle: Vehicle): Result<Vehicle>
@@ -105,10 +110,25 @@ interface DealerRepository {
     suspend fun deleteAdvertisement(dealerId: Long, advertisementId: String): Result<Unit>
     suspend fun getAdvertisementGoals(): Result<List<AdvertisementGoal>>
     suspend fun getAdvertisementGoalTypes(goalId: Int): Result<List<AdvertisementGoalType>>
-    suspend fun addAdvertisement(dealerId: Long, advertisement: Advertisement): Result<Advertisement>
+    suspend fun addAdvertisement(dealerId: Long, advertisement: Advertisement): Result<String>
     suspend fun updateAdvertisement(dealerId: Long, advertisementId: String, advertisement: Advertisement): Result<Advertisement>
    // suspend fun getAdvertisementDomains(dealerId: Long, advertisementId: String): Result<List<AdvertisementDomain>>
     suspend fun updateAdvertisementDomains(dealerId: Long, advertisementId: String, domainIds: List<String>): Result<Unit>
     suspend fun getAdvertisementGallery(dealerId: Long, advertisementId: String): Result<List<AdvertisementImage>>
     suspend fun updateAdvertisementGallery(dealerId: Long, advertisementId: String, imageFiles: List<File>): Result<Unit>
+
+    // --- SEO Tags ---
+    suspend fun getSeoTags(dealerId: Long): Result<List<SeoTag>> // <-- FIX: Add dealerId
+    suspend fun deleteSeoTag(id: String): Result<Unit> // <-- FIX: ID is String
+    // FIX: Add dealerId, use tagUrl
+    suspend fun addSeoTag(dealerId: Long, tagName: String, tagUrl: String): Result<Unit>
+    suspend fun getMappedSeoTags(dealerId: Long, domainId: Int): Result<List<SeoTag>>
+    suspend fun mapSeoTagsToDomain(dealerId: Long, domainId: Int, tagIds: List<String>): Result<Unit>
+
+    // --- FAQ ---
+    suspend fun getFaqs(dealerId: Long, domainId: Int): Result<List<FaqItem>>
+    suspend fun getFaqDetails(faqId: Int): Result<FaqDetails>
+    suspend fun addFaq(faqRequest: FaqRequest): Result<Unit>
+    suspend fun updateFaq(faqId: Int, faqRequest: FaqRequest): Result<Unit>
+    suspend fun deleteFaq(faqId: Int, type: String): Result<Unit>
 }

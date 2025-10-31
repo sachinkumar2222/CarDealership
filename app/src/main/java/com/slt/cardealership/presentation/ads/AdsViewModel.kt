@@ -61,7 +61,10 @@ data class AdFormState(
     val locationType: String = "RADIUS", // Added for RadioButtons
 
     // Form validation error
-    val formError: String? = null
+    val formError: String? = null,
+
+    val createdBy: Int? = null,
+    val createdOn: Long? = null
 )
 
 data class AdGoalState(
@@ -115,13 +118,15 @@ class AdsViewModel @Inject constructor(
         "vinfast" to 66, "volkswagen" to 67, "volvo" to 68
     )
 
-    private val makeReverseMap = makeMap.entries.associate { (k, v) -> v to k.replaceFirstChar { it.titlecase() } }
+    private val makeReverseMap =
+        makeMap.entries.associate { (k, v) -> v to k.replaceFirstChar { it.titlecase() } }
 
     private val adTypeReverseMap = mapOf(
         "General" to "general",
         "Co-op" to "co_op", // <-- FIX: Use underscore
         "Dealership Ad" to "dealership_advertisement" // <-- FIX: Use underscore
     )
+
     // Create reverse map for loading (NO CHANGE NEEDED HERE)
     private val adTypeMap = adTypeReverseMap.entries.associate { (k, v) -> v to k }
 
@@ -167,7 +172,12 @@ class AdsViewModel @Inject constructor(
             _adsListState.update { it.copy(isLoading = true, error = null) }
             val dealerId = sessionManager.getDealerId()
             if (dealerId == null) {
-                _adsListState.update { it.copy(isLoading = false, error = "User session error. Could not get Dealer ID.") }
+                _adsListState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "User session error. Could not get Dealer ID."
+                    )
+                }
                 return@launch
             }
 
@@ -195,7 +205,11 @@ class AdsViewModel @Inject constructor(
                     getAdvertisements() // Refresh the list
                 }
                 .onFailure { error ->
-                    _events.send(AdsEvent.ShowError(error.message ?: "Failed to delete advertisement."))
+                    _events.send(
+                        AdsEvent.ShowError(
+                            error.message ?: "Failed to delete advertisement."
+                        )
+                    )
                 }
         }
     }
@@ -209,17 +223,6 @@ class AdsViewModel @Inject constructor(
         _modelState.value = AdVehicleModelState() // Clear models
         getAdvertisementGoals() // Fetch goals for the new form
     }
-
-    // In AdsViewModel.kt
-
-// In AdsViewModel.kt
-// REPLACE your function with this one
-
-// In AdsViewModel.kt
-// REPLACE your function with this one
-
-// In AdsViewModel.kt
-// REPLACE your function with this one
 
     fun loadAdForEdit(advertisementId: String) {
         viewModelScope.launch {
@@ -236,11 +239,19 @@ class AdsViewModel @Inject constructor(
             // 1. Get Ad Details
             val adResult = repository.getAdvertisementDetails(dealerIdLong, advertisementId)
             if (adResult.isFailure) {
-                _formState.update { it.copy(isLoading = false, formError = adResult.exceptionOrNull()?.message) }
+                _formState.update {
+                    it.copy(
+                        isLoading = false,
+                        formError = adResult.exceptionOrNull()?.message
+                    )
+                }
                 return@launch
             }
             val ad = adResult.getOrThrow()
-            Log.d("EDIT_DEBUG", "Ad loaded. API says goalListId=${ad.advertisementGoalTypeListId}, goalTypeId=${ad.advertisementGoalTypeId}")
+            Log.d(
+                "EDIT_DEBUG",
+                "Ad loaded. API says goalListId=${ad.advertisementGoalTypeListId}, goalTypeId=${ad.advertisementGoalTypeId}"
+            )
 
             // 2. Get the GLOBAL Goal List [1, 2, 3, 4, 5]
             val goalsResult = repository.getAdvertisementGoals() // Calls getGoalList
@@ -252,13 +263,17 @@ class AdsViewModel @Inject constructor(
             val mainGoalId = ad.advertisementGoalTypeListId
             val subGoalId = ad.advertisementGoalTypeId
 
-            val isSwapped = globalGoals.none { it.id == mainGoalId } && globalGoals.any { it.id == subGoalId }
+            val isSwapped =
+                globalGoals.none { it.id == mainGoalId } && globalGoals.any { it.id == subGoalId }
 
             val correctMainGoalId = if (isSwapped) subGoalId else mainGoalId
             val correctSubGoalId = if (isSwapped) mainGoalId else subGoalId
 
-            if(isSwapped) {
-                Log.d("EDIT_DEBUG", "Data is SWAPPED. CorrectMainGoal=$correctMainGoalId, CorrectSubGoal=$correctSubGoalId")
+            if (isSwapped) {
+                Log.d(
+                    "EDIT_DEBUG",
+                    "Data is SWAPPED. CorrectMainGoal=$correctMainGoalId, CorrectSubGoal=$correctSubGoalId"
+                )
             }
             // *** END FIX ***
 
@@ -290,7 +305,8 @@ class AdsViewModel @Inject constructor(
 
             // --- FIX FOR AD TYPE LOADING (BUG 3) ---
             // Handle the API's inconsistent "type" string ("Co-op" vs "co_op")
-            val apiTypeString = ad.type?.lowercase()?.replace("-", "_") // "Co-op" -> "co-op" -> "co_op"
+            val apiTypeString =
+                ad.type?.lowercase()?.replace("-", "_") // "Co-op" -> "co-op" -> "co_op"
             val adTypeUiName = adTypeMap[apiTypeString] ?: "General" // <-- Fixed
             // -------------------------------------
 
@@ -321,7 +337,9 @@ class AdsViewModel @Inject constructor(
                 year = ad.year,
                 selectedGoalTypeId = correctSubGoalId ?: 0, // <-- Fixed
                 selectedGoalTypeName = goalTypeName, // <-- Fixed
-                locationType = "RADIUS"
+                locationType = "RADIUS",
+                createdBy = (ad.createdBy as? Double)?.toInt(),
+                createdOn = ad.createdOn
             )
             Log.d("EDIT_DEBUG", "--- Load finished. ---")
         }
@@ -380,6 +398,12 @@ class AdsViewModel @Inject constructor(
 
     // In AdsViewModel.kt
 // In AdsViewModel.kt
+    // In AdsViewModel.kt
+// REPLACE your saveAdvertisement function with this one
+
+    // In AdsViewModel.kt
+// REPLACE your saveAdvertisement function with this one
+
     fun saveAdvertisement() {
         val state = _formState.value
 
@@ -389,7 +413,6 @@ class AdsViewModel @Inject constructor(
             return
         }
 
-        // Updated validation: Goal Type is not needed for Dealership Ad
         if (state.selectedGoalTypeId == 0 && state.adType != "Dealership Ad") {
             _formState.update { it.copy(formError = "Please select a Goal Category Type.") }
             return
@@ -403,38 +426,32 @@ class AdsViewModel @Inject constructor(
                 return@launch
             }
 
-            // --- THIS IS THE FIX (BUG 4) ---
-            // Use the map to get the correct API string ("general", "co_op", etc.)
             val apiAdType = adTypeReverseMap[state.adType]
             val apiCondition = state.condition?.let { conditionReverseMap[it] }
-            // -------------------------------
+            val currentUserId = state.createdBy ?: 630
 
             val ad = Advertisement(
                 id = state.adId,
                 title = state.adName,
-                type = apiAdType, // <-- Use the fixed value
+                type = apiAdType,
                 startDate = state.startDate.toLongOrNull(),
                 endDate = if (state.noEndDate) null else null,
-
                 condition = apiCondition,
                 makeNames = null,
                 modelName = if (state.adType == "General") state.modelName else null,
                 year = if (state.adType == "General") state.year else null,
-
                 description = state.adDescription,
-                advertisementGoalTypeListId = state.selectedGoalId, // Main goal ID
-                advertisementGoalTypeId = state.selectedGoalTypeId, // Sub-goal ID
+                advertisementGoalTypeListId = state.selectedGoalId,
+                advertisementGoalTypeId = state.selectedGoalTypeId,
                 url = state.goalUrl,
                 status = "active",
                 makes = if (state.adType in listOf("General", "Co-op") && state.makeId != null && state.makeId != 0) listOf(state.makeId) else null,
                 modelId = if (state.adType == "General") state.modelId else null,
-
-                // --- Fields from GET list (set to null/default) ---
                 isDeleted = null,
-                createdBy = null,
-                updatedBy = null,
-                createdOn = null,
-                updatedOn = null,
+                createdBy = if (state.isEditing) state.createdBy else currentUserId,
+                updatedBy = currentUserId,
+                createdOn = if (state.isEditing) state.createdOn else System.currentTimeMillis() / 1000L,
+                updatedOn = System.currentTimeMillis() / 1000L,
                 keywords = null,
                 haveImage = null,
                 haveDomain = null,
@@ -443,22 +460,37 @@ class AdsViewModel @Inject constructor(
 
             Log.d("AdsViewModel", "Saving advertisement: $ad")
 
-            val result = if (state.isEditing) {
-                repository.updateAdvertisement(dealerId.toLong(), state.adId!!, ad)
-            } else {
-                repository.addAdvertisement(dealerId.toLong(), ad)
-            }
-
-            result.onSuccess {
-                _formState.update { it.copy(isSaving = false) }
-                _events.send(AdsEvent.NavigateBack)
-                getAdvertisements() // Refresh the list
-            }
-                .onFailure { error ->
-                    _formState.update { it.copy(isSaving = false, formError = error.message) }
-                    _events.send(AdsEvent.ShowError(error.message ?: "Failed to save advertisement."))
+            // --- THIS IS THE FIX ---
+            // We now have different logic for Editing vs. Adding
+            if (state.isEditing) {
+                // --- UPDATE LOGIC ---
+                val result = repository.updateAdvertisement(dealerId.toLong(), state.adId!!, ad)
+                result.onSuccess {
+                    _formState.update { it.copy(isSaving = false) }
+                    _events.send(AdsEvent.NavigateBack)
+                    getAdvertisements() // Refresh the list
                 }
+                    .onFailure { error ->
+                        _formState.update { it.copy(isSaving = false, formError = error.message) }
+                        _events.send(AdsEvent.ShowError(error.message ?: "Failed to save advertisement."))
+                    }
+            } else {
+                // --- ADD LOGIC ---
+                val result = repository.addAdvertisement(dealerId.toLong(), ad)
+                result.onSuccess { newAdIdString ->
+                    Log.d("AdsViewModel", "Successfully created ad with ID: $newAdIdString")
+                    _formState.update { it.copy(isSaving = false) }
+                    _events.send(AdsEvent.NavigateBack) // This will now be called
+                    getAdvertisements() // Refresh the list
+                }
+                    .onFailure { error ->
+                        _formState.update { it.copy(isSaving = false, formError = error.message) }
+                        _events.send(AdsEvent.ShowError(error.message ?: "Failed to save advertisement."))
+                    }
+            }
+            // --- END FIX ---
         }
     }
+
 }
 

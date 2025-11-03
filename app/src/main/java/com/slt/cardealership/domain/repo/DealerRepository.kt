@@ -82,7 +82,7 @@ interface DealerRepository {
 
     suspend fun getResearchVehicleDetails(vehicleId: String): Result<Vehicle>
     suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, String>): Result<Unit>
-    suspend fun updateDealerMetas(dealerId: Long, updateMap: Map<String, String>): Result<Unit>
+    suspend fun updateDealerMetas(dealerId: Long, updateMap: Map<String, Any>): Result<Unit>
 
     // Using PUT as the main edit method
     suspend fun editResearchVehicle(vehicleId: String, vehicle: Vehicle): Result<Vehicle>

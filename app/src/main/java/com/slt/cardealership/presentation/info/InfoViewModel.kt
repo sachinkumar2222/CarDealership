@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.HomeTestDrive
+import com.slt.cardealership.domain.model.HourDetails
 import com.slt.cardealership.domain.repo.DealerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -17,6 +18,7 @@ import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.Locale
 import javax.inject.Inject
 
 // --- Events for showing snackbars/toasts ---
@@ -120,7 +122,6 @@ class InfoViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = _uiState.value
             if (currentState !is InfoUiState.Success) return@launch
-
             val dealerId = currentDealerId
             if (dealerId == null) {
                 _events.send(InfoEvent.ShowError("User session error."))
@@ -129,27 +130,34 @@ class InfoViewModel @Inject constructor(
 
             _uiState.value = currentState.copy(isSaving = true)
 
-            // --- THIS IS THE FIX ---
-            // Convert to Map<String, RequestBody> for Multipart
-            val requestBodyMap: Map<String, String> = updateMap.mapValues { it.value.toString() }
-            // -----------------------
+            // --- JSON-BASED FIXED VERSION ---
 
-            Log.d(TAG, "Updating dealer metas (Multipart): $requestBodyMap")
+            // 1. Start with the original map
+            val mutableUpdateMap = updateMap.toMutableMap()
 
-            // This now passes the correct RequestBody map to the repository
-            dealerRepository.updateDealerMetas(dealerId, requestBodyMap)
+            // 2. Add required fields
+            val userId = sessionManager.getDealerId() ?: 630 // prefer dynamic user id
+            mutableUpdateMap["created_by"] = userId
+            mutableUpdateMap["updated_by"] = userId
+            mutableUpdateMap["updated_on"] = System.currentTimeMillis() / 1000L
+
+            Log.d(TAG, "Updating dealer metas (JSON): $mutableUpdateMap")
+
+            // 3. Directly send the JSON body (no RequestBody conversion)
+            dealerRepository.updateDealerMetas(dealerId, mutableUpdateMap)
                 .onSuccess {
                     Log.d(TAG, "Update successful")
                     _events.send(InfoEvent.ShowSuccess(successMessage))
-                    fetchDealerInfo() // Refresh data
+                    fetchDealerInfo() // Refresh after save
                 }
                 .onFailure { error ->
-                    Log.e(TAG, "Update failed", error) // This log is already here
+                    Log.e(TAG, "Update failed", error)
                     _uiState.value = currentState.copy(isSaving = false)
                     _events.send(InfoEvent.ShowError(error.message ?: "Update failed"))
                 }
         }
     }
+
 
     /**
      * Specific function for Home Delivery.
@@ -157,6 +165,9 @@ class InfoViewModel @Inject constructor(
      */
     fun updateHomeDelivery(isAvailable: Boolean, isNationWide: Boolean, radius: String) {
         val value = if (!isAvailable) "not_available" else if (isNationWide) "nation_wide" else radius
+        // Your log shows "home_delivery" as the only key.
+        // This is strange. Let's try sending ONLY that key first.
+        // If it fails, we will add created_by/updated_by here too.
         val updateMap = mapOf("home_delivery" to (value ?: "not_available"))
 
         Log.d(TAG, "Updating Home Delivery: $updateMap")
@@ -179,14 +190,51 @@ class InfoViewModel @Inject constructor(
     /**
      * Specific function for Amenities.
      */
-    fun updateAmenities(wifi: Boolean, parking: Boolean, kidsArea: Boolean) {
-        // Keys from your log: "parking", "kids_play_area", "wifi"
-        val updateMap = mapOf(
+    fun updateAmenities(wifi: Boolean,
+                        parking: Boolean,
+                        kidsArea: Boolean,
+                        isEntrance: Boolean,  // <-- ADDED
+                        isSeating: Boolean, // <-- ADDED
+                        isRestroom: Boolean // <-- ADDED
+        ) {
+        val updateMap: Map<String, Any> = mapOf(
             "wifi" to wifi,
             "parking" to parking,
-            "kids_play_area" to kidsArea
+            "kids_play_area" to kidsArea,
+            "is_entrance" to isEntrance, // <-- ADDED (Guessed API Key)
+            "is_seating" to isSeating, // <-- ADDED (Guessed API Key)
+            "is_restroom" to isRestroom // <-- ADDED (Guessed API Key)
         )
         Log.d(TAG, "Updating Amenities: $updateMap")
+        // This will now call saveMetasUpdates, which adds the required _by and _on fields.
         saveMetasUpdates(updateMap, "Amenities updated")
+    }
+
+    fun updateBusinessHours(
+        general: List<HourDetails>,
+        parts: List<HourDetails>,
+        service: List<HourDetails>
+    ) {
+        Log.d(TAG, "--- updateBusinessHours ---")
+        val updateMap = mutableMapOf<String, Any>()
+
+        // Helper to add hours for a specific type (general, parts, service)
+        fun addHoursToMap(type: String, hours: List<HourDetails>) {
+            hours.forEach { day ->
+                val dayKey = day.day?.lowercase(Locale.ROOT) ?: return@forEach
+                updateMap["${type}_${dayKey}_open_time"] = day.openTime ?: ""
+                updateMap["${type}_${dayKey}_close_time"] = day.closeTime ?: ""
+                updateMap["${type}_${dayKey}_is_close"] = day.isClose ?: false
+            }
+        }
+
+        // Add all 3 types to the map
+        addHoursToMap("general", general)
+        addHoursToMap("parts", parts)
+        addHoursToMap("service", service)
+
+        Log.d(TAG, "Updating Business Hours with map: $updateMap")
+        // Call the 'metas' endpoint, as hours are metadata
+        saveMetasUpdates(updateMap, "Business hours updated")
     }
 }

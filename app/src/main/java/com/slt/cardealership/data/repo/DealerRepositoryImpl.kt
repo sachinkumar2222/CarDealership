@@ -78,28 +78,17 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateDealerMetas(dealerId: Long, updateMap: Map<String, String>): Result<Unit> {
+    // Change the implementation to convert the map to a list of parts
+    override suspend fun updateDealerMetas(dealerId: Long, updateMap: Map<String, Any>): Result<Unit> {
         return try {
             val response = apiService.updateDealerMetas(dealerId, updateMap)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                // --- LOGGING ADDED ---
-                val errorBody = response.errorBody()?.string() ?: "No error body"
-                Log.e(
-                    "DealerRepository",
-                    "updateDealerMetas FAILED. Code: ${response.code()}, Error: $errorBody"
-                )
-                // ---------------------
-                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to update metadata")))
-            }
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Failed to update metadata. Code: ${response.code()}"))
         } catch (e: Exception) {
-            // --- LOGGING ADDED ---
-            Log.e("DealerRepository", "updateDealerMetas CRASHED", e)
-            // ---------------------
-            Result.failure(Exception(getErrorMessage(e)))
+            Result.failure(Exception(e.message))
         }
     }
+
 
     override suspend fun getCombinedDealerInfo(dealerId: Long): Result<DealerInfo> {
         return try {

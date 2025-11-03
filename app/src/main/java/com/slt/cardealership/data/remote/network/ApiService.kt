@@ -57,15 +57,15 @@ interface ApiService {
     @PATCH("dealer-api/Dealers/{dealerId}")
     suspend fun updateDealerInfo(
         @Path("dealerId") dealerId: Long,
-        @FieldMap body: Map<String, String> // <-- FIX 2: Use @PartMap and RequestBody
+        @FieldMap body: Map<String, String>
     ): Response<Unit>
 
-    @FormUrlEncoded // <-- FIX 1: Use @Multipart
     @PATCH("dealer-api/dealer-metas/{dealerId}")
     suspend fun updateDealerMetas(
         @Path("dealerId") dealerId: Long,
-        @FieldMap body: Map<String, String>
+        @Body body: Map<String,@JvmSuppressWildcards Any>
     ): Response<Unit>
+
 
     @GET("dealer-api/Dealers/{dealerId}")
     suspend fun getDealerDetails(@Path("dealerId") dealerId: Long): DealerDetailsResponse

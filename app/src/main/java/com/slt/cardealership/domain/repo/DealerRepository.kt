@@ -14,9 +14,11 @@ import com.slt.cardealership.domain.model.FaqItem
 import com.slt.cardealership.domain.model.FaqRequest
 import com.slt.cardealership.domain.model.GalleryImage
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
+import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.TrimListResponse
+import com.slt.cardealership.domain.model.UpdateHoursRequest
 import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleModel
@@ -86,6 +88,10 @@ interface DealerRepository {
 
     // Using PUT as the main edit method
     suspend fun editResearchVehicle(vehicleId: String, vehicle: Vehicle): Result<Vehicle>
+
+    suspend fun updateBusinessHours(dealerId: Long, request: UpdateHoursRequest): Result<Unit>
+
+    suspend fun requestDealerUpdate(request: ModifyDealerRequest): Result<Unit>
 
     suspend fun getVehicleGallery(vehicleId: String): Result<VehicleGalleryResponse>
 

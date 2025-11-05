@@ -23,8 +23,8 @@ class SessionManager @Inject constructor( @ApplicationContext private val contex
     private val AUTH_TOKEN = stringPreferencesKey("auth_token")
     private val USER_DEALER_SLUG = stringPreferencesKey("user_dealer_slug")
 
-
-    var authToken: String? = null
+    // This is in-memory cache, not used in your current setup
+    // var authToken: String? = null
 
     suspend fun saveAuthToken(token: String) {
         context.dataStore.edit { preferences ->
@@ -56,19 +56,75 @@ class SessionManager @Inject constructor( @ApplicationContext private val contex
         }
     }
 
-    suspend fun getDealerId(): Int? {
+    /**
+     * --- NEW HELPER FUNCTION ---
+     * Gets the auth token and parses it into a JWT object.
+     */
+    private suspend fun getJwt(): JWT? {
         val token = getAuthToken() ?: return null
         return try {
-            val jwt = JWT(token)
-            // *** Use the claim name from your logs ***
+            JWT(token)
+        } catch (e: Exception) {
+            Log.e("SessionManager", "Error parsing token", e)
+            null
+        }
+    }
+
+    /**
+     * --- UPDATED FUNCTION ---
+     * Now uses the getJwt() helper.
+     */
+    suspend fun getDealerId(): Int? {
+        val jwt = getJwt() ?: return null // <-- Use helper
+        return try {
             val dealerIdString = jwt.getClaim("extension_DealerId").asString()
             val dealerId = dealerIdString?.toIntOrNull()
             Log.d("SessionManager", "Parsed Dealer ID (extension_DealerId): $dealerId")
             dealerId
         } catch (e: Exception) {
-            Log.e("SessionManager", "Error parsing token for Dealer ID (extension_DealerId)", e)
+            Log.e("SessionManager", "Error parsing Dealer ID claim", e)
             null
         }
     }
 
+    /**
+     * --- NEW FUNCTION ---
+     */
+    suspend fun getEmail(): String? {
+        val jwt = getJwt() ?: return null
+        return try {
+            jwt.getClaim("email").asString()
+        } catch (e: Exception) {
+            Log.e("SessionManager", "Error parsing email claim", e)
+            null
+        }
+    }
+
+    /**
+     * --- NEW FUNCTION ---
+     */
+    suspend fun getFirstName(): String? {
+        val jwt = getJwt() ?: return null
+        return try {
+            // Your JWT log shows "given_name"
+            jwt.getClaim("given_name").asString()
+        } catch (e: Exception) {
+            Log.e("SessionManager", "Error parsing given_name claim", e)
+            null
+        }
+    }
+
+    /**
+     * --- NEW FUNCTION ---
+     */
+    suspend fun getLastName(): String? {
+        val jwt = getJwt() ?: return null
+        return try {
+            // Your JWT log shows "family_name"
+            jwt.getClaim("family_name").asString()
+        } catch (e: Exception) {
+            Log.e("SessionManager", "Error parsing family_name claim", e)
+            null
+        }
+    }
 }

@@ -38,7 +38,9 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.MapSeoTagsRequest
+import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
+import com.slt.cardealership.domain.model.UpdateHoursRequest
 import okhttp3.RequestBody
 import org.json.JSONObject
 import retrofit2.HttpException
@@ -89,6 +91,58 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun updateBusinessHours(dealerId: Long, request: UpdateHoursRequest): Result<Unit> {
+        return try {
+            val response = apiService.updateBusinessHours(dealerId, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "No error body"
+                Log.e(
+                    "DealerRepository",
+                    "updateBusinessHours FAILED for ${request.hour_type}. Code: ${response.code()}, Error: $errorBody"
+                )
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to update hours")))
+            }
+        } catch (e: Exception) {
+            Log.e("DealerRepository", "updateBusinessHours CRASHED for ${request.hour_type}", e)
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun requestDealerUpdate(request: ModifyDealerRequest): Result<Unit> {
+        return try {
+            val response = apiService.requestDealerUpdate(request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "No error body"
+                Log.e(
+                    "DealerRepository",
+                    "requestDealerUpdate FAILED. Code: ${response.code()}, Error: $errorBody"
+                )
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to update info")))
+            }
+        } catch (e: Exception) {
+            Log.e("DealerRepository", "requestDealerUpdate CRASHED", e)
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    private fun mapHomeDelivery(
+        apiHomeDeliveryStatus: String?, // "no", "nation_wide", "radius"
+        apiHomeDeliveryRadius: Int? // 0, 74, null
+    ): HomeDelivery {
+        val isAvailable = apiHomeDeliveryStatus != "no" && apiHomeDeliveryStatus != null
+        val isNationWide = apiHomeDeliveryStatus == "nation_wide"
+        val radius = if (apiHomeDeliveryStatus == "radius") {
+            apiHomeDeliveryRadius ?: 0 // Default to 0 if API gives null unexpectedly for "radius"
+        } else {
+            0 // Radius is 0 for "no" or "nation_wide"
+        }
+        return HomeDelivery(isAvailable, isNationWide, radius)
+    }
+
 
     override suspend fun getCombinedDealerInfo(dealerId: Long): Result<DealerInfo> {
         return try {
@@ -98,10 +152,13 @@ class DealerRepositoryImpl @Inject constructor(
                 val metasDeferred = async { apiService.getDealerMetas(dealerId) }
                 val hoursDeferred = async { apiService.getDealerHours(dealerId) }
 
+
                 // Wait for all calls to complete
                 val details = detailsDeferred.await()
+                Log.d("DealerRepo", "Fetched DealerDetails: Description = ${details.description}")
                 val metas = metasDeferred.await()
                 val hours = hoursDeferred.await()
+                val homeDeliveryMapped = mapHomeDelivery(metas.homeDelivery, metas.homeDeliveryRadius)
 
                 // --- THIS IS THE COMPLETE MAPPING LOGIC ---
                 // It provides a value for every parameter in the DealerInfo data class
@@ -136,16 +193,14 @@ class DealerRepositoryImpl @Inject constructor(
                         isWifi = metas.wifi
                     ),
                     dealerHours = hours,
-                    homeDelivery = HomeDelivery(
-                        isAvailable = metas.homeDelivery == "yes",
-                        isNationWide = false,
-                        radius = metas.homeDeliveryRadius ?: 0
-                    ),
+                    homeDelivery = homeDeliveryMapped,
                     homeTestDrive = HomeTestDrive(
                         isAvailable = metas.homeTestDrive ?: false,
                         radius = metas.homeTestDriveRadius ?: 0
                     ),
-                     // This comes from a separate /Gallery endpoint
+                    isVirtualAppointment = metas.virtualAppointment, // <-- MAP THIS FIELD
+                    virtualAppointmentLink = metas.virtualAppointmentLink,
+                    description = details.description
                 )
                 Result.success(combinedInfo)
             }

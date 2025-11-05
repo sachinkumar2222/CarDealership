@@ -7,8 +7,13 @@ import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.HomeTestDrive
 import com.slt.cardealership.domain.model.HourDetails
+import com.slt.cardealership.domain.model.ModifyDealerRequest
+import com.slt.cardealership.domain.model.UpdateHoursRequest
+import com.slt.cardealership.domain.model.UserPayload
 import com.slt.cardealership.domain.repo.DealerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -159,32 +164,55 @@ class InfoViewModel @Inject constructor(
     }
 
 
-    /**
-     * Specific function for Home Delivery.
-     * Uses the 'home_delivery' key from your log.
-     */
     fun updateHomeDelivery(isAvailable: Boolean, isNationWide: Boolean, radius: String) {
-        val value = if (!isAvailable) "not_available" else if (isNationWide) "nation_wide" else radius
-        // Your log shows "home_delivery" as the only key.
-        // This is strange. Let's try sending ONLY that key first.
-        // If it fails, we will add created_by/updated_by here too.
-        val updateMap = mapOf("home_delivery" to (value ?: "not_available"))
+        val updateMap = mutableMapOf<String, Any?>()
+
+        if (!isAvailable) {
+            updateMap["home_delivery"] = "no"
+            updateMap["home_delivery_radius"] = null
+        } else if (isNationWide) {
+            updateMap["home_delivery"] = "nation_wide"
+            updateMap["home_delivery_radius"] = null
+        } else {
+            // Assumes "radius" is the correct string when not nationwide
+            // If it's just the radius number, the API logic is strange
+            updateMap["home_delivery"] = "radius" // You may need to verify this string
+            updateMap["home_delivery_radius"] = radius.toIntOrNull() ?: 0
+        }
 
         Log.d(TAG, "Updating Home Delivery: $updateMap")
-        saveMetasUpdates(updateMap, "Home Delivery updated")
+        saveMetasUpdates(updateMap as Map<String, Any>, "Home Delivery updated")
     }
 
     /**
      * Specific function for Home Test Drive.
+     * This is now correct based on your new logs.
      */
     fun updateHomeTestDrive(isAvailable: Boolean, radius: String) {
-        // TODO: Verify these API keys! I am guessing.
-        val updateMap = mapOf(
-            "home_test_drive_available" to isAvailable,
+        val updateMap: Map<String, Any> = mapOf(
+            "home_test_drive" to isAvailable, // <-- FIX: Key is "home_test_drive"
             "home_test_drive_radius" to (radius.toIntOrNull() ?: 0)
         )
-        Log.w(TAG, "updateHomeTestDrive: API keys are guessed. Please verify them.")
+        Log.d(TAG, "Updating Home Test Drive: $updateMap")
         saveMetasUpdates(updateMap, "Test Drive updated")
+    }
+
+    fun updateIsVirtual(newValue: Boolean) {
+        val updateMap = mapOf("is_virtual" to newValue)
+        Log.d(TAG, "Updating Virtual Dealership: $updateMap")
+        // Call saveDealerUpdates because is_virtual is part of the main DealerDetails, not metas
+        saveDealerUpdates(updateMap, "Virtual Dealership updated")
+    }
+
+    fun updateVirtualAppointment(isAvailable: Boolean, link: String) {
+        val updateMap = mutableMapOf<String, Any?>()
+
+        updateMap["virtual_appointment"] = isAvailable
+        // Only send the link if it's available, otherwise send null or empty string
+        updateMap["virtual_appointment_link"] = if (isAvailable) link else null
+
+        Log.d(TAG, "Updating Virtual Appointment: $updateMap")
+        saveMetasUpdates(updateMap as Map<String, Any>, "Virtual Appointment updated")
     }
 
     /**
@@ -201,9 +229,9 @@ class InfoViewModel @Inject constructor(
             "wifi" to wifi,
             "parking" to parking,
             "kids_play_area" to kidsArea,
-            "is_entrance" to isEntrance, // <-- ADDED (Guessed API Key)
-            "is_seating" to isSeating, // <-- ADDED (Guessed API Key)
-            "is_restroom" to isRestroom // <-- ADDED (Guessed API Key)
+            "wheelchair_accessible_entrance" to isEntrance,
+            "wheelchair_accessible_seating" to isSeating,
+            "wheelchair_accessible_restroom" to isRestroom
         )
         Log.d(TAG, "Updating Amenities: $updateMap")
         // This will now call saveMetasUpdates, which adds the required _by and _on fields.
@@ -215,26 +243,98 @@ class InfoViewModel @Inject constructor(
         parts: List<HourDetails>,
         service: List<HourDetails>
     ) {
-        Log.d(TAG, "--- updateBusinessHours ---")
-        val updateMap = mutableMapOf<String, Any>()
+        viewModelScope.launch {
+            Log.d(TAG, "--- updateBusinessHours ---")
 
-        // Helper to add hours for a specific type (general, parts, service)
-        fun addHoursToMap(type: String, hours: List<HourDetails>) {
-            hours.forEach { day ->
-                val dayKey = day.day?.lowercase(Locale.ROOT) ?: return@forEach
-                updateMap["${type}_${dayKey}_open_time"] = day.openTime ?: ""
-                updateMap["${type}_${dayKey}_close_time"] = day.closeTime ?: ""
-                updateMap["${type}_${dayKey}_is_close"] = day.isClose ?: false
+            val currentState = _uiState.value
+            if (currentState !is InfoUiState.Success) return@launch
+            val dealerId = currentDealerId
+            if (dealerId == null) {
+                _events.send(InfoEvent.ShowError("User session error."))
+                return@launch
+            }
+
+            _uiState.value = currentState.copy(isSaving = true)
+
+            // Create the three request objects based on your logs
+            val generalRequest = UpdateHoursRequest(hour_type = "general", days = general)
+            val partsRequest = UpdateHoursRequest(hour_type = "parts", days = parts)
+            val serviceRequest = UpdateHoursRequest(hour_type = "service", days = service)
+
+            // Launch all three requests in parallel
+            val deferredGeneral = async { dealerRepository.updateBusinessHours(dealerId, generalRequest) }
+            val deferredParts = async { dealerRepository.updateBusinessHours(dealerId, partsRequest) }
+            val deferredService = async { dealerRepository.updateBusinessHours(dealerId, serviceRequest) }
+
+            // Wait for all of them to finish
+            val results = awaitAll(deferredGeneral, deferredParts, deferredService)
+
+            // Check if *any* of them failed
+            val failedRequest = results.firstOrNull { it.isFailure }
+
+            if (failedRequest != null) {
+                // At least one failed
+                val error = failedRequest.exceptionOrNull()?.message ?: "Failed to update hours"
+                Log.e(TAG, "Update failed for business hours: $error")
+                _uiState.value = currentState.copy(isSaving = false)
+                _events.send(InfoEvent.ShowError(error))
+            } else {
+                // All succeeded
+                Log.d(TAG, "Update successful for all hours")
+                _events.send(InfoEvent.ShowSuccess("Business hours updated"))
+                fetchDealerInfo() // Refresh data
             }
         }
+    }
 
-        // Add all 3 types to the map
-        addHoursToMap("general", general)
-        addHoursToMap("parts", parts)
-        addHoursToMap("service", service)
+    fun requestDealerTypeChange(newDealerType: String) {
+        viewModelScope.launch {
+            Log.d(TAG, "--- requestDealerTypeChange: $newDealerType ---")
 
-        Log.d(TAG, "Updating Business Hours with map: $updateMap")
-        // Call the 'metas' endpoint, as hours are metadata
-        saveMetasUpdates(updateMap, "Business hours updated")
+            val currentState = _uiState.value
+            if (currentState !is InfoUiState.Success) return@launch
+            val dealerId = currentDealerId
+            if (dealerId == null) {
+                _events.send(InfoEvent.ShowError("User session error."))
+                return@launch
+            }
+
+            _uiState.value = currentState.copy(isSaving = true)
+
+            // Get user info from SessionManager
+            // TODO: You need to implement getFirstName(), getLastName(), getEmail() in SessionManager
+            val user = UserPayload(
+                first_name = sessionManager.getFirstName() ?: "Saichin", // Hardcoded fallback
+                last_name = sessionManager.getLastName() ?: "Singh",   // Hardcoded fallback
+                email = sessionManager.getEmail() ?: "sachinsingh@slt.work" // Hardcoded fallback
+            )
+
+            // Build the complex request from the current state, matching your log
+            val request = ModifyDealerRequest(
+                dealer_id = dealerId.toString(),
+                dealer_key = "dealer_type",
+                old_value = currentState.dealerInfo.dealerType ?: "Independent",
+                new_value = newDealerType,
+                dealer_name = currentState.dealerInfo.name ?: "",
+                city_name = currentState.dealerInfo.city ?: "",
+                state_name = currentState.dealerInfo.state ?: "",
+                zip_code = currentState.dealerInfo.zipCode ?: "",
+                user = user
+            )
+
+            Log.d(TAG, "Submitting dealer change request: $request")
+
+            dealerRepository.requestDealerUpdate(request)
+                .onSuccess {
+                    Log.d(TAG, "Update request successful")
+                    _events.send(InfoEvent.ShowSuccess("Dealer type change requested!"))
+                    fetchDealerInfo() // Refresh data
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Update request failed", error)
+                    _uiState.value = currentState.copy(isSaving = false)
+                    _events.send(InfoEvent.ShowError(error.message ?: "Update failed"))
+                }
+        }
     }
 }

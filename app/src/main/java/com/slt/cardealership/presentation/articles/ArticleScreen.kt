@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,10 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.presentation.home.HomeRoutes
@@ -240,21 +245,18 @@ fun EmptyArticleState() {
 
 @Composable
 fun LoadingAnimation() {
-    // This builder is necessary for Coil to know how to handle GIFs
-    val imageLoader = ImageLoader.Builder(LocalContext.current)
-        .components {
-            if (SDK_INT >= 28) {
-                add(AnimatedImageDecoder.Factory())
-            } else {
-                add(GifDecoder.Factory())
-            }
-        }
-        .build()
+    // 1. Load the Lottie animation composition from your assets folder
+    val composition by rememberLottieComposition(LottieCompositionSpec.Asset("lott.json")) // <-- Replace with your JSON file name
 
-    AsyncImage(
-        model = R.drawable.newloading, // <-- Replace 'loader' with your GIF file name
-        contentDescription = "Loading...",
-        imageLoader = imageLoader,
-        modifier = Modifier.size(180.dp) // Adjust size as needed
-    )
+    // 2. Display the Lottie animation
+    Box(
+        modifier = Modifier.fillMaxSize(), // Center the animation if desired
+        contentAlignment = Alignment.Center
+    ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever, // Loop the animation indefinitely
+            modifier = Modifier.size(200.dp) // Adjust size as needed
+        )
+    }
 }

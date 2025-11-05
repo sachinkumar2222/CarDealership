@@ -21,8 +21,11 @@ data class DealerInfo(
     val amenities: Amenities?,
     val dealerHours: List<DealerHours>?,
     val homeDelivery: HomeDelivery?, // <-- FIX: Parameter now exists
-    val homeTestDrive: HomeTestDrive? // <-- FIX: Parameter now exists
-    // Note: `showroomImages` and the old `image_url` are removed for now to match the repository
+    val homeTestDrive: HomeTestDrive?, // <-- FIX: Parameter now exists
+    val isVirtualAppointment: Boolean?, // <-- ADD THIS FIELD (from new info)
+    val virtualAppointmentLink: String?,
+    @SerializedName("description")
+    val description: String? = null
 )
 
 // 2. API RESPONSE MODELS - Contain all the fields your repository is trying to read.
@@ -30,6 +33,8 @@ data class DealerDetailsResponse(
     val id: Long,
     val name: String?,
     val phone: String?,
+    @SerializedName("description") // <--- ENSURE THIS IS PRESENT AND CORRECT
+    val description: String?,
     @SerializedName("website_url") val websiteUrl: String?,
     val address: String?,
     @SerializedName("state_name") val stateName: String?,
@@ -39,7 +44,9 @@ data class DealerDetailsResponse(
     @SerializedName("is_claimed") val isClaimed: Boolean?,
     @SerializedName("is_virtual") val isVirtual: Boolean?,
     @SerializedName("image_url") val imageUrl: String?, // <-- FIX: Field now exists
-    val description: String? // <-- FIX: Field now exists
+    @SerializedName("virtual_appointment") val virtualAppointment: Boolean?, // <-- ADD THIS FIELD
+    @SerializedName("virtual_appointment_link") val virtualAppointmentLink: String? // <-- ADD THIS FIELD
+
 )
 
 data class DealerMetasResponse(
@@ -54,21 +61,23 @@ data class DealerMetasResponse(
     @SerializedName("home_delivery") val homeDelivery: String?,
     @SerializedName("home_delivery_radius") val homeDeliveryRadius: Int?,
     @SerializedName("home_test_drive") val homeTestDrive: Boolean?,
-    @SerializedName("home_test_drive_radius") val homeTestDriveRadius: Int?
+    @SerializedName("home_test_drive_radius") val homeTestDriveRadius: Int?,
+    @SerializedName("virtual_appointment") val virtualAppointment: Boolean?,
+    @SerializedName("virtual_appointment_link") val virtualAppointmentLink: String?
 )
 
 
 // 3. HELPER MODELS (These should already be correct)
 data class DealerHours(
-    @SerializedName("hours_type") val hoursType: String?,
-    @SerializedName("hourDetails") val hourDetails: List<HourDetails>?
+    @SerializedName("hour_type") val hoursType: String?,
+    @SerializedName("days") val hourDetails: List<HourDetails>?
 )
 
 data class HourDetails(
     val day: String?,
     @SerializedName("open_time") val openTime: String?,
     @SerializedName("close_time") val closeTime: String?,
-    @SerializedName("is_close") val isClose: Boolean?
+    @SerializedName("is_closed") val isClose: String?
 )
 
 data class Amenities(

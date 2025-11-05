@@ -20,12 +20,14 @@ import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.GalleryListResponse
 import com.slt.cardealership.domain.model.GalleryResponseObject
 import com.slt.cardealership.domain.model.MapSeoTagsRequest
+import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.PostListResponse
 import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.SeoTagListResponse
 import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
+import com.slt.cardealership.domain.model.UpdateHoursRequest
 import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleListResponse
@@ -64,6 +66,17 @@ interface ApiService {
     suspend fun updateDealerMetas(
         @Path("dealerId") dealerId: Long,
         @Body body: Map<String,@JvmSuppressWildcards Any>
+    ): Response<Unit>
+
+    @POST("dealer-api/Dealers/{dealerId}/Hours")
+    suspend fun updateBusinessHours(
+        @Path("dealerId") dealerId: Long,
+        @Body request: UpdateHoursRequest // <-- Use new request model
+    ): Response<Unit>
+
+    @POST("dealer-api/dealer-requests/modify-dealer")
+    suspend fun requestDealerUpdate(
+        @Body request: ModifyDealerRequest
     ): Response<Unit>
 
 

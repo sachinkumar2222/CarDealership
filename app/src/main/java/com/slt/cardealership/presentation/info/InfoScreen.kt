@@ -31,29 +31,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign // <-- IMPORT ADDED
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import coil3.ImageLoader
 import coil3.compose.AsyncImage
-import coil3.gif.AnimatedImageDecoder
-import coil3.gif.GifDecoder
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Amenities
-import com.slt.cardealership.domain.model.DealerCategory
 import com.slt.cardealership.domain.model.DealerHours
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.HomeDelivery
 import com.slt.cardealership.domain.model.HomeTestDrive
 import com.slt.cardealership.domain.model.HourDetails
-import com.slt.cardealership.ui.theme.CarDealershipTheme
-import androidx.compose.foundation.Canvas // <-- NEW IMPORT
-import androidx.compose.ui.geometry.Offset // <-- NEW IMPORT
-import androidx.compose.ui.geometry.Size // <-- NEW IMPORT
-import androidx.compose.ui.graphics.drawscope.Stroke // <-- NEW IMPORT
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants

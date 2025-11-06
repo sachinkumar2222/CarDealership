@@ -5,6 +5,7 @@ import com.slt.cardealership.domain.model.AddSeoTagRequest
 import com.slt.cardealership.domain.model.Advertisement
 import com.slt.cardealership.domain.model.AdvertisementGalleryResponse
 import com.slt.cardealership.domain.model.AdvertisementGoal
+import com.slt.cardealership.domain.model.DetailedUserProfile
 import com.slt.cardealership.domain.model.AdvertisementGoalType
 import com.slt.cardealership.domain.model.AdvertisementListResponse
 import com.slt.cardealership.domain.model.Banner
@@ -28,6 +29,8 @@ import com.slt.cardealership.domain.model.SeoTagListResponse
 import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import com.slt.cardealership.domain.model.UpdateHoursRequest
+import com.slt.cardealership.domain.model.UserProfile
+import com.slt.cardealership.domain.model.UserProfileUpdateRequest
 import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleListResponse
@@ -54,6 +57,20 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
+
+    @GET("organizations-api/businessListingUserAuthorize") // <--- CHANGED TO @GET
+    suspend fun getUserAuthorization(): UserProfile
+
+    @GET("organizations-api/users/{userId}") // <--- NEW API CALL with Path parameter
+    suspend fun getDetailedUserProfile(@Path("userId") userId: Long): DetailedUserProfile
+
+    @Multipart // 1. Add @Multipart
+    @PUT("organizations-api/users/{userId}")
+    suspend fun putUserProfile(
+        @Path("userId") userId: Long,
+        // 2. Change from @Body to @PartMap of type Map<String, RequestBody>
+        @PartMap parts: Map<String, @JvmSuppressWildcards RequestBody>
+    ): DetailedUserProfile
 
     @FormUrlEncoded // <-- FIX 1: Change to @Multipart
     @PATCH("dealer-api/Dealers/{dealerId}")

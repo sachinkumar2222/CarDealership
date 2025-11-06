@@ -8,6 +8,7 @@ import com.slt.cardealership.domain.model.AdvertisementImage
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.DealerMetasResponse
+import com.slt.cardealership.domain.model.DetailedUserProfile
 import com.slt.cardealership.domain.model.EvoxImageResponse
 import com.slt.cardealership.domain.model.FaqDetails
 import com.slt.cardealership.domain.model.FaqItem
@@ -19,6 +20,8 @@ import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.UpdateHoursRequest
+import com.slt.cardealership.domain.model.UserProfile
+import com.slt.cardealership.domain.model.UserProfileUpdateRequest
 import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleModel
@@ -27,9 +30,13 @@ import okhttp3.RequestBody
 import java.io.File
 
 interface DealerRepository {
+
+
     suspend fun getCombinedDealerInfo(dealerId: Long): Result<DealerInfo>
     suspend fun getPosts(dealerId: Long): Result<List<Post>>
     suspend fun getDealerMetas(dealerId: Long): DealerMetasResponse
+    suspend fun getFullUserProfile(): Result<DetailedUserProfile>
+    suspend fun updateUserProfile(userId: Long, request: UserProfileUpdateRequest): Result<DetailedUserProfile>
 
     // Banner Functions
     suspend fun getBanners(dealerId: Long): Result<List<Banner>>

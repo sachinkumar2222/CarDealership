@@ -7,9 +7,11 @@ import com.slt.cardealership.domain.model.Advertisement
 import com.slt.cardealership.domain.model.Amenities
 import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.Banner
+import com.slt.cardealership.domain.model.DetailedUserProfile
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleOptionsResponse
 import com.slt.cardealership.domain.model.AdvertisementGoalType
+import com.slt.cardealership.domain.model.UserProfile
 import com.slt.cardealership.domain.model.AdvertisementDomain
 import com.slt.cardealership.domain.model.AdvertisementGoal
 import com.slt.cardealership.domain.model.AdvertisementImage
@@ -41,6 +43,8 @@ import com.slt.cardealership.domain.model.MapSeoTagsRequest
 import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import com.slt.cardealership.domain.model.UpdateHoursRequest
+import com.slt.cardealership.domain.model.UserProfileUpdateRequest
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
 import org.json.JSONObject
 import retrofit2.HttpException
@@ -64,6 +68,67 @@ class DealerRepositoryImpl @Inject constructor(
 
     override suspend fun getDealerMetas(dealerId: Long): DealerMetasResponse {
         return apiService.getDealerMetas(dealerId)
+    }
+
+    override suspend fun getFullUserProfile(): Result<DetailedUserProfile> {
+        return try {
+            // Step 1: Get the user ID from the authorization endpoint
+            val authorizationResponse = apiService.getUserAuthorization()
+            val userId = authorizationResponse.userId
+
+            // Step 2: Use the userId to get the detailed profile
+            val detailedProfileResponse = apiService.getDetailedUserProfile(userId)
+
+            Result.success(detailedProfileResponse)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Helper function to convert any value to a 'text/plain' RequestBody
+    private fun Any?.toTextRequestBody(): RequestBody {
+        return (this?.toString() ?: "").toRequestBody("text/plain".toMediaType())
+    }
+
+    override suspend fun updateUserProfile(userId: Long, request: UserProfileUpdateRequest): Result<DetailedUserProfile> {
+
+        // 1. Create the map that @PartMap expects
+        val partMap = mutableMapOf<String, RequestBody>()
+
+        partMap["first_name"] = request.firstName.toTextRequestBody()
+        partMap["last_name"] = request.lastName.toTextRequestBody()
+        partMap["username"] = request.username.toTextRequestBody()
+        partMap["role_id"] = request.roleId.toTextRequestBody()
+        partMap["created_by"] = request.createdBy.toTextRequestBody()
+        partMap["created_on"] = request.createdOn.toTextRequestBody()
+        partMap["updated_by"] = request.updatedBy.toTextRequestBody()
+        partMap["updated_on"] = request.updatedOn.toTextRequestBody()
+        partMap["organization_id"] = request.organizationId.toTextRequestBody()
+        partMap["department_id"] = request.departmentId.toTextRequestBody()
+        partMap["designation_id"] = request.designationId.toTextRequestBody()
+        partMap["image_url"] = request.imageUrl.toTextRequestBody()
+        partMap["dealer_id"] = request.dealerId.toTextRequestBody()
+        partMap["dealername"] = request.dealerName.toTextRequestBody()
+        partMap["is_active"] = request.isActive.toTextRequestBody()
+        partMap["gender"] = request.gender.toTextRequestBody()
+        partMap["language"] = request.language.toTextRequestBody()
+        partMap["phone"] = request.phone.toTextRequestBody()
+        partMap["address"] = request.address.toTextRequestBody()
+
+        // Note: The form-data log showed 'dob' and 'doj'.
+        // Your data class does not have them. If you need them,
+        // you must add them to UserProfileUpdateRequest.
+        // Example:
+         partMap["dob"] = request.dob.toTextRequestBody()
+         partMap["doj"] = request.doj.toTextRequestBody()
+
+        // 3. Make the API call with the new 'partMap'
+        return try {
+            val response = apiService.putUserProfile(userId, partMap)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     override suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, String>): Result<Unit> {

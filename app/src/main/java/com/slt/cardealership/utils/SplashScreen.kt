@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slt.cardealership.R
+import com.slt.cardealership.presentation.info.LoadingAnimation
 import com.slt.cardealership.ui.theme.CarDealershipTheme
 
 @Composable
@@ -57,12 +58,7 @@ fun SplashScreen(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            CircularProgressIndicator(
-                color = Color(0xFF2196F3),
-                strokeWidth = 6.dp,
-                modifier = Modifier.size(48.dp)
-            )
-
+            LoadingAnimation()
             Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = "Signing in...",

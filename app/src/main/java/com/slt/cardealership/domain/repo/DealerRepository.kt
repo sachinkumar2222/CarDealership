@@ -1,13 +1,16 @@
 package com.slt.cardealership.domain.repo
 
+import android.net.Uri
 import com.slt.cardealership.domain.model.Advertisement
-import com.slt.cardealership.domain.model.AdvertisementDomain
 import com.slt.cardealership.domain.model.AdvertisementGoal
 import com.slt.cardealership.domain.model.AdvertisementGoalType
 import com.slt.cardealership.domain.model.AdvertisementImage
 import com.slt.cardealership.domain.model.Banner
+import com.slt.cardealership.domain.model.ChangePasswordRequest
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.DealerMetasResponse
+import com.slt.cardealership.domain.model.Department
+import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.domain.model.DetailedUserProfile
 import com.slt.cardealership.domain.model.EvoxImageResponse
 import com.slt.cardealership.domain.model.FaqDetails
@@ -15,12 +18,12 @@ import com.slt.cardealership.domain.model.FaqItem
 import com.slt.cardealership.domain.model.FaqRequest
 import com.slt.cardealership.domain.model.GalleryImage
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
+import com.slt.cardealership.domain.model.ManageUsersResponse
 import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.UpdateHoursRequest
-import com.slt.cardealership.domain.model.UserProfile
 import com.slt.cardealership.domain.model.UserProfileUpdateRequest
 import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
@@ -37,6 +40,42 @@ interface DealerRepository {
     suspend fun getDealerMetas(dealerId: Long): DealerMetasResponse
     suspend fun getFullUserProfile(): Result<DetailedUserProfile>
     suspend fun updateUserProfile(userId: Long, request: UserProfileUpdateRequest): Result<DetailedUserProfile>
+    suspend fun updateUserProfileWithImage(
+        userId: Long,
+        parts: Map<String, @JvmSuppressWildcards RequestBody>
+    ): Result<DetailedUserProfile>
+    suspend fun getUsers(
+        page: Int,
+        itemsPerPage: Int,
+        roleId: Int
+    ): Result<ManageUsersResponse>
+
+    suspend fun changeUserPassword(
+        userId: Long,
+        request: ChangePasswordRequest
+    ): Result<Unit>
+
+    suspend fun getUserDetails(userId: Long): Result<DetailedUserProfile>
+
+    suspend fun updateUser(
+        userId: Long,
+        parts: Map<String, @JvmSuppressWildcards RequestBody>
+    ): Result<DetailedUserProfile>
+
+    suspend fun addUser(
+        firstName: String,
+        lastName: String,
+        username: String, // email
+        password: String,
+        phone: String?,
+        imageUri: Uri?, // Pass the Uri of the selected image
+        departmentId: Int?,
+        designationId: Int
+    ): Result<Long>
+
+    suspend fun getDepartments(): Result<List<Department>>
+
+    suspend fun getDesignations(departmentId: Int): Result<List<Designation>>
 
     // Banner Functions
     suspend fun getBanners(dealerId: Long): Result<List<Banner>>

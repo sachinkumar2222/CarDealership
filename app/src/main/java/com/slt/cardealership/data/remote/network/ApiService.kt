@@ -10,9 +10,12 @@ import com.slt.cardealership.domain.model.AdvertisementGoalType
 import com.slt.cardealership.domain.model.AdvertisementListResponse
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.BannerListResponse
+import com.slt.cardealership.domain.model.ChangePasswordRequest
 import com.slt.cardealership.domain.model.DealerDetailsResponse
 import com.slt.cardealership.domain.model.DealerHours
 import com.slt.cardealership.domain.model.DealerMetasResponse
+import com.slt.cardealership.domain.model.Department
+import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.domain.model.EvoxImageResponse
 import com.slt.cardealership.domain.model.FaqDetails
 import com.slt.cardealership.domain.model.FaqListResponse
@@ -20,6 +23,7 @@ import com.slt.cardealership.domain.model.FaqRequest
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.GalleryListResponse
 import com.slt.cardealership.domain.model.GalleryResponseObject
+import com.slt.cardealership.domain.model.ManageUsersResponse
 import com.slt.cardealership.domain.model.MapSeoTagsRequest
 import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.Post
@@ -64,13 +68,27 @@ interface ApiService {
     @GET("organizations-api/users/{userId}") // <--- NEW API CALL with Path parameter
     suspend fun getDetailedUserProfile(@Path("userId") userId: Long): DetailedUserProfile
 
-    @Multipart // 1. Add @Multipart
-    @PUT("organizations-api/users/{userId}")
-    suspend fun putUserProfile(
-        @Path("userId") userId: Long,
-        // 2. Change from @Body to @PartMap of type Map<String, RequestBody>
+    @POST("organizations-api/users/changePassword/{id}")
+    suspend fun changeUserPassword(
+        @Path("id") userId: Long,
+        @Body request: ChangePasswordRequest
+    ): Response<Unit>
+
+    @GET("systems-api/departments/getAll")
+    suspend fun getDepartments(
+        @Query("role_type") roleType: String = "dealer"
+    ): List<Department>
+
+    @GET("systems-api/designations/getAll")
+    suspend fun getDesignations(
+        @Query("department_id") departmentId: Int
+    ): List<Designation>
+
+    @Multipart
+    @POST("organizations-api/users")
+    suspend fun addUser(
         @PartMap parts: Map<String, @JvmSuppressWildcards RequestBody>
-    ): DetailedUserProfile
+    ): Long
 
     @FormUrlEncoded // <-- FIX 1: Change to @Multipart
     @PATCH("dealer-api/Dealers/{dealerId}")
@@ -491,5 +509,21 @@ interface ApiService {
         @Path("id") faqId: Int,
         @Query("type") type: String // You will need to determine what this 'type' is
     ): Response<Unit>
+
+    @GET("organizations-api/users")
+    suspend fun getUsers(
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("dealer_id") dealerId: Long?, // <-- ADDED this parameter
+        @Query("role_id") roleId: Int // <-- ADDED this parameter
+    ): ManageUsersResponse
+
+    @Multipart
+    @PUT("organizations-api/users/{userId}")
+    suspend fun putUserProfile(
+        @Path("userId") userId: Long,
+        // The payload is sent as a Map of RequestBody parts
+        @PartMap parts: Map<String, @JvmSuppressWildcards RequestBody>
+    ): DetailedUserProfile
 
 }

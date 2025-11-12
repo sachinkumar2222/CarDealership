@@ -17,7 +17,7 @@ data class UserProfileUpdateRequest(
     @SerializedName("image_url") val imageUrl: String?, // Can be empty string
     @SerializedName("dealer_id") val dealerId: Long?, // Nullable
     @SerializedName("dealername") val dealerName: String?, // Can be empty string
-    @SerializedName("is_active") val isActive: Boolean, // Boolean
+    @SerializedName("is_active") val isActive: String?, // Boolean
     @SerializedName("gender") val gender: String?, // Can be empty string
     @SerializedName("language") val language: String?, // Can be empty string
     @SerializedName("phone") val phone: String?, // Can be empty string

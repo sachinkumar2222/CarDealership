@@ -103,19 +103,16 @@ fun EditProfileScreen(
     // val blueGradient = ... // This is now defined in the Form
 
     // Handle UI side effects based on ViewModel state
-    LaunchedEffect(uiState) {
-        when (uiState) {
-            is ProfileUiState.SaveSuccess -> {
-                Toast.makeText(context, (uiState as ProfileUiState.SaveSuccess).message, Toast.LENGTH_SHORT).show()
-                onSaveSuccess() // Trigger navigation back or other success action
+    LaunchedEffect(key1 = true) {
+        viewModel.eventFlow.collect { event ->
+            when (event) {
+                is UiEvent.ShowToast -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+                is UiEvent.NavigateBack -> {
+                    onSaveSuccess() // This will call navController.popBackStack()
+                }
             }
-            is ProfileUiState.Error -> {
-                Toast.makeText(context, (uiState as ProfileUiState.Error).message, Toast.LENGTH_LONG).show()
-            }
-            is ProfileUiState.SaveError -> {
-                Toast.makeText(context, (uiState as ProfileUiState.SaveError).message, Toast.LENGTH_LONG).show()
-            }
-            else -> {} // Do nothing for Loading, Saving, Success (initial load)
         }
     }
 

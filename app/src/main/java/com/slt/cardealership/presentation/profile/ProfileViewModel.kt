@@ -1,52 +1,105 @@
 package com.slt.cardealership.presentation.profile
 
+import android.util.Log // <-- 1. THE LOG IMPORT IS HERE
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.SavedStateHandle
 import com.slt.cardealership.data.remote.network.ApiService
 import com.slt.cardealership.domain.model.DetailedUserProfile
-import com.slt.cardealership.domain.model.UserProfileUpdateRequest // Import the request model
+import com.slt.cardealership.domain.model.UserProfileUpdateRequest
 import com.slt.cardealership.domain.repo.DealerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update // Import update for MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.ByteArrayOutputStream
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val repository: DealerRepository,
-    private val apiService: ApiService
+    private val apiService: ApiService,
+    @ApplicationContext private val context: Context,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    // UI state for both profile view and edit screen (Loading, Success, Error, Saving, SaveSuccess, SaveError)
+    companion object {
+        private const val PROFILE_KEY = "editableProfile"
+        private const val USER_ID_KEY = "currentUserId"
+        private const val TAG = "ProfileViewModel_DEBUG" // <-- 2. THE LOG TAG IS HERE
+    }
+
+    // UI state for both profile view and edit screen
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Loading)
-    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow() // Expose as read-only
+    val uiState: StateFlow<ProfileUiState> = _uiState
 
-    // Holds the currently displayed/editable profile data.
-    // When editing, this acts as the "draft" that the UI modifies.
-    private val _editableProfile = MutableStateFlow<DetailedUserProfile?>(null)
-    val editableProfile: StateFlow<DetailedUserProfile?> = _editableProfile.asStateFlow() // Expose as read-only
+    private val _eventFlow = MutableSharedFlow<UiEvent>()
+    val eventFlow = _eventFlow.asSharedFlow()
 
-    private var _currentUserId: Long? = null // To store the user ID fetched from authorization
+    // This flow will now automatically save and restore the profile
+    private val _editableProfile = savedStateHandle.getStateFlow<DetailedUserProfile?>(PROFILE_KEY, null)
+    val editableProfile: StateFlow<DetailedUserProfile?> = _editableProfile
+
+    private val _selectedImageUri = MutableStateFlow<Uri?>(null) // This is temporary, fine to lose
+
+    // RESTORE YOUR USER ID
+    private var _currentUserId: Long? = savedStateHandle.get<Long>(USER_ID_KEY)
+
 
     init {
-        fetchFullUserProfile()
+        // --- 3. THE LOGS ARE HERE ---
+        Log.d(TAG, "-------------------------")
+        Log.d(TAG, "ViewModel INIT block running...")
+
+        // Let's check what SavedStateHandle is giving us BEFORE the 'if' check
+        val restoredProfile: DetailedUserProfile? = savedStateHandle.get<DetailedUserProfile>(PROFILE_KEY)
+        val restoredUserId: Long? = savedStateHandle.get<Long>(USER_ID_KEY)
+
+        Log.d(TAG, "Restored Profile IS NULL: ${restoredProfile == null}")
+        Log.d(TAG, "Restored UserID IS NULL: ${restoredUserId == null}")
+        Log.d(TAG, "Restored UserID Value: $restoredUserId")
+
+
+        if (restoredProfile != null && restoredUserId != null) {
+            Log.d(TAG, "RESULT: Restoring data from SavedStateHandle.")
+            _uiState.value = ProfileUiState.Success(restoredProfile)
+        } else {
+            Log.d(TAG, "RESULT: Data is null or missing. Fetching from network...")
+            fetchFullUserProfile()
+        }
+        Log.d(TAG, "-------------------------")
     }
 
     fun fetchFullUserProfile() {
+        Log.d(TAG, "fetchFullUserProfile() CALLED.") // <-- 4. LOG IS HERE
         _uiState.value = ProfileUiState.Loading
         viewModelScope.launch {
             try {
                 // First, get the user's ID
                 val authorizationResponse = apiService.getUserAuthorization()
                 _currentUserId = authorizationResponse.userId
+                savedStateHandle[USER_ID_KEY] = _currentUserId // SAVE THE ID
 
                 // Then, fetch the detailed profile using the ID
                 val userProfile = apiService.getDetailedUserProfile(_currentUserId!!) // Using the specific ID
 
-                _editableProfile.value = userProfile // Set the initial editable draft
+                savedStateHandle[PROFILE_KEY] = userProfile // SAVE THE PROFILE
                 _uiState.value = ProfileUiState.Success(userProfile)
             } catch (e: Exception) {
                 _uiState.value = ProfileUiState.Error(e.localizedMessage ?: "Failed to load profile")
@@ -54,68 +107,113 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    private fun String.toTextRequestBody(): RequestBody {
+        return this.toRequestBody("text/plain".toMediaTypeOrNull())
+    }
+
+    fun onImageSelected(uri: Uri?) {
+        if (uri == null) return
+        _selectedImageUri.value = uri // Save the Uri
+
+        // Update the UI preview immediately *on the saved state*
+        // This will save the local URI string to be restored
+        savedStateHandle[PROFILE_KEY] = _editableProfile.value?.copy(imageUrl = uri.toString())
+
+        // Automatically call onSaveProfile to upload the new image
+        onSaveProfile()
+    }
+
     fun onSaveProfile() {
-        // Ensure we have a user ID and editable profile data before saving
         val userId = _currentUserId
-        val currentDraft = _editableProfile.value
+        val currentDraft = _editableProfile.value // Get from the flow
 
         if (userId == null || currentDraft == null) {
             _uiState.value = ProfileUiState.Error("User ID or profile data is missing for update.")
             return
         }
 
-        _uiState.value = ProfileUiState.Saving // Indicate that saving is in progress
+        _uiState.value = ProfileUiState.Saving
         viewModelScope.launch {
             try {
-                // Construct the update request from the current editable draft
-                val request = UserProfileUpdateRequest(
-                    firstName = currentDraft.firstName,
-                    lastName = currentDraft.lastName,
-                    username = currentDraft.username,
-                    roleId = currentDraft.roleId,
-                    createdBy = currentDraft.createdBy ?: 0L, // Default to 0 if null
-                    createdOn = currentDraft.createdOn ?: (System.currentTimeMillis() / 1000), // Default if null
-                    updatedBy = userId, // The user performing the update
-                    updatedOn = System.currentTimeMillis() / 1000, // Current timestamp
-                    organizationId = currentDraft.organizationId,
-                    departmentId = currentDraft.departmentId,
-                    designationId = currentDraft.designationId,
-                    imageUrl = currentDraft.imageUrl.orEmpty(),
-                    dealerId = currentDraft.dealerId,
-                    dealerName = currentDraft.dealerName.orEmpty(),
-                    isActive = currentDraft.isActive,
-                    gender = currentDraft.gender,
-                    language = currentDraft.language,
-                    phone = currentDraft.phone,
-                    address = currentDraft.address,
-                    dob = currentDraft.dob,
-                    doj = currentDraft.doj
-                )
+                // --- Build the multipart map ---
+                val parts = mutableMapOf<String, RequestBody>()
 
-                repository.updateUserProfile(userId, request)
-                    .onSuccess { partialUpdateResponse -> // Renamed for clarity
+                parts["first_name"] = currentDraft.firstName.toTextRequestBody()
+                parts["last_name"] = currentDraft.lastName.toTextRequestBody()
+                parts["phone"] = currentDraft.phone.orEmpty().toTextRequestBody()
+                parts["address"] = currentDraft.address.orEmpty().toTextRequestBody()
+                parts["dob"] = (currentDraft.dob?.toTimestampInSeconds() ?: 0L).toString().toTextRequestBody()
+                parts["doj"] = (currentDraft.doj?.toTimestampInSeconds() ?: 0L).toString().toTextRequestBody()
+                parts["username"] = currentDraft.username.toTextRequestBody()
+                parts["role_id"] = currentDraft.roleId.toString().toTextRequestBody()
+                parts["created_by"] = (currentDraft.createdBy ?: 0L).toString().toTextRequestBody()
+                parts["created_on"] = (currentDraft.createdOn ?: 0L).toString().toTextRequestBody()
+                parts["updated_by"] = userId.toString().toTextRequestBody()
+                parts["updated_on"] = (System.currentTimeMillis() / 1000).toString().toTextRequestBody()
+                parts["organization_id"] = currentDraft.organizationId.toString().toTextRequestBody()
+                parts["department_id"] = (currentDraft.departmentId ?: 0).toString().toTextRequestBody()
+                parts["designation_id"] = (currentDraft.designationId ?: 0).toString().toTextRequestBody()
+                parts["dealer_id"] = (currentDraft.dealerId ?: 0L).toString().toTextRequestBody()
+                parts["dealer_name"] = currentDraft.dealerName.orEmpty().toTextRequestBody()
+                parts["gender"] = currentDraft.gender.orEmpty().toTextRequestBody()
+                parts["language"] = currentDraft.language.orEmpty().toTextRequestBody()
+                val isActiveValue = currentDraft.isActive.toString() // This will be "true"
+                Log.d(TAG, "onSaveProfile: Sending 'is_active' with value: $isActiveValue")
+               // parts["is_active"] = isActiveValue.toTextRequestBody()
 
-                        // --- THIS IS THE FIX ---
-                        // Don't replace the whole profile.
-                        // Instead, update the current draft with the *few* fields the server returned.
-                        _editableProfile.update { currentProfile ->
-                            currentProfile?.copy(
-                                firstName = partialUpdateResponse.firstName,
-                                lastName = partialUpdateResponse.lastName,
-                                imageUrl = partialUpdateResponse.imageUrl
-                            )
-                        }
+                // --- 6. UPDATED IMAGE COMPRESSION CODE ---
+                val imageUri = _selectedImageUri.value
+                if (imageUri != null) {
+                    Log.d(TAG, "onSaveProfile: New image found. Compressing...")
 
-                        // Now set the success states
+                    // 1. Get Bitmap from Uri
+                    val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, imageUri))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        android.provider.MediaStore.Images.Media.getBitmap(context.contentResolver, imageUri)
+                    }
+
+                    // 2. Compress the Bitmap
+                    val outputStream = ByteArrayOutputStream()
+                    // 80% JPEG quality. Adjust '80' lower if 1.59MB was still too large.
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+                    val compressedFileBytes = outputStream.toByteArray()
+
+                    Log.d(TAG, "onSaveProfile: Compressed image size: ${compressedFileBytes.size} bytes")
+
+                    // 3. Create RequestBody from compressed bytes
+                    val requestFile = compressedFileBytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
+
+                    parts["image_url\"; filename=\"profile.jpg"] = requestFile
+
+                    // Clear the selected URI so we don't re-upload it by mistake
+                    _selectedImageUri.value = null
+
+                } else {
+                    Log.d(TAG, "onSaveProfile: No new image selected. Sending original URL.")
+                    // No new image, send back the original URL
+                    parts["image_url"] = currentDraft.imageUrl.orEmpty().toTextRequestBody()
+                }
+
+                repository.updateUserProfileWithImage(userId, parts)
+                    .onSuccess { partialUpdateResponse ->
+
+                        // --- 6. FIXING THE "VALUES NOT UPDATING" BUG ---
+                        val updatedProfile = currentDraft.copy(
+                            imageUrl = partialUpdateResponse.imageUrl
+                        )
+                        savedStateHandle[PROFILE_KEY] = updatedProfile // <-- SAVE IT
+
                         _uiState.value = ProfileUiState.SaveSuccess("Profile updated successfully!")
-
-                        // And update the main Success state with our *newly merged* full draft
-                        _editableProfile.value?.let {
-                            _uiState.value = ProfileUiState.Success(it)
-                        }
+                        _uiState.value = ProfileUiState.Success(updatedProfile)
+                        _eventFlow.emit(UiEvent.ShowToast("Profile updated successfully!"))
+                        _eventFlow.emit(UiEvent.NavigateBack)// Update UI
+                        _selectedImageUri.value = null // Clear the selected image
                     }
                     .onFailure { error ->
                         _uiState.value = ProfileUiState.SaveError(error.localizedMessage ?: "Failed to update profile.")
+                        _eventFlow.emit(UiEvent.ShowToast(error.localizedMessage ?: "Failed to update profile."))
                     }
             } catch (e: Exception) {
                 _uiState.value = ProfileUiState.SaveError(e.localizedMessage ?: "Failed to update profile.")
@@ -123,25 +221,38 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Generic function to update a specific field in the editable profile draft.
-     * Use this from your UI (EditProfileScreen) to modify the profile data.
-     * Example: `viewModel.updateProfileField { it.copy(firstName = "New Name") }`
-     */
     fun updateProfileField(update: (DetailedUserProfile) -> DetailedUserProfile) {
-        _editableProfile.update { currentProfile ->
-            // Apply the update function if currentProfile is not null
-            currentProfile?.let(update)
+        savedStateHandle[PROFILE_KEY] = _editableProfile.value?.let(update)
+    }
+
+    private fun String.toTimestampInSeconds(): Long {
+        // This function converts "dd-MM-yyyy" to a Long timestamp IN SECONDS
+        return try {
+            val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.US)
+            sdf.timeZone = TimeZone.getTimeZone("UTC") // Or your server's timezone
+
+            // 1. Get time in milliseconds
+            val milliseconds = sdf.parse(this)?.time ?: 0L
+
+            // 2. Convert to seconds
+            milliseconds / 1000L
+        } catch (e: Exception) {
+            0L // Return 0 or handle error
         }
     }
 }
 
-// Updated UI State to include saving states
+// ... (Your ProfileUiState sealed class) ...
 sealed class ProfileUiState {
     object Loading : ProfileUiState()
     data class Success(val userProfile: DetailedUserProfile) : ProfileUiState()
-    object Saving : ProfileUiState() // State for when an update is in progress
-    data class SaveSuccess(val message: String) : ProfileUiState() // State for successful update
-    data class SaveError(val message: String) : ProfileUiState() // State for failed update
+    object Saving : ProfileUiState()
+    data class SaveSuccess(val message: String) : ProfileUiState()
+    data class SaveError(val message: String) : ProfileUiState()
     data class Error(val message: String) : ProfileUiState()
+}
+
+sealed interface UiEvent {
+    data class ShowToast(val message: String) : UiEvent
+    object NavigateBack : UiEvent
 }

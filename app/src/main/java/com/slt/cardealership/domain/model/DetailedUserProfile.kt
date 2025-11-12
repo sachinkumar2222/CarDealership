@@ -1,8 +1,11 @@
 package com.slt.cardealership.domain.model
 
+import android.os.Parcelable
 import com.google.gson.annotations.SerializedName
+import kotlinx.parcelize.Parcelize
 
 // This model is for the users/{id} response
+@Parcelize
 data class DetailedUserProfile(
     @SerializedName("id") val id: Long,
     @SerializedName("first_name") val firstName: String,
@@ -36,4 +39,4 @@ data class DetailedUserProfile(
     @SerializedName("dealer_id") val dealerId: Long?,
     @SerializedName("dealer_name") val dealerName: String?,
     @SerializedName("address") val address: String?
-)
+) : Parcelable

@@ -1,5 +1,6 @@
 package com.slt.cardealership.presentation.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -55,7 +56,12 @@ import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.DetailedUserProfile // Import the DetailedUserProfile
 import com.slt.cardealership.presentation.info.FullScreenError // Re-use
 import com.slt.cardealership.presentation.info.LoadingAnimation // Re-use
-import com.slt.cardealership.ui.theme.CarDealershipTheme
+import android.net.Uri
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.filled.CameraAlt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +73,14 @@ fun ProfileScreen(
     onEditProfileClick: (userId: Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri: Uri? ->
+            // --- 4. Call the ViewModel's new function ---
+            viewModel.onImageSelected(uri)
+        }
+    )
 
     Scaffold(
         topBar = {
@@ -119,7 +133,12 @@ fun ProfileScreen(
                     modifier = Modifier
                         .padding(paddingValues)
                         .fillMaxSize()
-                        .padding(horizontal = 24.dp)
+                        .padding(horizontal = 24.dp),
+                    onImageClick = {
+                        photoPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }
                 )
             }
 
@@ -133,7 +152,8 @@ fun UserProfileContent(
     userProfile: DetailedUserProfile,
     onEditProfileClick: (userId: Long) -> Unit,
     onSignOutClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onImageClick: () -> Unit
 ) {
     Column(
         modifier = modifier,
@@ -141,15 +161,36 @@ fun UserProfileContent(
     ) {
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- Profile Image (Using AsyncImage for URL or default drawable) ---
-        AsyncImage(
-            model = userProfile.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.ad_goal1,
-            contentDescription = "Profile Picture",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(120.dp)
-                .clip(CircleShape)
-        )
+        Box(
+            contentAlignment = Alignment.BottomEnd,
+            modifier = Modifier.clickable { onImageClick() } // <-- 3. APPLY CLICKABLE
+        ) {
+            AsyncImage(
+                model = userProfile.imageUrl?.takeIf { it.isNotBlank() } ?: R.drawable.ad_goal1,
+                contentDescription = "Profile Picture",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray) // Add a placeholder background
+            )
+            // --- 4. ADD THE CAMERA ICON OVERLAY ---
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black)
+                    .border(2.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt, // <-- Make sure to import this
+                    contentDescription = "Edit Profile Image",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

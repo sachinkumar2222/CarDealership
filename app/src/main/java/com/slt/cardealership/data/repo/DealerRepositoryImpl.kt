@@ -1,20 +1,24 @@
 package com.slt.cardealership.data.repo
 
+import android.net.Uri
 import android.util.Log
+import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.data.remote.network.ApiService
 import com.slt.cardealership.domain.model.AddSeoTagRequest
+import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.domain.model.Advertisement
 import com.slt.cardealership.domain.model.Amenities
 import com.slt.cardealership.domain.model.SeoTag
+import com.slt.cardealership.domain.model.Department
+import android.content.Context
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.DetailedUserProfile
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleOptionsResponse
 import com.slt.cardealership.domain.model.AdvertisementGoalType
-import com.slt.cardealership.domain.model.UserProfile
-import com.slt.cardealership.domain.model.AdvertisementDomain
 import com.slt.cardealership.domain.model.AdvertisementGoal
 import com.slt.cardealership.domain.model.AdvertisementImage
+import com.slt.cardealership.domain.model.ChangePasswordRequest
 import com.slt.cardealership.domain.model.EvoxImageResponse
 import com.slt.cardealership.domain.model.DealerCategory
 import com.slt.cardealership.domain.model.FaqItem
@@ -39,11 +43,13 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
+import com.slt.cardealership.domain.model.ManageUsersResponse
 import com.slt.cardealership.domain.model.MapSeoTagsRequest
 import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import com.slt.cardealership.domain.model.UpdateHoursRequest
 import com.slt.cardealership.domain.model.UserProfileUpdateRequest
+import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
 import org.json.JSONObject
@@ -54,13 +60,55 @@ import javax.inject.Inject
 
 class DealerRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
+    val sessionManager : SessionManager,
+    @ApplicationContext private val context: Context
 ) : DealerRepository {
+
+    override suspend fun getDepartments(): Result<List<Department>> {
+        return try {
+            val response = apiService.getDepartments(roleType = "dealer")
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
 
 
     override suspend fun getPosts(dealerId: Long): Result<List<Post>> {
         return try {
             val response = apiService.getPosts(dealerId)
             Result.success(response.list ?: emptyList())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun changeUserPassword(
+        userId: Long,
+        request: ChangePasswordRequest
+    ): Result<Unit> {
+        return try {
+            val response = apiService.changeUserPassword(userId, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to change password"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateUser(
+        userId: Long,
+        parts: Map<String, @JvmSuppressWildcards RequestBody>
+    ): Result<DetailedUserProfile> {
+        return try {
+            // Call the ApiService function
+            val response = apiService.putUserProfile(userId, parts)
+            Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -90,6 +138,84 @@ class DealerRepositoryImpl @Inject constructor(
         return (this?.toString() ?: "").toRequestBody("text/plain".toMediaType())
     }
 
+
+    override suspend fun addUser(
+        firstName: String,
+        lastName: String,
+        username: String,
+        password: String,
+        phone: String?,
+        imageUri: Uri?,
+        departmentId: Int?,
+        designationId: Int// <-- 1. ADD THIS PARAMETER
+    ): Result<Long> {
+        return try {
+            // 2. Get data from SessionManager and Profile
+            val dealerId = sessionManager.getDealerId() ?: throw Exception("Session expired: Dealer ID missing")
+            val creatorProfile = getFullUserProfile().getOrThrow()
+
+            val createdById = creatorProfile.id
+            val organizationId = creatorProfile.organizationId
+
+            // 3. Use hard-coded IDs from payload log (as you requested)
+            val roleId = 9
+            val designationId = 25
+
+            val parts = mutableMapOf<String, @JvmSuppressWildcards RequestBody>()
+            val timestamp = (System.currentTimeMillis() / 1000).toString()
+
+            parts["first_name"] = firstName.toTextRequestBody()
+            parts["last_name"] = lastName.toTextRequestBody()
+            parts["username"] = username.toTextRequestBody()
+            parts["password"] = password.toTextRequestBody()
+            parts["phone"] = phone.toTextRequestBody()
+            parts["dealer_id"] = dealerId.toString().toTextRequestBody()
+            parts["group_id"] = "null".toTextRequestBody()
+            parts["role_id"] = roleId.toString().toTextRequestBody()
+            parts["created_by"] = createdById.toString().toTextRequestBody()
+            parts["updated_by"] = createdById.toString().toTextRequestBody()
+            parts["created_on"] = timestamp.toTextRequestBody()
+            parts["updated_on"] = timestamp.toTextRequestBody()
+            parts["organization_id"] = organizationId.toString().toTextRequestBody()
+
+            // --- 4. THIS IS THE FIX ---
+            // Use the parameter instead of a hard-coded value
+            parts["department_id"] = departmentId.toString().toTextRequestBody()
+            parts["designation_id"] = designationId.toString().toTextRequestBody()
+
+            parts["is_active"] = "active".toTextRequestBody()
+
+            // ... (imageUri handling is unchanged) ...
+            if (imageUri != null) {
+                val inputStream = context.contentResolver.openInputStream(imageUri)
+                val fileBytes = inputStream?.readBytes()
+                inputStream?.close()
+                if (fileBytes == null) throw Exception("Could not read image file")
+
+                val mimeType = context.contentResolver.getType(imageUri)
+                val requestFile = fileBytes.toRequestBody(mimeType?.toMediaTypeOrNull())
+                parts["image_url"] = requestFile
+            } else {
+                parts["image_url"] = "".toTextRequestBody()
+            }
+
+            val response = apiService.addUser(parts)
+            Result.success(response)
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDesignations(departmentId: Int): Result<List<Designation>> {
+        return try {
+            val response = apiService.getDesignations(departmentId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun updateUserProfile(userId: Long, request: UserProfileUpdateRequest): Result<DetailedUserProfile> {
 
         // 1. Create the map that @PartMap expects
@@ -109,22 +235,61 @@ class DealerRepositoryImpl @Inject constructor(
         partMap["image_url"] = request.imageUrl.toTextRequestBody()
         partMap["dealer_id"] = request.dealerId.toTextRequestBody()
         partMap["dealername"] = request.dealerName.toTextRequestBody()
-        partMap["is_active"] = request.isActive.toTextRequestBody()
         partMap["gender"] = request.gender.toTextRequestBody()
         partMap["language"] = request.language.toTextRequestBody()
         partMap["phone"] = request.phone.toTextRequestBody()
         partMap["address"] = request.address.toTextRequestBody()
-
-        // Note: The form-data log showed 'dob' and 'doj'.
-        // Your data class does not have them. If you need them,
-        // you must add them to UserProfileUpdateRequest.
-        // Example:
          partMap["dob"] = request.dob.toTextRequestBody()
          partMap["doj"] = request.doj.toTextRequestBody()
 
         // 3. Make the API call with the new 'partMap'
         return try {
             val response = apiService.putUserProfile(userId, partMap)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateUserProfileWithImage(
+        userId: Long,
+        parts: Map<String, @JvmSuppressWildcards RequestBody>
+    ): Result<DetailedUserProfile> {
+        return try {
+            // This calls the SAME ApiService 'putUserProfile'
+            // but passes the map instead of the data class.
+            val response = apiService.putUserProfile(userId, parts)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getUsers(
+        page: Int,
+        itemsPerPage: Int,
+        roleId: Int
+    ): Result<ManageUsersResponse> { // <-- This is kotlin.Result
+        return try {
+            // Get the dealer_id from your session
+            val dealerId = sessionManager.getDealerId()
+                ?: return Result.failure(Exception("User session not found")) // <-- FIX 1
+
+            val response = apiService.getUsers(
+                page = page,
+                itemsPerPage = itemsPerPage,
+                dealerId = dealerId.toLong(),
+                roleId = roleId
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getUserDetails(userId: Long): Result<DetailedUserProfile> {
+        return try {
+            val response = apiService.getDetailedUserProfile(userId)
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
@@ -847,12 +1012,6 @@ class DealerRepositoryImpl @Inject constructor(
             Result.failure(Exception(getErrorMessage(e)))
         }
     }
-
-    // In DealerRepositoryImpl.kt
-
-    // ... (after updateAdvertisementGallery)
-
-    // --- FAQ ---
 
     override suspend fun getFaqs(dealerId: Long, domainId: Int): Result<List<FaqItem>> {
         return try {

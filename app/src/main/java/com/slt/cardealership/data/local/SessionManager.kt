@@ -100,6 +100,17 @@ class SessionManager @Inject constructor( @ApplicationContext private val contex
         }
     }
 
+    suspend fun getUsername(): String? {
+        val jwt = getJwt() ?: return null
+        return try {
+            // Your JWT log shows the email in the "email" claim
+            jwt.getClaim("email").asString()
+        } catch (e: Exception) {
+            Log.e("SessionManager", "Error parsing email claim", e)
+            null
+        }
+    }
+
     /**
      * --- NEW FUNCTION ---
      */

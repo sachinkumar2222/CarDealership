@@ -1,5 +1,6 @@
 package com.slt.cardealership.presentation.info
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -52,6 +53,9 @@ class InfoViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<InfoUiState>(InfoUiState.Loading)
     val uiState: StateFlow<InfoUiState> = _uiState.asStateFlow()
 
+    private val _selectedImageUri = MutableStateFlow<Uri?>(null)
+    val selectedImageUri: StateFlow<Uri?> = _selectedImageUri.asStateFlow()
+
     private val _events = Channel<InfoEvent>()
     val events = _events.receiveAsFlow()
 
@@ -84,6 +88,78 @@ class InfoViewModel @Inject constructor(
     }
 
     /**
+     * This is the new, separate function for uploading the header image.
+     * It is called by the UI when the user selects a file.
+     */
+    fun onHeaderImageSelected(uri: Uri) {
+        val currentState = _uiState.value
+        if (currentState !is InfoUiState.Success) {
+            viewModelScope.launch { _events.send(InfoEvent.ShowError("Please wait for data to load.")) }
+            return
+        }
+
+        // This is your logic: "we fill other data from get"
+        val currentDealerInfo = currentState.dealerInfo
+        _selectedImageUri.value = uri // Update UI for preview
+
+        // Now, we call the master save function with the new image
+        saveFullDealerInfo(
+            dealerInfo = currentDealerInfo, // "we fill other data from get"
+            newImageUri = uri, // "use upload image as file in binary"
+            successMessage = "Header image updated!"
+        )
+    }
+
+    /**
+     * --- 5. THIS IS THE NEW "MASTER" SAVE FUNCTION ---
+     * Both image updates and text updates will call this function.
+     * It safely builds the *entire* payload every time, as required by your PUT API.
+     */
+    private fun saveFullDealerInfo(
+        dealerInfo: DealerInfo,
+        newImageUri: Uri? = null,
+        successMessage: String
+    ) {
+        val currentState = _uiState.value
+        if (currentState !is InfoUiState.Success) return
+
+        val dealerId = currentDealerId
+        if (dealerId == null) {
+            viewModelScope.launch { _events.send(InfoEvent.ShowError("User session error.")) }
+            return
+        }
+
+        _uiState.value = currentState.copy(isSaving = true)
+
+        viewModelScope.launch {
+            try {
+                // The repository will build the full payload
+                val result = dealerRepository.updateDealerInfoWithImage(
+                    dealerInfo = dealerInfo,
+                    newImageUri = newImageUri
+                )
+
+                result.onSuccess { updatedDealerInfo ->
+                    // Success! Update the UI with the new, complete info from the server
+                    _uiState.value = InfoUiState.Success(updatedDealerInfo)
+                    _events.send(InfoEvent.ShowSuccess(successMessage))
+                    _selectedImageUri.value = null // Clear temporary URI
+                }.onFailure { error ->
+                    Log.e(TAG, "Update failed", error)
+                    _uiState.value = currentState.copy(isSaving = false)
+                    _events.send(InfoEvent.ShowError(error.message ?: "Update failed"))
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Update failed with exception", e)
+                _uiState.value = currentState.copy(isSaving = false)
+                _events.send(InfoEvent.ShowError(e.message ?: "An unknown error occurred"))
+            }
+        }
+    }
+
+
+
+    /**
      * Updates fields on the main /dealer-api/Dealers/{id} endpoint (FormUrlEncoded).
      * Use this for: name, phone, website_url, description, address, city_name
      */
@@ -96,6 +172,24 @@ class InfoViewModel @Inject constructor(
             if (dealerId == null) {
                 _events.send(InfoEvent.ShowError("User session error."))
                 return@launch
+
+                // 1. Create a *new* dealerInfo object with the updates applied
+                val newDealerInfo = currentState.dealerInfo.copy(
+                    name = (updateMap["name"] as? String) ?: currentState.dealerInfo.name,
+                    phone = (updateMap["phone"] as? String) ?: currentState.dealerInfo.phone,
+                    websiteUrl = (updateMap["website_url"] as? String) ?: currentState.dealerInfo.websiteUrl,
+                    address = (updateMap["address"] as? String) ?: currentState.dealerInfo.address,
+                    description = (updateMap["description"] as? String) ?: currentState.dealerInfo.description,
+                    isVirtual = (updateMap["is_virtual"] as? Boolean) ?: currentState.dealerInfo.isVirtual
+                    // Add any other fields from your MultiFieldEditDialog here
+                )
+
+                // 2. Call the master save function
+                saveFullDealerInfo(
+                    dealerInfo = newDealerInfo,
+                    newImageUri = null, // No new image for this update
+                    successMessage = successMessage
+                )
             }
 
             _uiState.value = currentState.copy(isSaving = true)
@@ -198,9 +292,18 @@ class InfoViewModel @Inject constructor(
     }
 
     fun updateIsVirtual(newValue: Boolean) {
+        val successState = _uiState.value as? InfoUiState.Success
         val updateMap = mapOf("is_virtual" to newValue)
         Log.d(TAG, "Updating Virtual Dealership: $updateMap")
+
+        val updatedInfo = successState!!.dealerInfo.copy(isVirtual = newValue)
+
         // Call saveDealerUpdates because is_virtual is part of the main DealerDetails, not metas
+        saveFullDealerInfo(
+            dealerInfo = updatedInfo,
+            newImageUri = null, // No new image
+            successMessage = "Virtual Dealership updated"
+        )
         saveDealerUpdates(updateMap, "Virtual Dealership updated")
     }
 

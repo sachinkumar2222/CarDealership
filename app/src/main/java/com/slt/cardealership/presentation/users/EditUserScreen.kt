@@ -115,6 +115,7 @@ fun EditUserScreen(
     var username by remember { mutableStateOf("") }
     var imageUrl by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var imageCacheKey by remember { mutableStateOf<String?>(null) }
 
     // --- Populate states when user data loads ---
     LaunchedEffect(user) {
@@ -130,6 +131,7 @@ fun EditUserScreen(
             username = user.username ?: "N/A"
             imageUrl = user.imageUrl ?: ""
             selectedImageUri = null
+            imageCacheKey = user.updatedOn.toString()
         }
     }
 
@@ -190,7 +192,8 @@ fun EditUserScreen(
                         photoPickerLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                         )
-                    }
+                    },
+                    imageCacheKey = imageCacheKey
                 )
             }
         }
@@ -216,7 +219,8 @@ fun EditUserScreenContent(
     onBackClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onChangePasswordClick: () -> Unit,
-    onImageClick: () -> Unit
+    onImageClick: () -> Unit,
+    imageCacheKey: String?
 ) {
 
     var isStatusMenuExpanded by remember { mutableStateOf(false) }
@@ -302,6 +306,8 @@ fun EditUserScreenContent(
                         .data(imageUri ?: imageUrl)
                         .error(R.drawable.file_searching_rafiki)
                         .crossfade(true)
+                        .diskCacheKey(imageCacheKey)
+                        .memoryCacheKey(imageCacheKey)
                         .build(),
                     contentDescription = "Profile Picture",
                     contentScale = ContentScale.Crop,

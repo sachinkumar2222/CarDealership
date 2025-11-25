@@ -10,6 +10,7 @@ data class DealerInfo(
     val address: String?,
     val city: String?,
     val state: String?,
+    val slug : String?,
     val zipCode: String?,
     val websiteUrl: String?,
     val aboutText: String?,
@@ -25,7 +26,18 @@ data class DealerInfo(
     val isVirtualAppointment: Boolean?, // <-- ADD THIS FIELD (from new info)
     val virtualAppointmentLink: String?,
     @SerializedName("description")
-    val description: String? = null
+    val description: String? = null,
+    val createdOn: Long?,
+    val updatedOn: Long?,
+    // --- FIX: ADD ALL THE MISSING FIELDS FOR THE 'PUT' REQUEST ---
+    val zipcodeId: Int?, // This is the ID (e.g., 741)
+    val latitude: Double?,
+    val longitude: Double?,
+    val organizationId: Int?,
+    val dealerStatusId: Int?,
+    val isClient: Boolean?,
+    val createdBy: Int?,
+    val updatedBy: Int?
 )
 
 // 2. API RESPONSE MODELS - Contain all the fields your repository is trying to read.
@@ -37,6 +49,7 @@ data class DealerDetailsResponse(
     val description: String?,
     @SerializedName("website_url") val websiteUrl: String?,
     val address: String?,
+    val slug: String?,
     @SerializedName("state_name") val stateName: String?,
     @SerializedName("city_name") val cityName: String?,
     @SerializedName("zipcode_name") val zipcodeName: String?,
@@ -45,7 +58,23 @@ data class DealerDetailsResponse(
     @SerializedName("is_virtual") val isVirtual: Boolean?,
     @SerializedName("image_url") val imageUrl: String?, // <-- FIX: Field now exists
     @SerializedName("virtual_appointment") val virtualAppointment: Boolean?, // <-- ADD THIS FIELD
-    @SerializedName("virtual_appointment_link") val virtualAppointmentLink: String? // <-- ADD THIS FIELD
+    @SerializedName("virtual_appointment_link") val virtualAppointmentLink: String?, // <-- ADD THIS FIELD,
+    @SerializedName("created_on")
+    val createdOn: Long?,
+    @SerializedName("updated_on")
+    val updatedOn: Long?,
+    val postalCode: Int?,
+    @SerializedName("zipcode_id")
+    val zipcodeId: Int?, // This is the ID (e.g., 741)
+    val latitude: Double?,
+    val longitude: Double?,
+    @SerializedName("organization_id")
+    val organizationId: Int?,
+    val dealerStatusId: Int?,
+    val isClient: Boolean?,
+    val createdBy: Int?,
+    val updatedBy: Int?
+
 
 )
 

@@ -79,12 +79,12 @@ data class Advertisement(
 /**
  * Represents pagination info from the API.
  */
-data class Pagination(
-    @SerializedName("page")
-    val page: Int,
-    @SerializedName("total")
-    val total: Int
-)
+//data class Pagination(
+//    @SerializedName("page")
+//    val page: Int,
+//    @SerializedName("total")
+//    val total: Int
+//)
 
 /**
  * Represents an Advertisement Goal (from systems-api).

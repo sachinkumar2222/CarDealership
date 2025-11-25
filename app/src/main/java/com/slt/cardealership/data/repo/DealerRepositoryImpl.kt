@@ -9,8 +9,14 @@ import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.domain.model.Advertisement
 import com.slt.cardealership.domain.model.Amenities
 import com.slt.cardealership.domain.model.SeoTag
+import com.slt.cardealership.domain.model.SeoMenu
+import com.slt.cardealership.domain.model.SeoCategory
 import com.slt.cardealership.domain.model.Department
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.OpenableColumns
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.DetailedUserProfile
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
@@ -32,9 +38,13 @@ import com.slt.cardealership.domain.model.HomeDelivery
 import com.slt.cardealership.domain.model.HomeTestDrive
 import com.slt.cardealership.domain.repo.DealerRepository
 import com.slt.cardealership.domain.model.Vehicle
+import com.slt.cardealership.domain.model.InternetLeadsResponse
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.VinRequest
 import com.slt.cardealership.domain.model.TrimListResponse
+import com.slt.cardealership.domain.model.ProductType
+import com.slt.cardealership.domain.model.DealerService
+import com.slt.cardealership.domain.model.DealerServicesRequest
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -46,6 +56,7 @@ import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.ManageUsersResponse
 import com.slt.cardealership.domain.model.MapSeoTagsRequest
 import com.slt.cardealership.domain.model.ModifyDealerRequest
+import com.slt.cardealership.domain.model.SeoMenuRequest
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import com.slt.cardealership.domain.model.UpdateHoursRequest
 import com.slt.cardealership.domain.model.UserProfileUpdateRequest
@@ -55,6 +66,8 @@ import okhttp3.RequestBody
 import org.json.JSONObject
 import retrofit2.HttpException
 import retrofit2.Response
+import java.io.ByteArrayOutputStream
+import java.io.IOException
 import javax.inject.Inject
 
 
@@ -72,9 +85,6 @@ class DealerRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
-
-
-
 
     override suspend fun getPosts(dealerId: Long): Result<List<Post>> {
         return try {
@@ -114,6 +124,37 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getSeoMenus(dealerId: Long): Result<List<SeoMenu>> {
+        return try {
+            val response = apiService.getSeoMenus(dealerId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getSeoCategories(): Result<List<SeoCategory>> {
+        return try {
+            val response = apiService.getSeoCategories()
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveSeoMenus(dealerId: Long, request: SeoMenuRequest): Result<Unit> {
+        return try {
+            val response = apiService.saveSeoMenus(dealerId, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(HttpException(response))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getDealerMetas(dealerId: Long): DealerMetasResponse {
         return apiService.getDealerMetas(dealerId)
     }
@@ -133,9 +174,89 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+
     // Helper function to convert any value to a 'text/plain' RequestBody
     private fun Any?.toTextRequestBody(): RequestBody {
         return (this?.toString() ?: "").toRequestBody("text/plain".toMediaType())
+    }
+
+    override suspend fun updateDealerInfoWithImage(
+        dealerInfo: DealerInfo,
+        newImageUri: Uri? // Image is optional
+    ): Result<DealerInfo> {
+        return try {
+            // 1. "we fill other data from get"
+            // We build the full map of text parts from the dealerInfo object.
+            val parts = buildDealerPartsMap(dealerInfo)
+
+            // 2. "use upload image as file in binary"
+            // If a new image is provided, we create and add it to the map.
+            if (newImageUri != null) {
+                // Your API log shows the key is "file"
+                val imagePart = createMultipartBodyPart(newImageUri, "file")
+                parts[imagePart.first] = imagePart.second
+            }
+
+            // 3. Make the API call
+            // We need a new ApiService function for this. Let's call it updateDealerInfoMultipart
+            val response = apiService.updateDealerInfoMultipart(dealerInfo.id, parts)
+            Result.success(response)
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    @Throws(IOException::class)
+    private fun createMultipartBodyPart(uri: Uri, partName: String): Pair<String, RequestBody> {
+        val contentResolver = context.contentResolver
+
+        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, uri))
+        } else {
+            @Suppress("DEPRECATION")
+            android.provider.MediaStore.Images.Media.getBitmap(contentResolver, uri)
+        }
+
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        val compressedFileBytes = outputStream.toByteArray()
+
+        val filename = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            cursor.moveToFirst()
+            cursor.getString(nameIndex)
+        } ?: "image.jpg"
+
+        val requestFile = compressedFileBytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
+
+        val formDataName = "$partName\"; filename=\"$filename"
+        return Pair(formDataName, requestFile)
+    }
+
+    /**
+     * A private helper to build the complete map of text fields
+     * for the dealer update API, based on your payload log.
+     */
+    private fun buildDealerPartsMap(dealerInfo: DealerInfo): MutableMap<String, RequestBody> {
+        val map = mutableMapOf<String, RequestBody>()
+
+        // Add all fields from your payload log
+        map["name"] = (dealerInfo.name ?: "").toTextRequestBody()
+        map["slug"] = (dealerInfo.slug ?: "").toTextRequestBody()
+        map["is_virtual"] = (if (dealerInfo.isVirtual == true) "1" else "0").toTextRequestBody()
+        map["phone"] = (dealerInfo.phone ?: "").toTextRequestBody()
+        map["website_url"] = (dealerInfo.websiteUrl ?: "").toTextRequestBody()
+        map["address"] = (dealerInfo.address ?: "").toTextRequestBody()
+        map["image_url"] = (dealerInfo.headerImageUrl ?: "").toTextRequestBody()
+        map["description"] = (dealerInfo.description ?: "").toTextRequestBody()
+        map["id"] = dealerInfo.id.toString().toTextRequestBody()
+        map["is_claimed"] = (if (dealerInfo.isClaimed == true) "1" else "0").toTextRequestBody()
+        map["updated_on"] = (System.currentTimeMillis() / 1000).toString().toTextRequestBody()
+        map["zipcode_id"] = (dealerInfo.zipcodeId ?: 0).toString().toTextRequestBody()
+        map["makes"] = "".toTextRequestBody()
+
+        return map
     }
 
 
@@ -430,7 +551,18 @@ class DealerRepositoryImpl @Inject constructor(
                     ),
                     isVirtualAppointment = metas.virtualAppointment, // <-- MAP THIS FIELD
                     virtualAppointmentLink = metas.virtualAppointmentLink,
-                    description = details.description
+                    description = details.description,
+                    createdOn = details.createdOn,
+                    updatedOn = details.updatedOn,
+                    slug = details.slug,
+                    dealerStatusId = details.dealerStatusId,
+                    latitude = details.latitude,
+                    longitude = details.longitude,
+                    zipcodeId = details.zipcodeId,
+                    createdBy = details.createdBy,
+                    isClient = details.isClient,
+                    organizationId = details.organizationId,
+                    updatedBy = details.updatedBy
                 )
                 Result.success(combinedInfo)
             }
@@ -679,12 +811,26 @@ class DealerRepositoryImpl @Inject constructor(
                 // isActive = "yes",
                 // isDeleted = "no"
             )
-            // Assuming VehicleListResponse has 'list' and potentially 'pagination' info
-            // You might want to return the whole VehicleListResponse instead of just List<Vehicle>
-            // if you need pagination details in the ViewModel.
+
             Result.success(response.list ?: emptyList())
         } catch (e: Exception) {
             Result.failure(Exception(getErrorMessage(e))) // Use error message helper
+        }
+    }
+
+    override suspend fun saveDealerServices(
+        dealerId: Int,
+        request: DealerServicesRequest
+    ): Result<Unit> {
+        return try {
+            val response = apiService.saveDealerServices(dealerId, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(HttpException(response))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -1071,7 +1217,23 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
-    // ... (before getErrorMessageFromResponse)
+    override suspend fun getAllProductTypes(): Result<List<ProductType>> {
+        return try {
+            val response = apiService.getAllProductTypes()
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDealerServices(dealerId: Int): Result<List<DealerService>> {
+        return try {
+            val response = apiService.getDealerServices(dealerId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     private fun <T> getErrorMessageFromResponse(response: Response<T>, defaultMessage: String): String {
         return response.errorBody()?.string()?.let {
@@ -1084,6 +1246,25 @@ class DealerRepositoryImpl @Inject constructor(
                 it.ifBlank { "$defaultMessage. Code: ${response.code()}" }
             }
         } ?: "$defaultMessage. Code: ${response.code()}"
+    }
+
+    override suspend fun getInternetLeads(
+        dealerId: Int,
+        leadType: String,
+        page: Int,
+        itemsPerPage: Int
+    ): Result<InternetLeadsResponse> {
+        return try {
+            val response = apiService.getInternetLeads(
+                dealerId = dealerId,
+                leadType = leadType,
+                page = page,
+                itemsPerPage = itemsPerPage
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
 

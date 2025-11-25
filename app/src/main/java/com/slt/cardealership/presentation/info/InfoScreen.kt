@@ -3,6 +3,12 @@ package com.slt.cardealership.presentation.info
 import android.os.Build.VERSION.SDK_INT
 import android.util.Log
 import android.widget.Toast
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import coil3.request.ImageRequest
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -37,6 +43,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import coil3.request.error
+import coil3.request.placeholder
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Amenities
 import com.slt.cardealership.domain.model.DealerHours
@@ -75,10 +83,21 @@ fun InfoScreen(
     navController: NavController,
     viewModel: InfoViewModel = hiltViewModel()
 ) {
+
+    val selectedImageUri by viewModel.selectedImageUri.collectAsState()
+
     val uiState by viewModel.uiState.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri: Uri? ->
+            // Pass the selected Uri to the ViewModel
+            uri?.let { viewModel.onHeaderImageSelected(it) }
+        }
+    )
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -131,7 +150,13 @@ fun InfoScreen(
                     DealerInfoContent(
                         dealerInfo = state.dealerInfo,
                         viewModel = viewModel,
-                        isSaving = state.isSaving
+                        isSaving = state.isSaving,
+                        onHeaderImageClick = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        selectedImageUri = selectedImageUri
                     )
                 }
             }
@@ -141,9 +166,11 @@ fun InfoScreen(
 
 @Composable
 fun DealerInfoContent(
-    dealerInfo: DealerInfo ,
+    dealerInfo: DealerInfo,
     viewModel: InfoViewModel = hiltViewModel(),
-    isSaving: Boolean = false
+    isSaving: Boolean = false,
+    onHeaderImageClick: () -> Unit,
+    selectedImageUri: Uri?
 ) {
     val businessHours = dealerInfo.dealerHours?.find { it.hoursType == "general" }
     val partsHours = dealerInfo.dealerHours?.find { it.hoursType == "parts" }
@@ -220,7 +247,7 @@ fun DealerInfoContent(
             initialService = serviceHours,
             onDismiss = { showHoursDialog = false },
             onSave = { general, parts, service ->
-                 viewModel.updateBusinessHours(general, parts, service)
+                viewModel.updateBusinessHours(general, parts, service)
                 Log.d("InfoScreen", "Save Hours clicked")
                 showHoursDialog = false
             }
@@ -255,7 +282,13 @@ fun DealerInfoContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        item { HeaderImage(dealerInfo) }
+        item {
+            HeaderImage(
+                dealerInfo,
+                selectedImageUri = selectedImageUri,
+                onClick = onHeaderImageClick
+            )
+        }
         item {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -293,26 +326,51 @@ fun DealerInfoContent(
 }
 
 @Composable
-fun HeaderImage(dealerInfo: DealerInfo) {
+fun HeaderImage(
+    dealerInfo: DealerInfo,
+    selectedImageUri: Uri?, // <-- 8. ADD
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(255.dp)
             .padding(12.dp)
             .shadow(4.dp, shape = RoundedCornerShape(24.dp))
+            .clickable { onClick()}
     ) {
         AsyncImage(
-            model = dealerInfo.headerImageUrl,
+            // --- 10. THE CACHE-BUSTING FIX ---
+            model = ImageRequest.Builder(LocalContext.current)
+                // Show the temporary picked image, or the server URL
+                .data(selectedImageUri ?: dealerInfo.headerImageUrl)
+                // Use the 'updatedOn' timestamp as a unique key
+                .memoryCacheKey(dealerInfo.updatedOn.toString())
+                .diskCacheKey(dealerInfo.updatedOn.toString())
+                .placeholder(R.drawable.toyota) // Use placeholder from original
+                .error(R.drawable.toyota) // Fallback to placeholder
+                .build(),
             contentDescription = "Dealership exterior",
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-            placeholder = painterResource(R.drawable.toyota)
+            modifier = Modifier.fillMaxSize()
         )
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f))
-        )
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.7f))
+                .border(1.dp, Color.White, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "Edit Image",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
 
         // Content on top of the image
         Column(
@@ -607,7 +665,6 @@ fun DetailInfoRow(label: String, value: String) {
         )
     }
 }
-
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1261,8 +1318,18 @@ fun AmenitiesEditDialog(
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Edit Amenities", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    IconButton(onClick = onDismiss, enabled = !isSaving) { Icon(Icons.Default.Close, null) }
+                    Text(
+                        "Edit Amenities",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onDismiss, enabled = !isSaving) {
+                        Icon(
+                            Icons.Default.Close,
+                            null
+                        )
+                    }
                 }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
@@ -1327,11 +1394,24 @@ fun AmenitiesEditDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp), enabled = !isSaving) { Text("Close") }
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !isSaving
+                    ) { Text("Close") }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         // --- FIX: Pass all 6 values back ---
-                        onClick = { onSave(isWifi, isParking, isKidsPlayArea, isEntrance, isSeating, isRestroom) },
+                        onClick = {
+                            onSave(
+                                isWifi,
+                                isParking,
+                                isKidsPlayArea,
+                                isEntrance,
+                                isSeating,
+                                isRestroom
+                            )
+                        },
                         shape = RoundedCornerShape(8.dp),
                         enabled = !isSaving
                     ) {
@@ -1571,7 +1651,10 @@ fun BusinessHoursEditDialog(
 
                 // --- Content switches based on tab ---
                 // We wrap this in a LazyColumn to handle smaller screens
-                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                     val currentHoursState = when (selectedTabIndex) {
                         0 -> generalHoursState
                         1 -> partsHoursState
@@ -1695,7 +1778,10 @@ fun DealerTypeEditDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         // --- 1. Title Slot ---
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
                     "Request for Dealership Type change",
                     style = MaterialTheme.typography.titleLarge,
@@ -1781,7 +1867,11 @@ fun DealerTypeEditDialog(
         },
         // --- 4. Dismiss Button Slot ---
         dismissButton = {
-            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp), enabled = !isSaving) {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(8.dp),
+                enabled = !isSaving
+            ) {
                 Text("Cancel")
             }
         }

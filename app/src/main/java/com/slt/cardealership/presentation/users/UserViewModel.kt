@@ -212,9 +212,13 @@ class UserViewModel @Inject constructor(
                         imageUrl = updatedUser.imageUrl,
                         updatedOn = System.currentTimeMillis() / 1000
                     )
+                        val finalUpdatedUser = localDraft.copy( // <-- 4. Use a new variable name
+                            imageUrl = updatedUser.imageUrl,
+                            updatedOn = System.currentTimeMillis() / 1000
+                        )
                         _userDetailState.value = currentState.copy(
                             isSaving = false,
-                            user = updatedUser // Update state with fresh data
+                            user = finalUpdatedUser // Update state with fresh data
                         )
                         // TODO: Add a "Save Success" event for a Snackbar
                     }

@@ -9,6 +9,8 @@ import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.ChangePasswordRequest
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.DealerMetasResponse
+import com.slt.cardealership.domain.model.DealerService
+import com.slt.cardealership.domain.model.DealerServicesRequest
 import com.slt.cardealership.domain.model.Department
 import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.domain.model.DetailedUserProfile
@@ -18,9 +20,14 @@ import com.slt.cardealership.domain.model.FaqItem
 import com.slt.cardealership.domain.model.FaqRequest
 import com.slt.cardealership.domain.model.GalleryImage
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
+import com.slt.cardealership.domain.model.InternetLeadsResponse
 import com.slt.cardealership.domain.model.ManageUsersResponse
 import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.Post
+import com.slt.cardealership.domain.model.ProductType
+import com.slt.cardealership.domain.model.SeoCategory
+import com.slt.cardealership.domain.model.SeoMenu
+import com.slt.cardealership.domain.model.SeoMenuRequest
 import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.UpdateHoursRequest
@@ -72,6 +79,11 @@ interface DealerRepository {
         departmentId: Int?,
         designationId: Int
     ): Result<Long>
+
+    suspend fun updateDealerInfoWithImage(
+        dealerInfo: DealerInfo,
+        newImageUri: Uri? // Pass the new image, or null
+    ): Result<DealerInfo>
 
     suspend fun getDepartments(): Result<List<Department>>
 
@@ -185,4 +197,22 @@ interface DealerRepository {
     suspend fun addFaq(faqRequest: FaqRequest): Result<Unit>
     suspend fun updateFaq(faqId: Int, faqRequest: FaqRequest): Result<Unit>
     suspend fun deleteFaq(faqId: Int, type: String): Result<Unit>
+
+    //seo menues
+    suspend fun getSeoMenus(dealerId: Long): Result<List<SeoMenu>>
+    suspend fun getSeoCategories(): Result<List<SeoCategory>>
+    suspend fun saveSeoMenus(dealerId: Long, request: SeoMenuRequest): Result<Unit>
+
+    suspend fun getAllProductTypes(): Result<List<ProductType>>
+    suspend fun getDealerServices(dealerId: Int): Result<List<DealerService>>
+
+    suspend fun saveDealerServices(dealerId: Int, request: DealerServicesRequest): Result<Unit>
+
+    suspend fun getInternetLeads(
+        dealerId: Int,
+        leadType: String,
+        page: Int,
+        itemsPerPage: Int
+    ): Result<InternetLeadsResponse>
+
 }

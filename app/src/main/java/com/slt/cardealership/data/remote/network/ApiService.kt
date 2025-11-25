@@ -13,7 +13,10 @@ import com.slt.cardealership.domain.model.BannerListResponse
 import com.slt.cardealership.domain.model.ChangePasswordRequest
 import com.slt.cardealership.domain.model.DealerDetailsResponse
 import com.slt.cardealership.domain.model.DealerHours
+import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.DealerMetasResponse
+import com.slt.cardealership.domain.model.DealerService
+import com.slt.cardealership.domain.model.DealerServicesRequest
 import com.slt.cardealership.domain.model.Department
 import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.domain.model.EvoxImageResponse
@@ -23,11 +26,16 @@ import com.slt.cardealership.domain.model.FaqRequest
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.GalleryListResponse
 import com.slt.cardealership.domain.model.GalleryResponseObject
+import com.slt.cardealership.domain.model.InternetLeadsResponse
 import com.slt.cardealership.domain.model.ManageUsersResponse
 import com.slt.cardealership.domain.model.MapSeoTagsRequest
 import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.PostListResponse
+import com.slt.cardealership.domain.model.ProductType
+import com.slt.cardealership.domain.model.SeoCategory
+import com.slt.cardealership.domain.model.SeoMenu
+import com.slt.cardealership.domain.model.SeoMenuRequest
 import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.SeoTagListResponse
 import com.slt.cardealership.domain.model.TrimListResponse
@@ -152,6 +160,12 @@ interface ApiService {
         @Part("domain_id") domainId: RequestBody = "".toRequestBody("text/plain".toMediaTypeOrNull())
     ): Response<Unit>
 
+    @Multipart // <-- 1. Must be Multipart
+    @PUT("dealer-api/Dealers/{dealerId}") // <-- 2. Must be PUT
+    suspend fun updateDealerInfoMultipart(
+        @Path("dealerId") dealerId: Long, // <-- 3. Your dealerId is an Int
+        @PartMap parts: Map<String, @JvmSuppressWildcards RequestBody>
+    ): DealerInfo
 
     @POST("dealer-api/dealers/{dealerId}/posts")
     suspend fun addPost(@Path("dealerId") dealerId: Long, @Body post: Post): Response<Unit>
@@ -340,10 +354,6 @@ interface ApiService {
         @Query("is_deleted") isDeleted: String = "no"  // Default query params
     ): List<VehicleModel>
 
-
-    //advertisement
-
-
     @GET("dealer-api/dealers/{dealer_id}/advertisements")
     suspend fun getAdvertisements(
         @Path("dealer_id") dealerId: Long,
@@ -525,5 +535,58 @@ interface ApiService {
         // The payload is sent as a Map of RequestBody parts
         @PartMap parts: Map<String, @JvmSuppressWildcards RequestBody>
     ): DetailedUserProfile
+
+    /**
+     * Get the list of saved SEO Menus for a specific dealer
+     */
+    @GET("dealer-api/dealers/{dealerId}/Seomenus")
+    suspend fun getSeoMenus(
+        @Path("dealerId") dealerId: Long
+    ): List<SeoMenu> // Returns a direct list
+
+    /**
+     * Get the list of all available SEO Categories
+     */
+    @GET("systems-api/dealer-seo-category/getall")
+    suspend fun getSeoCategories(): List<SeoCategory> // Returns a direct list
+
+    /**
+     * Save the entire list of SEO Menus for a dealer.
+     * This will replace the existing list.
+     */
+    @POST("dealer-api/dealers/{dealerId}/SeoMenus")
+    suspend fun saveSeoMenus(
+        @Path("dealerId") dealerId: Long,
+        @Body request: SeoMenuRequest
+    ): Response<Unit> // Assuming 200 OK with no bod
+
+    @GET("systems-api/product-types/getAll")
+    suspend fun getAllProductTypes(): List<ProductType>
+
+    /**
+     * Gets the list of services currently enabled for a specific dealer.
+     */
+    @GET("dealer-api/dealers/{dealerId}/services")
+    suspend fun getDealerServices(
+        @Path("dealerId") dealerId: Int
+    ): List<DealerService>
+
+    @POST("dealer-api/dealers/{dealerId}/services")
+    suspend fun saveDealerServices(
+        @Path("dealerId") dealerId: Int,
+        @Body request: DealerServicesRequest
+    ): Response<Unit>
+
+    @GET("application-api/internet-leads")
+    suspend fun getInternetLeads(
+        @Query("dealer_id") dealerId: Int,
+        @Query("lead_type") leadType: String,
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null,
+        @Query("is_read") isRead: Boolean? = null,
+        @Query("search") search: String? = null
+    ): InternetLeadsResponse
 
 }

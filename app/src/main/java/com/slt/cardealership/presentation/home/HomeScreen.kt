@@ -1,6 +1,14 @@
 package com.slt.cardealership.presentation.home
 
 
+// --- REMOVED: FlowRow ---
+// --- REMOVED: filled.Add ---
+// --- REMOVED: filled.DirectionsCar ---
+// --- REMOVED: outlined.PhotoCamera ---
+//import com.example.intern.screen.dash.Project
+//import com.example.intern.screen.dash.ProjectCard
+//import com.example.intern.screen.dash.ProjectSection
+//import com.example.intern.screen.dash.dummyProjects
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -11,13 +19,14 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-// --- REMOVED: FlowRow ---
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,26 +42,32 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-// --- REMOVED: filled.Add ---
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Business
-// --- REMOVED: filled.DirectionsCar ---
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.outlined.AddCircle
+import androidx.compose.material.icons.outlined.AdsClick
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Campaign
-import androidx.compose.material.icons.outlined.GridView // <-- NEW IMPORT
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Inventory
+import androidx.compose.material.icons.outlined.Leaderboard
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Photo
-// --- REMOVED: outlined.PhotoCamera ---
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Quiz
-import androidx.compose.material.icons.outlined.Search // <-- NEW IMPORT
-import androidx.compose.material.icons.outlined.Warehouse // <-- NEW IMPORT
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Warehouse
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -73,6 +88,7 @@ import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -87,9 +103,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -104,6 +122,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.presentation.ads.AddAdsScreen
 import com.slt.cardealership.presentation.ads.AdsScreen
@@ -116,6 +136,8 @@ import com.slt.cardealership.presentation.info.FullScreenError
 import com.slt.cardealership.presentation.info.InfoScreen
 import com.slt.cardealership.presentation.info.InfoUiState
 import com.slt.cardealership.presentation.info.InfoViewModel
+import com.slt.cardealership.presentation.internetleads.LeadsDetailScreen
+import com.slt.cardealership.presentation.internetleads.LeadsListScreen
 import com.slt.cardealership.presentation.inventory.AddVehicleScreen
 import com.slt.cardealership.presentation.inventory.InventoryScreen
 import com.slt.cardealership.presentation.photos.PhotoScreen
@@ -124,15 +146,21 @@ import com.slt.cardealership.presentation.profile.ProfileScreen
 import com.slt.cardealership.presentation.profile.ProfileViewModel
 import com.slt.cardealership.presentation.seo.AddSeoScreen
 import com.slt.cardealership.presentation.seo.SeoScreen
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import androidx.compose.ui.geometry.Offset
-import androidx.navigation.toRoute
+import com.slt.cardealership.presentation.seomenu.AddSeoMenuScreen
+import com.slt.cardealership.presentation.seomenu.SeoMenuScreen
+import com.slt.cardealership.presentation.services.ServiceDetailScreen
+import com.slt.cardealership.presentation.services.ServiceScreen
 import com.slt.cardealership.presentation.users.AddUserScreen
 import com.slt.cardealership.presentation.users.ChangePasswordScreen
 import com.slt.cardealership.presentation.users.EditUserScreen
 import com.slt.cardealership.presentation.users.UserScreen
+import com.slt.cardealership.ui.theme.BrandBlue
+import com.slt.cardealership.ui.theme.BrandDarkBlue
+import com.slt.cardealership.ui.theme.LightBackground
+import com.slt.cardealership.ui.theme.LightCardBackground
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
 
 @Serializable
@@ -188,6 +216,11 @@ sealed class HomeRoutes {
     @Serializable
     object UserScreen : HomeRoutes()
 
+    @Serializable
+    object SeoMenuScreen : HomeRoutes()
+
+    @Serializable
+    object AddSeoMenuScreen : HomeRoutes()
 
     @Serializable
     data class ChangePasswordScreen(val userId: Long) : HomeRoutes()
@@ -195,9 +228,22 @@ sealed class HomeRoutes {
     @Serializable
     data class EditUserScreen(val userId: Long) : HomeRoutes()
 
+    @Serializable
+    object ServiceScreen : HomeRoutes()
+
+    @Serializable
+    data class ServiceDetailScreen(val title: String) : HomeRoutes()
 
     @Serializable
     data class AddEditArticle(val articleId: String? = null) : HomeRoutes()
+
+
+    @Serializable
+    object LeadsListScreen : HomeRoutes()
+
+    @Serializable
+    data class LeadsDetailScreen(val title: String) : HomeRoutes()
+
 }
 
 // --- NEW Data class for the stats grid ---
@@ -208,13 +254,48 @@ data class DashboardStats(
     val topKeywordsCount: Int
 )
 
+data class Project(
+    val id: String,
+    val title: String,
+    val icon: ImageVector,
+    val description: String,
+    val isDark: Boolean = false,
+    val routes: HomeRoutes
+)
+
 data class DashboardItem(val title: String, val icon: ImageVector, val route: HomeRoutes)
-data class NavDrawerItem(val title: String, val icon: ImageVector)
+
+val dummyProjects = listOf(
+    Project(
+        "1", "Articles", Icons.Outlined.Article,
+        "Latest industry news & blogs",
+        isDark = true,
+        HomeRoutes.Articles
+    ),
+    Project(
+        "2", "Photos",
+        Icons.Outlined.PhotoLibrary,
+        "Browse your media gallery",
+        routes = HomeRoutes.Photos
+    ),
+    Project(
+        "3", "Ad Manager",
+        Icons.Outlined.AdsClick,
+        "Manage campaigns & ads",
+        routes = HomeRoutes.Ads
+    ),
+    Project(
+        "4", "Inventory",
+        Icons.Outlined.Inventory,
+        "Track stock & products",
+        routes = HomeRoutes.Inventory
+    )
+)
+
 data class DrawerItem(val title: String, val icon: ImageVector, val route: HomeRoutes)
 data class BottomNavItem(val title: String, val icon: ImageVector, val route: HomeRoutes)
-// --- REMOVED QuickActionItem ---
 
-// --- REVERTED TO LIGHT THEME ---
+
 val businessDarkBlue = Color(0xFF233E66)
 val businessLightBlue = Color(0xFF253A63)
 val businessTextLight = Color(0xFFCCD6F6)
@@ -290,8 +371,6 @@ fun HomeScreen(mainNavController: NavController) {
                         }
 
                         is InfoUiState.Success -> {
-                            // --- MOCKED STATS ---
-                            // You will fetch this from your ViewModel
                             val stats = DashboardStats(
                                 inventoryCount = 74,
                                 activeAdsCount = 3,
@@ -302,6 +381,12 @@ fun HomeScreen(mainNavController: NavController) {
                                 dealerInfo = state.dealerInfo,
                                 stats = stats, // Pass stats
                                 navController = homeNavController,
+                                onSeeAllClick = {
+                                    // Open the drawer
+                                    scope.launch {
+                                        drawerState.open()
+                                    }
+                                }
                             )
                         }
                     }
@@ -383,7 +468,7 @@ fun HomeScreen(mainNavController: NavController) {
                 composable<HomeRoutes.AddUserScreen> {
                     AddUserScreen(
                         onBackClick = { homeNavController.popBackStack() },
-                       onAddUserSuccess = { homeNavController.popBackStack() }
+                        onAddUserSuccess = { homeNavController.popBackStack() }
                     )
                 }
 
@@ -396,7 +481,7 @@ fun HomeScreen(mainNavController: NavController) {
                         userId = userToEdit.userId, // <-- Pass the ID
                         onBackClick = { homeNavController.popBackStack() },
                         onChangePasswordClick = { userId ->
-                             homeNavController.navigate(HomeRoutes.ChangePasswordScreen(userId))
+                            homeNavController.navigate(HomeRoutes.ChangePasswordScreen(userId))
                         }
                         // The ViewModel is automatically provided by Hilt
                     )
@@ -414,10 +499,219 @@ fun HomeScreen(mainNavController: NavController) {
                         }
                     )
                 }
+                composable<HomeRoutes.SeoMenuScreen> {
+                    SeoMenuScreen(
+                        onBackClick = { homeNavController.popBackStack() },
+                        navController = homeNavController
+                    )
+                }
+
+                composable<HomeRoutes.AddSeoMenuScreen> {
+                    AddSeoMenuScreen(
+                        onBackClick = { homeNavController.popBackStack() })
+                }
+
+                composable<HomeRoutes.ServiceScreen> {
+                    ServiceScreen(
+                        onBackClick = { homeNavController.popBackStack() },
+                        onServiceClick = { title ->
+                            homeNavController.navigate(HomeRoutes.ServiceDetailScreen(title))
+                        }
+                    )
+                }
+                composable<HomeRoutes.ServiceDetailScreen> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.ServiceDetailScreen>()
+                    ServiceDetailScreen(
+                        serviceTitle = args.title,
+                        onBackClick = { homeNavController.popBackStack() },
+                        viewModel = hiltViewModel()
+                    )
+                }
+
+
+                composable<HomeRoutes.LeadsListScreen> {
+                    LeadsListScreen(
+                        onCategoryClick = { title ->
+                            // Since you are using Type-Safe Navigation (Serializable),
+                            // the library automatically handles special characters like '&'
+                            // in "Build & Price". You don't need manual Uri.encode here.
+                            homeNavController.navigate(HomeRoutes.LeadsDetailScreen(title = title))
+                        }
+                    )
+                }
+
+                // 2. The Detail Screen
+                composable<HomeRoutes.LeadsDetailScreen> { backStackEntry ->
+                    // Extract the arguments using .toRoute()
+                    val args = backStackEntry.toRoute<HomeRoutes.LeadsDetailScreen>()
+
+                    LeadsDetailScreen(
+                        title = args.title,
+                        onBackClick = { homeNavController.popBackStack() }
+                    )
+                }
+
             }
         }
     }
 }
+
+@Composable
+fun WelcomeHeader(dealerInfo: DealerInfo) {
+    Column {
+        Text(
+            text = "Hi! " + dealerInfo.name ?: "Dealer Admin",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = BrandDarkBlue,
+            fontSize = 22.sp
+        )
+        Text(
+            text = "have a good day",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Gray
+        )
+    }
+}
+
+@Composable
+fun WelcomeBanner() {
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(2.dp, BrandDarkBlue, RoundedCornerShape(20.dp)), // <-- UPDATED
+        colors = CardDefaults.cardColors(containerColor = LightBackground) // <-- UPDATED
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 20.dp, end = 10.dp, top = 1.dp, bottom = 1.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Welcome!",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Lets schedule your projects",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Image(
+                painter = painterResource(id = R.drawable.vehicle_sale_cuate),
+                contentDescription = "Schedule Projects with Car",
+                modifier = Modifier.size(150.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ProjectSection(
+    navController: NavController,
+    onSeeAllClick: () -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Manage",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            TextButton( onClick = onSeeAllClick ) {
+                Text("view all", color = BrandBlue)
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.height(400.dp)
+        ) {
+
+            items(dummyProjects) { project ->
+                ProjectCard(project = project, navController = navController)
+            }
+        }
+    }
+}
+
+@Composable
+fun ProjectCard(project: Project, navController: NavController) {
+    val textColor = if (project.isDark) Color.White else Color.Black
+    val secondaryColor = if (project.isDark) Color.White.copy(alpha = 0.7f) else Color.Gray
+    val cardColor = if (project.isDark) BrandDarkBlue else LightCardBackground // <-- UPDATED
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        modifier = Modifier
+            .size(160.dp)
+            .clickable { project.routes.let { navController.navigate(it) } }
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(20.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Top Row: Main Icon and the small + icon
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Icon(
+                    imageVector = project.icon,
+                    contentDescription = project.title,
+                    tint = secondaryColor,
+                    modifier = Modifier.size(28.dp)
+                )
+                // Plus icon with circle border
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, secondaryColor, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Options",
+                        tint = secondaryColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            // Content Column: Title and Description
+            Column {
+                Text(
+                    text = project.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = textColor
+                )
+                Text(
+                    text = project.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = secondaryColor,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -427,11 +721,11 @@ fun NavigationDrawerContent(
     scope: CoroutineScope,
     currentRoute: String?
 ) {
-    // Main navigation is in the bottom bar,
-    // so this holds secondary items
+
     val items = listOf(
         DrawerItem("SEO", Icons.Outlined.BarChart, HomeRoutes.SeoScreen),
-        DrawerItem("FAQ", Icons.Outlined.Quiz, HomeRoutes.FaqScreen)
+        DrawerItem("FAQ", Icons.Outlined.Quiz, HomeRoutes.FaqScreen),
+        DrawerItem("SEO Menu", Icons.Outlined.Warehouse, HomeRoutes.SeoMenuScreen)
     )
 
     ModalDrawerSheet(
@@ -522,7 +816,8 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 fun DashboardContent(
     dealerInfo: DealerInfo,
     stats: DashboardStats, // <-- Accept the stats
-    navController: NavController
+    navController: NavController,
+    onSeeAllClick: () -> Unit
 ) {
 
     // --- List of "Manage" cards from your image ---
@@ -533,87 +828,35 @@ fun DashboardContent(
         DashboardItem("SEO", Icons.Outlined.Search, HomeRoutes.SeoScreen),
         DashboardItem(
             "User", Icons.Outlined.Person, HomeRoutes.UserScreen
+        ),
+        DashboardItem(
+            "Seo Menu", Icons.Outlined.AddCircle, HomeRoutes.SeoMenuScreen
+        ),
+        DashboardItem(
+            "Seo Menu", Icons.Outlined.Security, HomeRoutes.ServiceScreen
+        ),
+        DashboardItem(
+            title = "Internet Leads",
+            Icons.Outlined.Leaderboard,
+            HomeRoutes.LeadsListScreen
         )
     )
 
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor)
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 50.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp)
     ) {
-        // --- 1. Header ---
-        item {
-            DashboardHeader(dealerInfo = dealerInfo)
-        }
-
-        // --- 2. Stats Grid ---
-        item {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.height(259.dp), // Fixed height for 2 rows
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                userScrollEnabled = false // Correct way to disable nested scroll
-            ) {
-                item {
-                    StatCard(
-                        title = "Total Inventory",
-                        count = stats.inventoryCount.toString(),
-                        icon = Icons.Outlined.Warehouse,
-                        onClick = { navController.navigate(HomeRoutes.Inventory) }
-                    )
-123                }
-                item {
-                    StatCard(
-                        title = "Active Ads",
-                        count = stats.activeAdsCount.toString(),
-                        icon = Icons.Outlined.Campaign,
-                        onClick = { navController.navigate(HomeRoutes.Ads) }
-                    )
-                }
-                item {
-                    StatCard(
-                        title = "Published Articles",
-                        count = stats.articlesCount.toString(),
-                        icon = Icons.Outlined.Article,
-                        onClick = { navController.navigate(HomeRoutes.Articles) }
-                    )
-                }
-                item {
-                    StatCard(
-                        title = "Top Keywords",
-                        count = stats.topKeywordsCount.toString(),
-                        icon = Icons.Outlined.Search,
-                        onClick = { navController.navigate(HomeRoutes.SeoScreen) }
-                    )
-                }
-            }
-        }
-
-        // --- 3. Manage Section ---
-        item {
-            SectionTitle(text = "Manage", modifier = Modifier)
-        }
-
-        items(manageItems) { item ->
-            ManageActionCard(
-                title = item.title,
-                subtitle = when (item.route) {
-                    is HomeRoutes.Inventory -> "Manage all vehicles"
-                    is HomeRoutes.Articles -> "Create & edit posts"
-                    is HomeRoutes.Ads -> "Track campaign performance"
-                    is HomeRoutes.SeoScreen -> "Improve search visibility"
-                    is HomeRoutes.UserScreen -> "Manage users"
-                    else -> ""
-                },
-                icon = item.icon,
-                onClick = { navController.navigate(item.route) }
-            )
-        }
+        Spacer(modifier = Modifier.height(16.dp))
+        WelcomeHeader(dealerInfo = dealerInfo)
+        Spacer(modifier = Modifier.height(24.dp))
+        WelcomeBanner()
+        Spacer(modifier = Modifier.height(24.dp))
+        ProjectSection(navController,onSeeAllClick)
+        Spacer(modifier = Modifier.height(24.dp))
     }
+
 }
 
 // --- NEW HEADER ---
@@ -647,26 +890,16 @@ fun TopBar(navController: NavController, onMenuClick: () -> Unit, onLogoutClick:
     var menuExpanded by remember { mutableStateOf(false) }
     CenterAlignedTopAppBar(
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Business,
-                    "Logo",
-                    tint = businessTextDark
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Dealer Panel",
-                    fontWeight = FontWeight.Bold,
-                    color = businessTextDark
-                )
-            }
+            Text("Home", fontWeight = FontWeight.Bold)
         },
         navigationIcon = {
             IconButton(onClick = onMenuClick) {
                 Icon(
-                    Icons.Default.Menu,
-                    "Menu",
-                    tint = businessTextDark
+                    // Replace 'ic_custom_menu' with the actual name of your PNG file
+                    painter = painterResource(id = R.drawable.menu),
+                    contentDescription = "Menu",
+                    modifier = Modifier.size(24.dp), // Standard icon size
+                    tint = Color.Black // Tints the PNG black. Change to Color.Unspecified to keep original PNG colors.
                 )
             }
         },
@@ -710,10 +943,8 @@ fun TopBar(navController: NavController, onMenuClick: () -> Unit, onLogoutClick:
             }
             Spacer(modifier = Modifier.width(8.dp))
         },
-        // --- Make TopBar transparent ---
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = surfaceColor
+            containerColor = Color.White
         )
     )
 }

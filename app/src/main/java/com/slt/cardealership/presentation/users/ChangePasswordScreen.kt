@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -60,6 +61,10 @@ fun ChangePasswordScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
+    // --- Animation State ---
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
     // --- Listen for success ---
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
@@ -74,23 +79,27 @@ fun ChangePasswordScreen(
         }
     }
 
+    val brandBlue = Color(0xFF2196F3)
+
     val textFieldColors = TextFieldDefaults.colors(
         focusedContainerColor = surfaceColor,
         unfocusedContainerColor = surfaceColor,
         disabledContainerColor = surfaceColor,
-        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+        focusedIndicatorColor = brandBlue,
         unfocusedIndicatorColor = Color.LightGray,
         disabledIndicatorColor = Color.LightGray,
-        focusedLabelColor = MaterialTheme.colorScheme.primary,
-        unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
+        focusedLabelColor = brandBlue,
+        unfocusedLabelColor = Color.Gray,
         disabledLabelColor = Color.Gray,
         focusedPlaceholderColor = Color.Gray,
-        unfocusedPlaceholderColor = Color.Gray
+        unfocusedPlaceholderColor = Color.Gray,
+        cursorColor = brandBlue
     )
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Change Password", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onCloseClick) {
@@ -110,12 +119,13 @@ fun ChangePasswordScreen(
                 },
                 // --- Disable button while loading ---
                 enabled = !uiState.isLoading,
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Black,
+                    containerColor = brandBlue,
                     contentColor = Color.White
                 )
             ) {
@@ -128,56 +138,63 @@ fun ChangePasswordScreen(
                 } else {
                     Text(
                         text = "Change Password",
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         },
         containerColor = surfaceColor
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        androidx.compose.animation.AnimatedVisibility(
+            visible = visible,
+            enter = androidx.compose.animation.slideInVertically { it / 2 } + androidx.compose.animation.fadeIn(),
+            modifier = Modifier.padding(paddingValues)
         ) {
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password *") },
-                placeholder = { Text("Password") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = textFieldColors,
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                isError = uiState.error != null // Show error state
-            )
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = { Text("Confirm Password *") },
-                placeholder = { Text("Confirm Password") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = textFieldColors,
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                isError = uiState.error != null // Show error state
-            )
-
-            // --- Show error message ---
-            if (uiState.error != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = uiState.error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password *") },
+                    placeholder = { Text("Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = textFieldColors,
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    isError = uiState.error != null // Show error state
                 )
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = { Text("Confirm Password *") },
+                    placeholder = { Text("Confirm Password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = textFieldColors,
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    isError = uiState.error != null // Show error state
+                )
+
+                // --- Show error message ---
+                if (uiState.error != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = uiState.error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }

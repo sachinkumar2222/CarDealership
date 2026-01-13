@@ -1,19 +1,17 @@
 package com.slt.cardealership.presentation.profile
 
-import android.util.Log // <-- 1. THE LOG IMPORT IS HERE
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.SavedStateHandle
 import com.slt.cardealership.data.remote.network.ApiService
 import com.slt.cardealership.domain.model.DetailedUserProfile
-import com.slt.cardealership.domain.model.UserProfileUpdateRequest
 import com.slt.cardealership.domain.repo.DealerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.slt.cardealership.domain.model.ChangePasswordRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import android.content.Context
 import android.graphics.Bitmap
@@ -22,6 +20,7 @@ import android.net.Uri
 import android.os.Build
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -42,7 +41,7 @@ class ProfileViewModel @Inject constructor(
     companion object {
         private const val PROFILE_KEY = "editableProfile"
         private const val USER_ID_KEY = "currentUserId"
-        private const val TAG = "ProfileViewModel_DEBUG" // <-- 2. THE LOG TAG IS HERE
+        private const val TAG = "ProfileViewModel_DEBUG"
     }
 
     // UI state for both profile view and edit screen
@@ -51,6 +50,9 @@ class ProfileViewModel @Inject constructor(
 
     private val _eventFlow = MutableSharedFlow<UiEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
+
+    private val _changePasswordState = MutableStateFlow(ChangePasswordUiState())
+    val changePasswordState: StateFlow<ChangePasswordUiState> = _changePasswordState.asStateFlow()
 
     // This flow will now automatically save and restore the profile
     private val _editableProfile = savedStateHandle.getStateFlow<DetailedUserProfile?>(PROFILE_KEY, null)
@@ -63,7 +65,6 @@ class ProfileViewModel @Inject constructor(
 
 
     init {
-        // --- 3. THE LOGS ARE HERE ---
         Log.d(TAG, "-------------------------")
         Log.d(TAG, "ViewModel INIT block running...")
 
@@ -87,12 +88,13 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun fetchFullUserProfile() {
-        Log.d(TAG, "fetchFullUserProfile() CALLED.") // <-- 4. LOG IS HERE
+        Log.d(TAG, "fetchFullUserProfile() CALLED.")
         _uiState.value = ProfileUiState.Loading
         viewModelScope.launch {
             try {
                 // First, get the user's ID
                 val authorizationResponse = apiService.getUserAuthorization()
+                Log.d("DealerRepo", "Authorization Response: ${authorizationResponse.dealerId}")
                 _currentUserId = authorizationResponse.userId
                 savedStateHandle[USER_ID_KEY] = _currentUserId // SAVE THE ID
 
@@ -159,7 +161,7 @@ class ProfileViewModel @Inject constructor(
                 parts["language"] = currentDraft.language.orEmpty().toTextRequestBody()
                 val isActiveValue = currentDraft.isActive.toString() // This will be "true"
                 Log.d(TAG, "onSaveProfile: Sending 'is_active' with value: $isActiveValue")
-               // parts["is_active"] = isActiveValue.toTextRequestBody()
+                // parts["is_active"] = isActiveValue.toTextRequestBody()
 
                 // --- 6. UPDATED IMAGE COMPRESSION CODE ---
                 val imageUri = _selectedImageUri.value
@@ -196,7 +198,7 @@ class ProfileViewModel @Inject constructor(
                     parts["image_url"] = currentDraft.imageUrl.orEmpty().toTextRequestBody()
                 }
 
-                repository.updateUserProfileWithImage(userId, parts)
+                repository.updateUser(userId, parts)
                     .onSuccess { partialUpdateResponse ->
 
                         // --- 6. FIXING THE "VALUES NOT UPDATING" BUG ---
@@ -211,7 +213,7 @@ class ProfileViewModel @Inject constructor(
                         _eventFlow.emit(UiEvent.NavigateBack)// Update UI
                         _selectedImageUri.value = null // Clear the selected image
                     }
-                    .onFailure { error ->
+                    .onFailure { error: Throwable ->
                         _uiState.value = ProfileUiState.SaveError(error.localizedMessage ?: "Failed to update profile.")
                         _eventFlow.emit(UiEvent.ShowToast(error.localizedMessage ?: "Failed to update profile."))
                     }
@@ -240,6 +242,40 @@ class ProfileViewModel @Inject constructor(
             0L // Return 0 or handle error
         }
     }
+
+    fun changePassword(userId: Long, pass: String, confirmPass: String) {
+        viewModelScope.launch {
+            // 1. Validation
+            if (pass.isBlank() || confirmPass.isBlank()) {
+                _changePasswordState.value = ChangePasswordUiState(error = "Fields cannot be empty")
+                return@launch
+            }
+            if (pass != confirmPass) {
+                _changePasswordState.value = ChangePasswordUiState(error = "Passwords do not match")
+                return@launch
+            }
+
+            // 2. Set loading
+            _changePasswordState.value = ChangePasswordUiState(isLoading = true)
+
+            val request = ChangePasswordRequest(password = pass)
+
+            // 3. Make API Call
+            try {
+                // Using dealerRepository from constructor
+                repository.changeUserPassword(userId, request).getOrThrow()
+                _changePasswordState.value = ChangePasswordUiState(isSuccess = true)
+            } catch (exception: Throwable) {
+                _changePasswordState.value = ChangePasswordUiState(
+                    error = exception.message ?: "Failed to change password"
+                )
+            }
+        }
+    }
+
+    fun clearChangePasswordState() {
+        _changePasswordState.value = ChangePasswordUiState()
+    }
 }
 
 // ... (Your ProfileUiState sealed class) ...
@@ -251,6 +287,12 @@ sealed class ProfileUiState {
     data class SaveError(val message: String) : ProfileUiState()
     data class Error(val message: String) : ProfileUiState()
 }
+
+data class ChangePasswordUiState(
+    val isLoading: Boolean = false,
+    val isSuccess: Boolean = false,
+    val error: String? = null
+)
 
 sealed interface UiEvent {
     data class ShowToast(val message: String) : UiEvent

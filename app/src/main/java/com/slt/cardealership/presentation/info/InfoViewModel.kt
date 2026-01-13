@@ -6,11 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.domain.model.DealerInfo
-import com.slt.cardealership.domain.model.HomeTestDrive
 import com.slt.cardealership.domain.model.HourDetails
 import com.slt.cardealership.domain.model.ModifyDealerRequest
 import com.slt.cardealership.domain.model.UpdateHoursRequest
 import com.slt.cardealership.domain.model.UserPayload
+import com.slt.cardealership.domain.model.UserProfile
 import com.slt.cardealership.domain.repo.DealerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
@@ -21,10 +21,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.util.Locale
 import javax.inject.Inject
 
 // --- Events for showing snackbars/toasts ---
@@ -37,6 +33,7 @@ sealed class InfoUiState {
     object Loading : InfoUiState()
     data class Success(
         val dealerInfo: DealerInfo,
+        val userProfile: UserProfile? = null,
         val isSaving: Boolean = false // Shows loading on the save button
     ) : InfoUiState()
     data class Error(val message: String) : InfoUiState()
@@ -76,14 +73,23 @@ class InfoViewModel @Inject constructor(
             }
             currentDealerId = dealerId
 
-            dealerRepository.getCombinedDealerInfo(dealerId)
-                .onSuccess { combinedInfo ->
-                    _uiState.value = InfoUiState.Success(combinedInfo)
-                }
-                .onFailure { error ->
-                    Log.e(TAG, "Failed to fetch dealer info", error)
-                    _uiState.value = InfoUiState.Error(error.message ?: "An unknown error occurred")
-                }
+            // Fetch both DealerInfo and UserProfile
+            val dealerInfoResult = async { dealerRepository.getCombinedDealerInfo(dealerId) }
+            val userProfileResult = async { dealerRepository.getUserAuthorization() }
+
+            val dealerInfo = dealerInfoResult.await()
+            val userProfile = userProfileResult.await()
+
+            if (dealerInfo.isSuccess) {
+                _uiState.value = InfoUiState.Success(
+                    dealerInfo = dealerInfo.getOrThrow(),
+                    userProfile = userProfile.getOrNull()
+                )
+            } else {
+                val error = dealerInfo.exceptionOrNull()
+                Log.e(TAG, "Failed to fetch dealer info", error)
+                _uiState.value = InfoUiState.Error(error?.message ?: "An unknown error occurred")
+            }
         }
     }
 
@@ -141,7 +147,12 @@ class InfoViewModel @Inject constructor(
 
                 result.onSuccess { updatedDealerInfo ->
                     // Success! Update the UI with the new, complete info from the server
-                    _uiState.value = InfoUiState.Success(updatedDealerInfo)
+                    // Preserve the userProfile when updating dealer info
+                    val currentUserProfile = (currentState as? InfoUiState.Success)?.userProfile
+                    _uiState.value = InfoUiState.Success(
+                        dealerInfo = updatedDealerInfo,
+                        userProfile = currentUserProfile
+                    )
                     _events.send(InfoEvent.ShowSuccess(successMessage))
                     _selectedImageUri.value = null // Clear temporary URI
                 }.onFailure { error ->
@@ -157,8 +168,6 @@ class InfoViewModel @Inject constructor(
         }
     }
 
-
-
     /**
      * Updates fields on the main /dealer-api/Dealers/{id} endpoint (FormUrlEncoded).
      * Use this for: name, phone, website_url, description, address, city_name
@@ -172,44 +181,25 @@ class InfoViewModel @Inject constructor(
             if (dealerId == null) {
                 _events.send(InfoEvent.ShowError("User session error."))
                 return@launch
-
-                // 1. Create a *new* dealerInfo object with the updates applied
-                val newDealerInfo = currentState.dealerInfo.copy(
-                    name = (updateMap["name"] as? String) ?: currentState.dealerInfo.name,
-                    phone = (updateMap["phone"] as? String) ?: currentState.dealerInfo.phone,
-                    websiteUrl = (updateMap["website_url"] as? String) ?: currentState.dealerInfo.websiteUrl,
-                    address = (updateMap["address"] as? String) ?: currentState.dealerInfo.address,
-                    description = (updateMap["description"] as? String) ?: currentState.dealerInfo.description,
-                    isVirtual = (updateMap["is_virtual"] as? Boolean) ?: currentState.dealerInfo.isVirtual
-                    // Add any other fields from your MultiFieldEditDialog here
-                )
-
-                // 2. Call the master save function
-                saveFullDealerInfo(
-                    dealerInfo = newDealerInfo,
-                    newImageUri = null, // No new image for this update
-                    successMessage = successMessage
-                )
             }
 
-            _uiState.value = currentState.copy(isSaving = true)
+            // 1. Create a *new* dealerInfo object with the updates applied
+            val newDealerInfo = currentState.dealerInfo.copy(
+                name = (updateMap["name"] as? String) ?: currentState.dealerInfo.name,
+                phone = (updateMap["phone"] as? String) ?: currentState.dealerInfo.phone,
+                websiteUrl = (updateMap["website_url"] as? String) ?: currentState.dealerInfo.websiteUrl,
+                address = (updateMap["address"] as? String) ?: currentState.dealerInfo.address,
+                description = (updateMap["description"] as? String) ?: currentState.dealerInfo.description,
+                isVirtual = (updateMap["is_virtual"] as? Boolean) ?: currentState.dealerInfo.isVirtual
+                // Add any other fields from your MultiFieldEditDialog here
+            )
 
-            // Convert to Map<String, String> for FormUrlEncoded
-            val stringUpdateMap = updateMap.mapValues { it.value.toString() }
-
-            Log.d(TAG, "Updating dealer info (FormUrlEncoded): $stringUpdateMap")
-
-            dealerRepository.updateDealerInfo(dealerId, stringUpdateMap)
-                .onSuccess {
-                    Log.d(TAG, "Update successful")
-                    _events.send(InfoEvent.ShowSuccess(successMessage))
-                    fetchDealerInfo() // Refresh data
-                }
-                .onFailure { error ->
-                    Log.e(TAG, "Update failed", error)
-                    _uiState.value = currentState.copy(isSaving = false)
-                    _events.send(InfoEvent.ShowError(error.message ?: "Update failed"))
-                }
+            // 2. Call the master save function
+            saveFullDealerInfo(
+                dealerInfo = newDealerInfo,
+                newImageUri = null, // No new image for this update
+                successMessage = successMessage
+            )
         }
     }
 
@@ -304,7 +294,6 @@ class InfoViewModel @Inject constructor(
             newImageUri = null, // No new image
             successMessage = "Virtual Dealership updated"
         )
-        saveDealerUpdates(updateMap, "Virtual Dealership updated")
     }
 
     fun updateVirtualAppointment(isAvailable: Boolean, link: String) {

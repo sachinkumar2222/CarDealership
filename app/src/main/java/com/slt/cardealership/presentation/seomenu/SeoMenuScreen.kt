@@ -13,10 +13,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.slt.cardealership.domain.model.SeoCategory
@@ -53,11 +58,26 @@ fun SeoMenuScreen(
         }
     }
 
-    val customColor = Color(0xFF11233c)
+    // --- Refresh data when screen resumes (e.g. coming back from Add Screen) ---
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshSeoMenus()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val customColor = Color(0xFF2196F3)
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.shadow(4.dp),
                 title = { Text("SEO Menus", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -65,9 +85,9 @@ fun SeoMenuScreen(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = customColor,
-                    navigationIconContentColor = customColor
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black,
+                    navigationIconContentColor = Color.Black
                 )
             )
         },
@@ -115,11 +135,11 @@ fun SeoMenuScreen(
                 }
             }
         },
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
     ) { paddingValues ->
         Box(
             modifier = Modifier
-                .padding(paddingValues)
+                .padding(top = paddingValues.calculateTopPadding())
                 .fillMaxSize()
         ) {
             when {
@@ -137,31 +157,27 @@ fun SeoMenuScreen(
                 else -> {
                     // --- 7. This is your UI, but connected to the ViewModel ---
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp, vertical = 16.dp)
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        Text(
-                            text = "SEO Menus",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = customColor
-                        )
-                        Text(
-                            text = "Manage your SEO menu from here",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
+
 
                         // --- 8. REMOVED "Select All" header ---
                         // (It is not needed for an editor screen)
 
                         // --- 9. CONNECTED LazyColumn to ViewModel ---
                         LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(bottom = 88.dp)
-                        ) {
+                            contentPadding = PaddingValues(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 150.dp)    ) {
+                            item {
+                                Text(
+                                    text = "Manage your SEO menu from here",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.DarkGray,
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
                             itemsIndexed(uiState.menuItems, key = { _, item -> item.localId }) { index, item ->
                                 // --- 10. USING THE NEW EDITABLE CARD ---
                                 EditableSeoMenuCard(
@@ -200,8 +216,7 @@ fun EditableSeoMenuCard(
     onDelete: () -> Unit,
     customColor: Color
 ) {
-    var categoryExpanded by remember { mutableStateOf(false) }
-    var targetExpanded by remember { mutableStateOf(false) }
+
 
     // Define colors for the TextFields
     val textFieldColors = TextFieldDefaults.colors(
@@ -211,7 +226,11 @@ fun EditableSeoMenuCard(
         focusedIndicatorColor = customColor,
         unfocusedIndicatorColor = Color.LightGray,
         focusedLabelColor = customColor,
-        unfocusedLabelColor = Color.Gray
+        unfocusedLabelColor = Color.Gray,
+        focusedTextColor = Color.Black,
+        unfocusedTextColor = Color.Black,
+        focusedTrailingIconColor = customColor,
+        unfocusedTrailingIconColor = Color.Gray
     )
 
     Card(
@@ -227,66 +246,28 @@ fun EditableSeoMenuCard(
             // --- Row 1: Category and Target Dropdowns ---
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Category Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = categoryExpanded,
-                    onExpandedChange = { categoryExpanded = !categoryExpanded },
+                SeoDropdown(
+                    label = "Category",
+                    selectedOption = item.categoryName,
+                    options = allCategories,
+                    onOptionSelected = { category ->
+                        onItemChange(item.copy(categoryId = category.id, categoryName = category.name))
+                    },
+                    optionLabel = { it.name },
                     modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = item.categoryName,
-                        onValueChange = {},
-                        label = { Text("Category") },
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = textFieldColors
-                    )
-                    ExposedDropdownMenu(
-                        expanded = categoryExpanded,
-                        onDismissRequest = { categoryExpanded = false }
-                    ) {
-                        allCategories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category.name) },
-                                onClick = {
-                                    onItemChange(item.copy(categoryId = category.id, categoryName = category.name))
-                                    categoryExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                )
 
                 // Target Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = targetExpanded,
-                    onExpandedChange = { targetExpanded = !targetExpanded },
+                SeoDropdown(
+                    label = "Target",
+                    selectedOption = item.target,
+                    options = allTargets,
+                    onOptionSelected = { target ->
+                        onItemChange(item.copy(target = target))
+                    },
+                    optionLabel = { it },
                     modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = item.target,
-                        onValueChange = {},
-                        label = { Text("Target") },
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = targetExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = textFieldColors
-                    )
-                    ExposedDropdownMenu(
-                        expanded = targetExpanded,
-                        onDismissRequest = { targetExpanded = false }
-                    ) {
-                        allTargets.forEach { target ->
-                            DropdownMenuItem(
-                                text = { Text(target) },
-                                onClick = {
-                                    onItemChange(item.copy(target = target))
-                                    targetExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                )
             }
 
             // --- Row 2: Menu Label (Now Editable) ---
@@ -322,3 +303,5 @@ fun EditableSeoMenuCard(
         }
     }
 }
+
+

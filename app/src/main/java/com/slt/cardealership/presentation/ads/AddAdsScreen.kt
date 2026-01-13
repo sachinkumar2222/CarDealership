@@ -13,7 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -231,7 +233,7 @@ fun AddAdsScreen(
 
                     // Show form-wide errors (e.g., validation fail)
                     formState.formError?.let {
-                      //  Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 8.dp))
+                        //  Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 8.dp))
                         Log.d("AddAdsScreen", "Form error: $it")
                     }
 
@@ -242,7 +244,12 @@ fun AddAdsScreen(
                         label = { Text("Advertisement name *") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        isError = formState.formError != null && formState.adName.isBlank()
+                        isError = formState.formError != null && formState.adName.isBlank(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = themeColor,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     )
 
                     OutlinedTextField(
@@ -250,7 +257,12 @@ fun AddAdsScreen(
                         onValueChange = { onFormChange(formState.copy(adDescription = it)) },
                         label = { Text("Advertisement Description") },
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 3
+                        minLines = 3,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = themeColor,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -286,13 +298,18 @@ fun AddAdsScreen(
                         label = { Text("Goal Url *") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        isError = formState.formError != null && formState.goalUrl.isBlank()
+                        isError = formState.formError != null && formState.goalUrl.isBlank(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = themeColor,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     )
 
                     // --- Dynamic Goal Type Dropdown ---
                     // Appears only if goal types are available for the selected goal
                     AnimatedVisibility(visible = goalTypeState.types.isNotEmpty() && !goalTypeState.isLoading) {
-                        FormDropdown(
+                        AnimatedDropdown(
                             label = "Goal Category Type",
                             options = goalTypeState.types.map { it.name },
                             selectedOption = formState.selectedGoalTypeName,
@@ -304,7 +321,7 @@ fun AddAdsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     SectionTitle(title = "Advertisement Type *")
                     // Ad Type Dropdown
-                    FormDropdown(
+                    AnimatedDropdown(
                         label = "Select Type *",
                         options = viewModel.adTypeOptions,
                         selectedOption = formState.adType,
@@ -320,14 +337,14 @@ fun AddAdsScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.padding(top = 16.dp) // Add padding when this section appears
                         ) {
-                            FormDropdown(
+                            AnimatedDropdown(
                                 label = "Condition *",
                                 options = viewModel.conditionOptions,
                                 selectedOption = formState.condition ?: "",
                                 onOptionSelected = { onFormChange(formState.copy(condition = it)) },
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            FormDropdown(
+                            AnimatedDropdown(
                                 label = "Make *",
                                 // Use makeOptions from VehicleViewModel
                                 options = vehicleViewModel.makeOptions,
@@ -344,7 +361,7 @@ fun AddAdsScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.padding(top = 16.dp) // Add padding when this section appears
                         ) {
-                            FormDropdown(
+                            AnimatedDropdown(
                                 label = "Model *",
                                 options = modelState.models.map { it.name },
                                 selectedOption = formState.modelName ?: "",
@@ -366,14 +383,95 @@ fun AddAdsScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
                     SectionTitle(title = "Advertisement Date")
-                    OutlinedTextField(
-                        value = formState.startDate,
-                        onValueChange = { onFormChange(formState.copy(startDate = it)) },
-                        label = { Text("Start Date *") },
-                        modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = { Icon(Icons.Default.CalendarToday, "Calendar") }
-                        // TODO: Replace with a real DatePickerDialog
+                    // --- Date Picker Logic ---
+                    val datePickerState = rememberDatePickerState(
+                        initialSelectedDateMillis = formState.startDateMillis ?: System.currentTimeMillis()
                     )
+                    var showDatePicker by remember { mutableStateOf(false) }
+
+                    if (showDatePicker) {
+                        DatePickerDialog(
+                            onDismissRequest = { showDatePicker = false },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        val selectedDateMillis = datePickerState.selectedDateMillis
+                                        if (selectedDateMillis != null) {
+                                            val formattedDate = java.text.SimpleDateFormat(
+                                                "MMM dd, yyyy",
+                                                java.util.Locale.getDefault()
+                                            ).format(java.util.Date(selectedDateMillis))
+
+                                            onFormChange(
+                                                formState.copy(
+                                                    startDate = formattedDate,
+                                                    startDateMillis = selectedDateMillis
+                                                )
+                                            )
+                                        }
+                                        showDatePicker = false
+                                    }
+                                ) {
+                                    Text("OK")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDatePicker = false }) {
+                                    Text("Cancel", color = themeColor)
+                                }
+                            },
+                            colors = DatePickerDefaults.colors(
+                                containerColor = Color.White,
+                            )
+                        ) {
+                            DatePicker(
+                                state = datePickerState,
+                                colors = DatePickerDefaults.colors(
+                                    selectedDayContainerColor = themeColor,
+                                    todayDateBorderColor = themeColor,
+                                    todayContentColor = themeColor,
+                                    selectedYearContainerColor = themeColor,
+                                    currentYearContentColor = themeColor,
+                                    weekdayContentColor = themeColor,
+                                    headlineContentColor = themeColor
+                                )
+                            )
+                        }
+                    }
+
+                    // Wrap the Date field in a Box to make it properly clickable without focus issues
+                    Box {
+                        OutlinedTextField(
+                            value = formState.startDate,
+                            onValueChange = { }, // Read-only, handled by picker
+                            label = { Text("Start Date *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.CalendarToday,
+                                    "Calendar",
+                                    tint = themeColor
+                                )
+                            },
+                            enabled = false, // Disable typing
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledTextColor = Color.Black,
+                                disabledBorderColor = Color.LightGray.copy(alpha = 0.7f),
+                                disabledLabelColor = Color.Black,
+                                disabledTrailingIconColor = themeColor,
+                                focusedBorderColor = themeColor,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        // Overlay for click handling
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { showDatePicker = true }
+                        )
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = formState.noEndDate,
@@ -531,53 +629,103 @@ fun GoalSelectionCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FormDropdown(
+fun AnimatedDropdown(
     label: String,
     options: List<String>,
     selectedOption: String,
     onOptionSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true // Added enabled flag
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val rotationState by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f, label = "rotation"
+    )
 
-    ExposedDropdownMenuBox(
-        expanded = enabled && expanded, // Only expand if enabled
-        onExpandedChange = { if (enabled) expanded = !expanded }, // Only change if enabled
-        modifier = modifier
-    ) {
-        OutlinedTextField(
-            modifier = Modifier.menuAnchor().fillMaxWidth(),
-            readOnly = true,
-            value = selectedOption,
-            onValueChange = {},
-            label = { Text(label) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            enabled = enabled, // Pass enabled state
-            // *** FIX 3: Use OutlinedTextFieldDefaults.colors ***
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = themeColor,
-                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f),
-                disabledTextColor = Color.Black.copy(alpha = 0.6f),
-                disabledLabelColor = Color.Gray,
-                disabledBorderColor = Color.LightGray.copy(alpha = 0.7f)
-            ),
-        )
-        ExposedDropdownMenu(
-            expanded = enabled && expanded,
-            onDismissRequest = { expanded = false },
+    Column(modifier = modifier) {
+        Box {
+            OutlinedTextField(
+                value = selectedOption,
+                onValueChange = {},
+                label = { Text(label) },
+                modifier = Modifier.fillMaxWidth(),
+                readOnly = true,
+                enabled = false, // Disable direct interaction so the Box handles it
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Drop Down",
+                        modifier = Modifier.rotate(rotationState)
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = Color.Black,
+                    disabledBorderColor = Color.LightGray.copy(alpha = 0.7f),
+                    disabledLabelColor = Color.Black.copy(alpha = 0.8f),
+                    disabledTrailingIconColor = Color.Black,
+                    // These might be ignored when disabled, but defining them for consistency
+                    focusedBorderColor = themeColor,
+                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+            // Transparent overlay to verify clicks work everywhere on the field
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(enabled = enabled) { expanded = !expanded }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = expanded && enabled,
+            enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
         ) {
-            options.forEach { selectionOption ->
-                DropdownMenuItem(
-                    text = { Text(selectionOption) },
-                    onClick = {
-                        onOptionSelected(selectionOption)
-                        expanded = false
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                )
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+                    .heightIn(max = 250.dp), // Limit height for long lists
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(4.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
+            ) {
+                // Use LazyColumn for efficient scrolling of long lists
+                androidx.compose.foundation.lazy.LazyColumn(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(options.size) { index ->
+                        val option = options[index]
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = option,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (option == selectedOption) themeColor else Color.Black
+                                )
+                            },
+                            onClick = {
+                                onOptionSelected(option)
+                                expanded = false
+                            },
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                            colors = MenuDefaults.itemColors(
+                                textColor = Color.Black // Explicitly set text color if needed, or just remove colors entirely if defaults are fine.
+                            )
+                        )
+                        if (index < options.size - 1) {
+                            HorizontalDivider(
+                                color = Color.LightGray.copy(alpha = 0.2f),
+                                thickness = 1.dp,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }

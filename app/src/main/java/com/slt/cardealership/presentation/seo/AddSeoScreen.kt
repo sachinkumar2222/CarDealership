@@ -29,8 +29,8 @@ import com.slt.cardealership.presentation.seo.SeoViewModel // Make sure to impor
 // --- DEFINE THE GRADIENT ---
 private val blueGradient = Brush.horizontalGradient(
     colors = listOf(
-        Color(0xFF2196F3), // Light Blue
-        Color(0xFF1565C0)  // Dark Blue
+        Color(0xFF2196F3),
+        Color(0xFF2196F3)
     )
 )
 
@@ -153,7 +153,12 @@ fun AddSeoScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 singleLine = true,
-                isError = addState.error != null && addState.tagName.isBlank()
+                isError = addState.error != null && addState.tagName.isBlank(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF2196F3),
+                    focusedLabelColor = Color(0xFF2196F3),
+                    cursorColor = Color(0xFF2196F3)
+                )
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -175,7 +180,12 @@ fun AddSeoScreen(
                     .fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 singleLine = true,
-                isError = addState.error != null && addState.tagUrl.isBlank()
+                isError = addState.error != null && addState.tagUrl.isBlank(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF2196F3),
+                    focusedLabelColor = Color(0xFF2196F3),
+                    cursorColor = Color(0xFF2196F3)
+                )
             )
             // --- END FIX ---
 

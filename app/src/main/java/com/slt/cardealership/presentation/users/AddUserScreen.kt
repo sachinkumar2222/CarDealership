@@ -1,19 +1,18 @@
 package com.slt.cardealership.presentation.users
 
+// --- FIX 1: Remove this incorrect import ---
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
-// --- FIX 1: Remove this incorrect import ---
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import com.slt.cardealership.R
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,22 +54,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.error
+import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Department
-import com.slt.cardealership.domain.model.Designation // <-- NEW IMPORT
-import com.slt.cardealership.presentation.home.backgroundColor
-import com.slt.cardealership.presentation.home.businessDarkBlue
+import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.presentation.home.surfaceColor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,12 +96,21 @@ fun AddUserScreen(
     var isDesignationMenuExpanded by remember { mutableStateOf(false) }
     var selectedDesignation by remember { mutableStateOf<Designation?>(null) }
 
+    // --- Animations ---
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri: Uri? ->
             imageUri = uri
         }
     )
+
+    // --- Role State (Hardcoded for now as per request) ---
+    var isRoleMenuExpanded by remember { mutableStateOf(false) }
+    var selectedRole by remember { mutableStateOf("") } // Default to empty
+    val roles = listOf("dl-admin")
 
     // Load departments when screen launches
     LaunchedEffect(Unit) {
@@ -133,309 +139,384 @@ fun AddUserScreen(
         }
     }
 
+    val brandBlue = Color(0xFF2196F3)
+
     val textFieldColors = TextFieldDefaults.colors(
-        focusedContainerColor = surfaceColor,
-        unfocusedContainerColor = surfaceColor,
-        // ... (rest of colors)
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
+        disabledContainerColor = Color(0xFFF5F5F5),
+        focusedIndicatorColor = brandBlue,
+        unfocusedIndicatorColor = Color(0xFFE0E0E0),
+        disabledIndicatorColor = Color.Transparent,
+        focusedLabelColor = brandBlue,
+        unfocusedLabelColor = Color.DarkGray,
+        disabledLabelColor = Color.DarkGray,
+        cursorColor = brandBlue
     )
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Add User", fontWeight = FontWeight.Bold) },
+                title = { Text("Add User", color = Color.Black, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.Black)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = surfaceColor
-                )
+                    containerColor = Color.White
+                ),
+                modifier = Modifier.shadow(4.dp)
             )
         },
-        bottomBar = {
-            Button(
-                onClick = {
-                    // --- FIX 2: Pass all required parameters ---
-                    viewModel.addUser(
-                        firstName = firstName,
-                        lastName = lastName,
-                        username = email,
-                        password = password,
-                        phone = phone.takeIf { it.isNotBlank() },
-                        imageUri = imageUri,
-                        departmentId = selectedDepartment?.id,
-                        designationId = selectedDesignation?.id // <-- Added
-                    )
-                },
-                enabled = !uiState.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Black,
-                    contentColor = Color.White
-                )
-            ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        text = "Add User",
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-            }
-        },
-        containerColor = surfaceColor
+
+        containerColor = Color(0xFFF5F7FA) // Light grey background
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        androidx.compose.animation.AnimatedVisibility(
+            visible = visible,
+            enter = androidx.compose.animation.slideInVertically { it / 2 } + androidx.compose.animation.fadeIn(),
+            modifier = Modifier.padding(paddingValues)
         ) {
-            // --- Profile Image Section ---
-            Box(
-                contentAlignment = Alignment.BottomEnd,
-                modifier = Modifier.clickable {
-                    photoPickerLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageUri ?: R.drawable.load)
-                        .error(R.drawable.load)
-                        .build(),
-                    contentDescription = "Profile Picture Placeholder",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray)
-                )
+                // --- Header & Profile Image Section ---
                 Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black)
-                        .border(2.dp, Color.White, CircleShape),
+                    modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Edit Profile Image",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            // --- Show Error Message ---
-            if (uiState.error != null) {
-                Text(
-                    text = uiState.error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // --- Row 1: First Name / Last Name ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                OutlinedTextField(
-                    value = firstName,
-                    onValueChange = { firstName = it },
-                    label = { Text("First Name *") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true,
-                    isError = uiState.error != null
-                )
-                OutlinedTextField(
-                    value = lastName,
-                    onValueChange = { lastName = it },
-                    label = { Text("Last Name *") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true,
-                    isError = uiState.error != null
-                )
-            }
-
-            // --- Email/Username ---
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email/Username *") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = textFieldColors,
-                singleLine = true,
-                isError = uiState.error != null
-            )
-
-            // --- Business Phone ---
-            OutlinedTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                label = { Text("Business Phone") },
-                placeholder = { Text("(000) 000-0000") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = textFieldColors,
-                singleLine = true
-            )
-            // --- Row 2: Role / Department ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // --- Role (Not implemented yet) ---
-                OutlinedTextField(
-                    value = "", // TODO: Connect to Role state
-                    onValueChange = { },
-                    label = { Text("Role *") },
-                    placeholder = { Text("Select Role") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    trailingIcon = {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown")
-                    },
-                    readOnly = true,
-                    enabled = false // <-- Disabled until API is ready
-                )
-
-                // --- Department ---
-                ExposedDropdownMenuBox(
-                    expanded = isDepartmentMenuExpanded,
-                    onExpandedChange = { isDepartmentMenuExpanded = !isDepartmentMenuExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = selectedDepartment?.name ?: "",
-                        onValueChange = {},
-                        label = { Text("Department *") },
-                        placeholder = { Text("Select Department") },
+                    // Profile Image
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = textFieldColors,
-                        readOnly = true,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                expanded = isDepartmentMenuExpanded
-                            )
-                        },
-                        isError = uiState.error != null
-                    )
-                    ExposedDropdownMenu(
-                        expanded = isDepartmentMenuExpanded,
-                        onDismissRequest = { isDepartmentMenuExpanded = false }
+                            .padding(top = 20.dp, bottom = 20.dp)
+                            .clickable {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
                     ) {
-                        uiState.departments.forEach { department ->
-                            DropdownMenuItem(
-                                text = { Text(department.name) },
-                                onClick = {
-                                    selectedDepartment = department
-                                    isDepartmentMenuExpanded = false
-                                }
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(imageUri ?: R.drawable.file_searching_rafiki)
+                                .error(R.drawable.file_searching_rafiki)
+                                .build(),
+                            contentDescription = "Profile Picture",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .border(4.dp, Color.White, CircleShape)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(brandBlue)
+                                .border(2.dp, Color.White, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "Edit Profile Image",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                 }
-            }
 
-            // --- FIX 4: Implement Designation Dropdown ---
-            ExposedDropdownMenuBox(
-                expanded = isDesignationMenuExpanded,
-                onExpandedChange = {
-                    // Only allow expanding if a department is selected
-                    if (selectedDepartment != null && !uiState.isLoading) {
-                        isDesignationMenuExpanded = !isDesignationMenuExpanded
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = selectedDesignation?.name ?: "",
-                    onValueChange = { },
-                    label = { Text("Designation *") },
-                    placeholder = { Text("Select Designation") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    readOnly = true,
-                    // Disable if no department is chosen or if loading
-                    enabled = selectedDepartment != null && !uiState.isLoading,
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = isDesignationMenuExpanded
-                        )
-                    },
-                    isError = uiState.error != null
-                )
-                ExposedDropdownMenu(
-                    expanded = isDesignationMenuExpanded,
-                    onDismissRequest = { isDesignationMenuExpanded = false }
+                // --- Error Message ---
+                if (uiState.error != null) {
+                    Text(
+                        text = uiState.error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(16.dp).fillMaxWidth()
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                // --- Form Content ---
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    uiState.designations.forEach { designation ->
-                        DropdownMenuItem(
-                            text = { Text(designation.name) },
-                            onClick = {
-                                selectedDesignation = designation
-                                isDesignationMenuExpanded = false
-                            }
+                    // Section: Personal Details
+                    FormSection(title = "Personal Details") {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = firstName,
+                                onValueChange = { firstName = it },
+                                label = { Text("First Name *") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                singleLine = true,
+                                isError = uiState.error != null
+                            )
+                            OutlinedTextField(
+                                value = lastName,
+                                onValueChange = { lastName = it },
+                                label = { Text("Last Name *") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                singleLine = true,
+                                isError = uiState.error != null
+                            )
+                        }
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email/Username *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = textFieldColors,
+                            singleLine = true,
+                            isError = uiState.error != null
+                        )
+                        OutlinedTextField(
+                            value = phone,
+                            onValueChange = { phone = it },
+                            label = { Text("Business Phone") },
+                            placeholder = { Text("(000) 000-0000") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = textFieldColors,
+                            singleLine = true
                         )
                     }
+
+                    // Section: Work Information
+                    FormSection(title = "Work Information") {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Role (Small space - Adjusted to prevent wrapping)
+                            ExposedDropdownMenuBox(
+                                expanded = isRoleMenuExpanded,
+                                onExpandedChange = { isRoleMenuExpanded = !isRoleMenuExpanded },
+                                modifier = Modifier.weight(0.4f)
+                            ) {
+                                OutlinedTextField(
+                                    value = selectedRole,
+                                    onValueChange = {},
+                                    label = { Text("Role *") },
+                                    placeholder = { Text("Select") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = textFieldColors,
+                                    readOnly = true,
+                                    singleLine = true, // Prevent wrapping
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isRoleMenuExpanded) },
+                                    isError = uiState.error != null
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = isRoleMenuExpanded,
+                                    onDismissRequest = { isRoleMenuExpanded = false }
+                                ) {
+                                    roles.forEach { role ->
+                                        DropdownMenuItem(
+                                            text = { Text(role) },
+                                            onClick = {
+                                                selectedRole = role
+                                                isRoleMenuExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Department (Large space)
+                            ExposedDropdownMenuBox(
+                                expanded = isDepartmentMenuExpanded,
+                                onExpandedChange = { isDepartmentMenuExpanded = !isDepartmentMenuExpanded },
+                                modifier = Modifier.weight(0.6f)
+                            ) {
+                                OutlinedTextField(
+                                    value = selectedDepartment?.name ?: "",
+                                    onValueChange = {},
+                                    label = { Text("Department *") },
+                                    placeholder = { Text("Select") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = textFieldColors,
+                                    readOnly = true,
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDepartmentMenuExpanded) },
+                                    isError = uiState.error != null
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = isDepartmentMenuExpanded,
+                                    onDismissRequest = { isDepartmentMenuExpanded = false }
+                                ) {
+                                    uiState.departments.forEach { department ->
+                                        DropdownMenuItem(
+                                            text = { Text(department.name) },
+                                            onClick = {
+                                                selectedDepartment = department
+                                                isDepartmentMenuExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Designation (Next Line, Full Width)
+                        ExposedDropdownMenuBox(
+                            expanded = isDesignationMenuExpanded,
+                            onExpandedChange = {
+                                if (selectedDepartment != null && !uiState.isLoading) {
+                                    isDesignationMenuExpanded = !isDesignationMenuExpanded
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = selectedDesignation?.name ?: "",
+                                onValueChange = { },
+                                label = { Text("Designation *") },
+                                placeholder = { Text("Select") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                readOnly = true,
+                                enabled = selectedDepartment != null && !uiState.isLoading,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDesignationMenuExpanded) },
+                                isError = uiState.error != null
+                            )
+                            ExposedDropdownMenu(
+                                expanded = isDesignationMenuExpanded,
+                                onDismissRequest = { isDesignationMenuExpanded = false }
+                            ) {
+                                uiState.designations.forEach { designation ->
+                                    DropdownMenuItem(
+                                        text = { Text(designation.name) },
+                                        onClick = {
+                                            selectedDesignation = designation
+                                            isDesignationMenuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Section: Account Setup
+                    FormSection(title = "Account Setup") {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = password,
+                                onValueChange = { password = it },
+                                label = { Text("Password *") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                isError = uiState.error != null
+                            )
+                            OutlinedTextField(
+                                value = confirmPassword,
+                                onValueChange = { confirmPassword = it },
+                                label = { Text("Confirm *") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                isError = uiState.error != null
+                            )
+                        }
+                    }
+
+                    // Bottom Spacer, reduced slightly as button is now here
+                    Spacer(modifier = Modifier.height(30.dp))
+
+                    // Floating Button (Now Scrollable)
+                    Button(
+                        onClick = {
+                            if (!uiState.isLoading) {
+                                viewModel.addUser(
+                                    firstName = firstName,
+                                    lastName = lastName,
+                                    username = email,
+                                    password = password,
+                                    phone = phone.takeIf { it.isNotBlank() },
+                                    imageUri = imageUri,
+                                    departmentId = selectedDepartment?.id,
+                                    designationId = selectedDesignation?.id
+                                )
+                            }
+                        },
+                        // Keep enabled to preserve style
+                        enabled = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = RoundedCornerShape(12.dp),
+                                spotColor = brandBlue.copy(alpha = 0.5f)
+                            ),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = brandBlue,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 3.dp
+                            )
+                        } else {
+                            Text(
+                                text = "Create User",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(20.dp)) // Extra bottom padding
                 }
             }
-
-            // --- Row 3: Password / Confirm Password ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Password *") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    isError = uiState.error != null
-                )
-                OutlinedTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    label = { Text("Confirm Password *") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    isError = uiState.error != null
-                )
-            }
         }
+    }
+}
+
+@Composable
+private fun FormSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black // Brand Blue
+        )
+        content()
     }
 }

@@ -10,6 +10,7 @@ import com.slt.cardealership.domain.model.PostImageUploadResponse
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import retrofit2.Response
 
 class PostRepositoryImpl @Inject constructor(
     private val apiService: ApiService
@@ -79,6 +80,4 @@ class PostRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
-
-
 }

@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -80,14 +81,22 @@ fun AddVehicleScreen(
         }
     }
 
-    // Handle single-time events like navigation or showing toasts
-    LaunchedEffect(key1 = Unit) { // Use Unit key to run only once
-        viewModel.events.collectLatest { event -> // Use collectLatest
+    // Handle navigation on success
+    LaunchedEffect(formState.isSaveSuccess) {
+        if (formState.isSaveSuccess) {
+            viewModel.onSaveSuccessConsumed()
+            navController.popBackStack()
+        }
+    }
+
+    // Handle single-time events (just errors now)
+    LaunchedEffect(key1 = Unit) {
+        viewModel.events.collectLatest { event ->
             when (event) {
-                InventoryEvent.NavigateBack -> navController.popBackStack()
                 is InventoryEvent.ShowError -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
                 }
+                else -> {}
             }
         }
     }
@@ -100,6 +109,7 @@ fun AddVehicleScreen(
         containerColor = Color(0xFFF8F9FA),
         topBar = {
             TopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 // Determine title based on editing state
                 title = { Text(
                     if (formState.isEditing) "Edit Vehicle" else "Add New Vehicle",
@@ -164,7 +174,6 @@ fun AddVehicleScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Show form-specific error message if present
             if (formState.formError != null) {
                 Text(
                     text = formState.formError!!,
@@ -287,8 +296,6 @@ fun AddVehicleScreen(
     }
 }
 
-// --- Keep ALL your other composables below ---
-// GradientButton, FormTextField, FormSection, FormDropdown, StyledRadioGroup
 @Composable
 private fun GradientButton(
     onClick: () -> Unit,

@@ -3,9 +3,14 @@ package com.slt.cardealership.presentation.articles
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
-import com.slt.cardealership.presentation.articles.UiEvent
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,14 +57,13 @@ fun AddEditArticleScreen(
     LaunchedEffect(snackbarHostState) {
         viewModel.events.collect { event ->
             when (event) {
-                // Now references the top-level UiEvent
-                is UiEvent.NavigateBack -> {
+                is AddEditArticleViewModel.UiEvent.NavigateBack -> {
                     navController.previousBackStackEntry
                         ?.savedStateHandle
                         ?.set("should_refresh", true)
                     onNavigateBack()
                 }
-                is UiEvent.ShowSnackbar -> {
+                is AddEditArticleViewModel.UiEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message, withDismissAction = true)
                 }
             }
@@ -70,15 +74,16 @@ fun AddEditArticleScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(if (state.post?.id == null) "Add Article" else "Edit Article", fontWeight = FontWeight.SemiBold) },
+                title = { Text(if (state.isEditMode) "Edit Article" else "Add Article", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.Close, "Close") }
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Close") }
                 },
                 actions = {
                     Button(
                         onClick = viewModel::onSave,
                         enabled = !state.isSaving && !state.isLoading,
-                        modifier = Modifier.padding(end = 8.dp)
+                        modifier = Modifier.padding(end = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
                     ) {
                         // Show a small spinner inside the button when saving
                         AnimatedVisibility(visible = state.isSaving) {
@@ -104,12 +109,32 @@ fun AddEditArticleScreen(
                 .background(Color(0xFFF0F2F5)),
             contentAlignment = Alignment.Center
         ) {
-            if (state.isLoading) {
-                CircularProgressIndicator()
-            } else if (state.error != null) {
-                Text(state.error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
-            } else if (state.post != null) {
-                AddEditArticleForm(post = state.post, viewModel = viewModel)
+            AnimatedContent(
+                targetState = state,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(500)) togetherWith fadeOut(animationSpec = tween(500))
+                },
+                label = "Content Transition" // Optional label for inspection
+            ) { targetState ->
+                when {
+                    targetState.isLoading -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    targetState.error != null -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                targetState.error,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
+                    targetState.post != null -> {
+                        AddEditArticleForm(post = targetState.post, viewModel = viewModel)
+                    }
+                }
             }
         }
     }
@@ -202,7 +227,13 @@ fun StyledTextField(
         label = { Text(label) },
         leadingIcon = { Icon(icon, contentDescription = null) },
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFF2196F3),
+            focusedLabelColor = Color(0xFF2196F3),
+            cursorColor = Color(0xFF2196F3),
+            focusedLeadingIconColor = Color(0xFF2196F3)
+        )
     )
 }
 

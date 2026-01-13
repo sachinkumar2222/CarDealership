@@ -42,6 +42,7 @@ data class AdFormState(
     val goalUrl: String = "",
     val adType: String = "General", // Default to 'General'
     val startDate: String = "",
+    val startDateMillis: Long? = null, // Added for Date Picker
     val noEndDate: Boolean = false,
     val locationRadius: Float = 35f,
     val showLocation: Boolean = true, // Location is shown for General and Co-op
@@ -326,7 +327,10 @@ class AdsViewModel @Inject constructor(
                 selectedGoalName = goalName, // <-- Fixed
                 goalUrl = ad.url ?: "",
                 adType = adTypeUiName, // <-- Fixed
-                startDate = ad.startDate?.toString() ?: "",
+                startDate = ad.startDate?.let {
+                    java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(it * 1000))
+                } ?: "",
+                startDateMillis = ad.startDate?.times(1000), // Convert seconds to millis
                 noEndDate = ad.endDate == null,
                 showLocation = apiTypeString in listOf("general", "co_op"), // <-- Fixed
                 condition = ad.condition,
@@ -434,7 +438,7 @@ class AdsViewModel @Inject constructor(
                 id = state.adId,
                 title = state.adName,
                 type = apiAdType,
-                startDate = state.startDate.toLongOrNull(),
+                startDate = state.startDateMillis?.div(1000),
                 endDate = if (state.noEndDate) null else null,
                 condition = apiCondition,
                 makeNames = null,

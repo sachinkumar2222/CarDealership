@@ -87,9 +87,6 @@ class SessionManager @Inject constructor( @ApplicationContext private val contex
         }
     }
 
-    /**
-     * --- NEW FUNCTION ---
-     */
     suspend fun getEmail(): String? {
         val jwt = getJwt() ?: return null
         return try {

@@ -5,9 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,13 +46,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.slt.cardealership.domain.model.ManageUsers
 import com.slt.cardealership.presentation.home.FullScreenError
 import com.slt.cardealership.presentation.home.shimmer
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.navigation.NavHostController
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import com.slt.cardealership.presentation.home.businessTextDark
 
 // --- REMOVED: UserItem and dummyUserList ---
@@ -84,6 +89,7 @@ fun UserScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Users", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) { // <-- Use lambda
@@ -98,7 +104,7 @@ fun UserScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddUserClick,
-                containerColor = businessDarkBlue, // Use theme color
+                containerColor = Color(0xFF2196F3), // Solid Blue
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
             ) {
@@ -201,12 +207,15 @@ fun UserListContent(
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp), // Increased spacing
                 contentPadding = PaddingValues(bottom = 88.dp)
             ) {
                 items(users, key = { it.id }) { user ->
                     val isCurrentUser = (currentUserUsername != null) &&
                             (user.username == currentUserUsername)
+
+                    // Simple slide-in animation wrapper could go here,
+                    // but for now we focus on the Premium Card design
                     UserCard(
                         user = user,
                         isCurrentUser = isCurrentUser,
@@ -224,7 +233,7 @@ fun UserListContent(
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            CircularProgressIndicator(color = Color(0xFF2196F3))
                         }
                     } else if (canLoadMore) {
                         OutlinedButton(
@@ -232,7 +241,10 @@ fun UserListContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 16.dp),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF2196F3)
+                            )
                         ) {
                             Text("Load More")
                         }
@@ -245,92 +257,130 @@ fun UserListContent(
 
 @Composable
 fun UserCard(
-    user: ManageUsers, // <-- Use ManageUsers
+    user: ManageUsers,
     isCurrentUser: Boolean,
     onManageClick: () -> Unit,
     onEditClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp), // More rounded
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp) // Higher elevation
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // --- User Info ---
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(avatarBlue),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            // Use first letter of first_name
-                            text = user.first_name?.firstOrNull()?.toString()?.uppercase() ?: "U",
-                            color = textBlue,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            // Combine first_name and last_name
-                            text = "${user.first_name ?: ""} ${user.last_name ?: ""}".trim(),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = user.username, // username is the email
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
+        Row(
+            modifier = Modifier.height(IntrinsicSize.Min) // For the vertical strip
+        ) {
+            // --- Blue Accent Strip ---
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(6.dp)
+                    .background(Color(0xFF2196F3))
+            )
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // --- Role and Actions ---
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = user.role_name ?: "N/A", // Use role_name
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (isCurrentUser) {
-                        OutlinedButton(
-                            onClick = onManageClick,
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = textBlue
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // --- User Info ---
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .size(50.dp) // Slightly larger
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFE3F2FD)), // Lighter blue bg
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("Manage")
+                            if (!user.image_url.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = user.image_url,
+                                    contentDescription = "${user.first_name} Profile",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text(
+                                    // Use first letter of first_name
+                                    text = user.first_name?.firstOrNull()?.toString()?.uppercase() ?: "U",
+                                    color = Color(0xFF2196F3),
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
                         }
-                    } else {
-                        Icon(
-                            imageVector = Icons.Outlined.Edit,
-                            contentDescription = "Edit User",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickable { onEditClick() }
-                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                // Combine first_name and last_name
+                                text = "${user.first_name ?: ""} ${user.last_name ?: ""}".trim(),
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp), // Larger
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = user.username, // username is the email
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // --- Role and Actions ---
+                    Column(horizontalAlignment = Alignment.End) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFFE3F2FD))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = user.role_name ?: "N/A",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        if (isCurrentUser) {
+                            OutlinedButton(
+                                onClick = onManageClick,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFF2196F3)
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Text("Manage")
+                            }
+                        } else {
+                            // Replaced simple icon with a small styled IconButton
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF5F7FA))
+                                    .clickable { onEditClick() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Edit,
+                                    contentDescription = "Edit User",
+                                    tint = Color(0xFF2196F3),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -343,7 +393,7 @@ fun UserCard(
 @Composable
 fun UserListShimmer() {
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(bottom = 88.dp, top = 16.dp, start = 16.dp, end = 16.dp),
         userScrollEnabled = false
     ) {
@@ -380,7 +430,7 @@ fun UserListShimmer() {
 fun UserCardShimmer() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -394,8 +444,8 @@ fun UserCardShimmer() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .shimmer()
                 )
                 Spacer(modifier = Modifier.width(16.dp))

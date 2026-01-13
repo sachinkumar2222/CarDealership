@@ -42,11 +42,9 @@ class TokenAuthenticator @Inject constructor(
                 .build()
 
         } catch (e: Exception) {
-            // --- THIS LOG IS THE MOST IMPORTANT PART ---
-            // It will print the exact reason why the silent token call is failing.
+
             Log.e("TokenAuthenticator", "FAILURE: An exception occurred during silent token refresh.", e)
 
-            // Optional: Trigger a global sign-out event here to navigate the user to the login screen
             return null
         }
     }

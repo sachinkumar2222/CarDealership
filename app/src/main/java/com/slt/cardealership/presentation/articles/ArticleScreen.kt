@@ -1,6 +1,5 @@
 package com.slt.cardealership.presentation.articles
 
-import android.os.Build.VERSION.SDK_INT
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,29 +10,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.unit.sp
+import androidx.compose.material3.HorizontalDivider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import coil3.ImageLoader
 import coil3.compose.AsyncImage
-import coil3.gif.AnimatedImageDecoder
-import coil3.gif.GifDecoder
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
-import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.presentation.home.HomeRoutes
 
@@ -45,41 +36,17 @@ fun ArticleScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    val currentBackStackEntry = navController.currentBackStackEntry
-
-    val refreshKey by currentBackStackEntry
-        ?.savedStateHandle
-        ?.getLiveData<Boolean>("should_refresh")
-        ?.observeAsState(initial = false) ?: remember { mutableStateOf(false) }
-
-    // --- THIS IS THE FIX ---
-    // The LaunchedEffect now ONLY re-runs when 'refreshKey' changes its value.
-    LaunchedEffect(refreshKey) {
-        if (refreshKey == true) {
-            viewModel.fetchArticles()
-            // Reset the key so it doesn't trigger again
-            currentBackStackEntry?.savedStateHandle?.set("should_refresh", false)
-        }
-    }
-
-
-    val blueGradient = Brush.horizontalGradient(
-        colors = listOf(
-            Color(0xFF2196F3), // Light Blue
-            Color(0xFF1565C0)  // Dark Blue
-        )
-    )
-
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Articles", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF0F8FF))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
         floatingActionButton = {
@@ -95,11 +62,11 @@ fun ArticleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF0F8FF)),
+                .background(Color(0xFFF0F2F5)),
             contentAlignment = Alignment.Center
         ) {
             when (val state = uiState) {
-                is ArticleUiState.Loading -> LoadingAnimation()
+                is ArticleUiState.Loading -> CircularProgressIndicator()
                 is ArticleUiState.Error -> Text(state.message, color = MaterialTheme.colorScheme.error)
                 is ArticleUiState.Success -> {
                     if (state.articles.isEmpty()) {
@@ -107,7 +74,7 @@ fun ArticleScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
+                            contentPadding = PaddingValues(bottom = 100.dp, start = 16.dp, end = 16.dp, top = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             items(state.articles) { article ->
@@ -141,77 +108,144 @@ fun ArticleItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
-            .clickable(onClick = onEditClick), // Make the whole card clickable for editing
+            .clickable(onClick = onEditClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-          // modifier = Modifier.height(IntrinsicSize.Min), // Ensures row children can fill height
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Image
-            AsyncImage(
-                model = post.image,
-                contentDescription = post.name,
+        Column {
+            // Image Section
+            Box(
                 modifier = Modifier
-                    .fillMaxHeight() // Fill the height of the row
-                    .width(120.dp)
-                    .clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
+                AsyncImage(
+                    model = post.image,
+                    contentDescription = post.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
 
-            // Content Column
+                // Status Chip (Overlay)
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (post.status == "published") Color(0xFFE8F5E9) else Color(0xFFFFF3E0).copy(alpha = 0.9f),
+                    shadowElevation = 2.dp
+                ) {
+                    Text(
+                        text = post.status?.replaceFirstChar { it.uppercase() } ?: "Draft",
+                        color = if (post.status == "published") Color(0xFF2E7D32) else Color(0xFFE65100),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                // More Options Menu (Overlay) - High Visibility
+                Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier
+                            .shadow(4.dp, CircleShape)
+                            .background(Color.White, CircleShape)
+                            .size(36.dp), // Fixed size for consistency
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options", modifier = Modifier.size(20.dp))
+                    }
+
+                    MaterialTheme(
+                        shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))
+                    ) {
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                            modifier = Modifier
+                                .background(Color.White)
+                                .width(160.dp), // Consistent width
+                            containerColor = Color.White,
+                            shape = RoundedCornerShape(16.dp),
+                            shadowElevation = 8.dp,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Edit", fontWeight = FontWeight.Medium) },
+                                leadingIcon = { Icon(Icons.Default.Edit, null, tint = Color(0xFF2196F3)) },
+                                onClick = {
+                                    onEditClick()
+                                    menuExpanded = false
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = Color.LightGray.copy(alpha = 0.2f))
+                            DropdownMenuItem(
+                                text = { Text("Delete", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    onDeleteClick()
+                                    menuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Content Section
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.Center
+                modifier = Modifier.padding(16.dp)
             ) {
                 Text(
                     text = post.name ?: "No Title",
-                    fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = post.content ?: "No content",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
 
-            // More Options Menu
-            Box(modifier = Modifier.align(Alignment.Top)) {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Meta info row (Date)
+                if (post.createdOn != null && post.createdOn > 0) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+                                .format(java.util.Date(post.createdOn)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Edit") },
-                        leadingIcon = { Icon(Icons.Default.Edit, null) },
-                        onClick = {
-                            onEditClick()
-                            menuExpanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        leadingIcon = { Icon(Icons.Default.Delete, null) },
-                        onClick = {
-                            onDeleteClick()
-                            menuExpanded = false
-                        }
-                    )
+
+                // Content Preview with HTML stripped
+                val contentPreview = remember(post.content) {
+                    post.content?.replace(Regex("<.*?>"), "")?.trim() ?: "No content"
                 }
+
+                Text(
+                    text = contentPreview,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.DarkGray, // Slightly darker for readability
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 20.sp
+                )
             }
         }
     }
@@ -239,24 +273,6 @@ fun EmptyArticleState() {
         Text(
             text = "Click the '+' button to add your first article.",
             color = Color.Gray
-        )
-    }
-}
-
-@Composable
-fun LoadingAnimation() {
-    // 1. Load the Lottie animation composition from your assets folder
-    val composition by rememberLottieComposition(LottieCompositionSpec.Asset("lott.json")) // <-- Replace with your JSON file name
-
-    // 2. Display the Lottie animation
-    Box(
-        modifier = Modifier.fillMaxSize(), // Center the animation if desired
-        contentAlignment = Alignment.Center
-    ) {
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever, // Loop the animation indefinitely
-            modifier = Modifier.size(200.dp) // Adjust size as needed
         )
     }
 }

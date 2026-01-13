@@ -6,5 +6,7 @@ data class VehicleGalleryResponse(
     @SerializedName("images")
     val images: List<String>, // A list of image URLs
     @SerializedName("vehicle_id")
-    val vehicleId: String
+    val vehicleId: String,
+    @SerializedName("id")
+    val id: String? = null
 )

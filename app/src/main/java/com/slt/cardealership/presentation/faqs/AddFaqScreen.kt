@@ -16,7 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -32,12 +32,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 
 // --- DEFINE THE GRADIENT ---
-private val blueGradient = Brush.horizontalGradient(
-    colors = listOf(
-        Color(0xFF2196F3), // Light Blue
-        Color(0xFF1565C0)  // Dark Blue
-    )
-)
+// Removed gradient, using solid color now.
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,14 +47,21 @@ fun AddFaqScreen(
     val formState by viewModel.formState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val customBlueColor = Color(0xFF2196F3)
 
     // --- FIX: Local state for the rich text editor ---
     var answer by remember { mutableStateOf(TextFieldValue("")) }
 
-    // --- Sync ViewModel state (which is a String) to the local editor state ---
+    // --- Sync ViewModel state (HTML String) to the local editor state (AnnotatedString) ---
     LaunchedEffect(formState.answer) {
-        if (answer.text != formState.answer) {
-            answer = TextFieldValue(formState.answer)
+        // Only update if the text content actually changed significantly (avoid loops)
+        // or if it's the first load.
+        if (answer.text != formState.answer && !formState.isSaving) { // Simple check might fail if HTML tags are removed
+
+            val newAnnotated = HtmlConverter.fromHtml(formState.answer)
+            if (answer.text != newAnnotated.text) {
+                answer = TextFieldValue(newAnnotated)
+            }
         }
     }
 
@@ -76,6 +78,7 @@ fun AddFaqScreen(
                 FaqEvent.NavigateBack -> {
                     navController.popBackStack()
                 }
+                else -> {}
             }
         }
     }
@@ -84,6 +87,7 @@ fun AddFaqScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = {
                     Text(
                         if (formState.isEditMode) "Edit FAQ" else "Add FAQ",
@@ -111,8 +115,10 @@ fun AddFaqScreen(
                 Button(
                     onClick = {
                         // --- CONNECTED ---
-                        // 1. Update the ViewModel's state with the text from the editor
-                        viewModel.onFormStateChange(formState.copy(answer = answer.text))
+                        // --- CONNECTED ---
+                        // 1. Update the ViewModel's state with the HTML from the editor
+                        val htmlAnswer = HtmlConverter.toHtml(answer.annotatedString)
+                        viewModel.onFormStateChange(formState.copy(answer = htmlAnswer))
                         // 2. Call save
                         viewModel.saveFaq()
                     },
@@ -132,7 +138,7 @@ fun AddFaqScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                brush = blueGradient,
+                                color = customBlueColor, // Solid Blue
                                 shape = RoundedCornerShape(8.dp)
                             )
                             .padding(vertical = 12.dp),
@@ -175,7 +181,12 @@ fun AddFaqScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     singleLine = true,
-                    isError = formState.formError != null && formState.question.isBlank()
+                    isError = formState.formError != null && formState.question.isBlank(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF2196F3),
+                        focusedLabelColor = Color(0xFF2196F3),
+                        cursorColor = Color(0xFF2196F3)
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -196,8 +207,63 @@ fun AddFaqScreen(
                 }
 
                 BasicTextField(
-                    value = answer, // <-- Use local state
-                    onValueChange = { answer = it }, // <-- Update local state
+                    value = answer,
+                    onValueChange = { newVal ->
+                        // --- STYLE PRESERVATION LOGIC ---
+                        // 1. If text is identical (just selection change), keep the old AnnotatedString.
+                        if (newVal.text == answer.text) {
+                            answer = newVal.copy(annotatedString = answer.annotatedString)
+                        } else {
+                            // 2. If text changed (typing), we need to carry over styles.
+                            // The system's 'newVal' comes with a plain AnnotatedString (usually).
+                            // We attempt to re-apply old styles to the new text.
+                            // This is a naive implementation: it assumes appended text inherits style of preceding char.
+
+                            val oldText = answer.text
+                            val newText = newVal.text
+                            val oldSpans = answer.annotatedString.spanStyles
+
+                            val builder = AnnotatedString.Builder(newText)
+
+                            // Copy old spans, adjusting for deletion/insertion
+                            // For simplicity in this quick fix: We just re-apply old spans if they still fit.
+                            // Ideally, we'd use a diff algorithm, but for "add at end" or "simple insert":
+
+                            // Strategy: Just rely on 'answer' state for formatting buttons,
+                            // BUT 'onValueChange' wipes it.
+                            // FIX: We manually reconstruct the AnnotatedString.
+
+                            // Let's iterate over old spans and map them to new positions?
+                            // That's hard without knowing exactly what changed.
+
+                            // BETTER APPROACH FOR USER:
+                            // If we typed a character, let's assume we want to keep the style of the cursor position.
+                            // But for now, to stop "all style gone", let's at least keep the old spans that are valid.
+
+                            if (Math.abs(newText.length - oldText.length) <= 1) {
+                                // Re-add all old spans
+                                oldSpans.forEach { span ->
+                                    // Prevent out of bounds
+                                    if (span.end <= newText.length) {
+                                        builder.addStyle(span.item, span.start, span.end)
+                                    }
+                                }
+                                // If we just added a char, and the cursor was inside a style, extend it?
+                                // This is tricky to get perfect without a library.
+                                // BUT, the user's main complaint is "all styled text normal ho jate".
+                                // This usually happens because newVal has NO styles.
+                                // We will try to preserve at least the exisiting structure.
+
+                                // FORCE FIX: If the user types, we keep the old annotated string,
+                                // but we insert/remove the char in it.
+                                // This is safer than relying on newVal's text.
+                                answer = applyEditToAnnotatedString(answer, newVal)
+                            } else {
+                                // Bulk change (paste etc), accept new val
+                                answer = newVal
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
@@ -322,7 +388,7 @@ fun TextFieldValue.toggleSpanStyle(style: SpanStyle): TextFieldValue {
     val togglingUnderline = style.textDecoration == TextDecoration.Underline
 
     val isCurrentlyActive = annotatedString.spanStyles
-        .filter { maxOf(it.start, selection.start) < minOf(it.end, selection.end) }
+        .filter { maxOf(it.start, selection.min) < minOf(it.end, selection.max) }
         .any {
             (togglingBold && it.item.fontWeight == FontWeight.Bold) ||
                     (togglingItalic && it.item.fontStyle == FontStyle.Italic) ||
@@ -340,7 +406,7 @@ fun TextFieldValue.toggleSpanStyle(style: SpanStyle): TextFieldValue {
         } else {
             style
         }
-        addStyle(styleToApply, selection.start, selection.end)
+        addStyle(styleToApply, selection.min, selection.max)
     }.toAnnotatedString()
 
     return this.copy(annotatedString = newAnnotatedString)

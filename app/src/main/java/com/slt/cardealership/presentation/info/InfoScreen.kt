@@ -23,7 +23,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.SignalWifiOff // <-- IMPORT FOR ERROR ICON
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,7 +52,6 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.request.error
 import coil3.request.placeholder
-import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Amenities
 import com.slt.cardealership.domain.model.DealerHours
 import com.slt.cardealership.domain.model.DealerInfo
@@ -57,6 +63,7 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.slt.cardealership.utils.HtmlText
+import com.slt.cardealership.R
 import java.util.Locale
 
 // --- ADDED: Gradient for the new error button ---
@@ -435,7 +442,7 @@ fun BusinessTypeCard(
     InfoCard(
         title = "Business Type",
         icon = Icons.Default.Business,
-        onEditClick = { /* No top-level edit for this card */ }
+        onEditClick = null
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -516,58 +523,41 @@ fun BusinessHoursCard(
 fun HoursColumn(hoursData: DealerHours?) {
     Column(
         horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val hourDetails = hoursData?.hourDetails // This is correct now
+        val hourDetails = hoursData?.hourDetails
 
         if (hourDetails.isNullOrEmpty()) {
-            Text(text = "Not available", color = Color.Gray, fontSize = 12.sp)
+            Text(text = "Not available", color = Color.Gray, fontSize = 14.sp)
         } else {
             hourDetails.forEach { day ->
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        // --- FIX: Capitalize the day name for display ---
                         text = day.day?.replaceFirstChar {
                             if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
                         } ?: "N/A",
-                        // ---------------------------------------------
-                        color = Color.DarkGray,
-                        fontSize = 12.sp,
-                        modifier = Modifier.width(90.dp)
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    // --- FIX: Check for "yes" string, not true boolean ---
+
                     if (day.isClose == "yes") {
-                        Image(
-                            painter = painterResource(R.drawable.close),
-                            contentDescription = "Closed",
-                            modifier = Modifier
-                                .size(32.dp)
-                                .padding(end = 8.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(modifier = Modifier.width(32.dp))
                         Text(
                             text = "Closed",
-                            color = Color.Gray,
-                            fontSize = 12.sp
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Medium
                         )
 
                     } else {
-                        Image(
-                            painter = painterResource(R.drawable.open),
-                            contentDescription = "Open",
-                            modifier = Modifier
-                                .size(32.dp)
-                                .padding(end = 8.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(modifier = Modifier.width(32.dp))
                         Text(
                             text = "${day.openTime ?: "--"} - ${day.closeTime ?: "--"}",
-                            color = Color.Gray,
-                            fontSize = 12.sp
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -899,7 +889,7 @@ fun DetailInfoRow(
     icon: Painter,
     label: String,
     value: String,
-    onEditClick: () -> Unit
+    onEditClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -933,7 +923,9 @@ fun DetailInfoRow(
             )
         }
 
-        SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
+        if (onEditClick != null) {
+            SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
+        }
     }
 }
 
@@ -951,7 +943,7 @@ fun CheckmarkRow(text: String, isAvailable: Boolean?) {
 fun InfoCard(
     title: String,
     icon: ImageVector,
-    onEditClick: () -> Unit,
+    onEditClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
@@ -978,7 +970,9 @@ fun InfoCard(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
+                if (onEditClick != null) {
+                    SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider(color = Color.Black.copy(alpha = 0.1f))
@@ -998,7 +992,7 @@ fun AdditionalFeaturesCard(
     InfoCard(
         title = "Additional Features",
         icon = Icons.Default.AutoAwesome,
-        onEditClick = { /* This can be an overall edit button if needed */ }
+        onEditClick = null
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -1067,7 +1061,7 @@ fun DeliveryAndTestDriveCard(
     InfoCard(
         title = "At-Home Services",
         icon = Icons.Default.HomeWork,
-        onEditClick = { /* Can be a general edit button */ }
+        onEditClick = null
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -1093,7 +1087,7 @@ fun DeliveryAndTestDriveCard(
 }
 
 @Composable
-fun FeatureRow(icon: ImageVector, title: String, status: String, onEditClick: () -> Unit) {
+fun FeatureRow(icon: ImageVector, title: String, status: String, onEditClick: (() -> Unit)? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Icon(imageVector = icon, contentDescription = null, tint = Color.Gray)
         Spacer(modifier = Modifier.width(16.dp))
@@ -1101,7 +1095,9 @@ fun FeatureRow(icon: ImageVector, title: String, status: String, onEditClick: ()
             Text(text = title, fontWeight = FontWeight.SemiBold)
             Text(text = status, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
         }
-        SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
+        if (onEditClick != null) {
+            SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
+        }
     }
 }
 
@@ -1610,91 +1606,128 @@ fun BusinessHoursEditDialog(
 
     Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            modifier = Modifier.heightIn(max = 600.dp) // Allow scrolling
+            modifier = Modifier.heightIn(max = 650.dp)
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Edit Business Hours",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onDismiss, enabled = !isSaving) {
-                        Icon(
-                            Icons.Default.Close,
-                            null
-                        )
-                    }
-                }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-                // --- Tabs ---
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary
+            Column {
+                // --- Header ---
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        .padding(horizontal = 24.dp, vertical = 20.dp)
                 ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(text = title) },
-                            enabled = !isSaving
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Edit Business Hours",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // --- Content switches based on tab ---
-                // We wrap this in a LazyColumn to handle smaller screens
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    val currentHoursState = when (selectedTabIndex) {
-                        0 -> generalHoursState
-                        1 -> partsHoursState
-                        else -> serviceHoursState
-                    }
-
-                    items(currentHoursState) { dayState ->
-                        HourEditRow(dayState = dayState, enabled = !isSaving)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // --- Save Button ---
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
-                    ) { Text("Close") }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            onSave(
-                                generalHoursState.map { it.toHourDetails() },
-                                partsHoursState.map { it.toHourDetails() },
-                                serviceHoursState.map { it.toHourDetails() }
+                        IconButton(
+                            onClick = onDismiss,
+                            enabled = !isSaving,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
+                        }
+                    }
+                }
+
+                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+                    // --- Tabs ---
+                    TabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) }
                     ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                text = {
+                                    Text(
+                                        text = title,
+                                        fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Medium,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                },
+                                enabled = !isSaving,
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        } else {
-                            Text("Save")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // --- Content switches based on tab ---
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 8.dp)
+                    ) {
+                        val currentHoursState = when (selectedTabIndex) {
+                            0 -> generalHoursState
+                            1 -> partsHoursState
+                            else -> serviceHoursState
+                        }
+
+                        items(currentHoursState) { dayState ->
+                            HourEditRow(dayState = dayState, enabled = !isSaving)
+                            if (dayState != currentHoursState.last()) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(top = 16.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // --- Save Button ---
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = onDismiss,
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isSaving
+                        ) {
+                            Text("Cancel", style = MaterialTheme.typography.labelLarge)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Button(
+                            onClick = {
+                                onSave(
+                                    generalHoursState.map { it.toHourDetails() },
+                                    partsHoursState.map { it.toHourDetails() },
+                                    serviceHoursState.map { it.toHourDetails() }
+                                )
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isSaving,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.height(48.dp)
+                        ) {
+                            if (isSaving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Save Changes", fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
@@ -1706,23 +1739,23 @@ fun BusinessHoursEditDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HourEditRow(dayState: DayHourState, enabled: Boolean) {
-    Column {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = dayState.day,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
             Text(
                 text = "Closed",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Switch(
                 checked = dayState.isClosed,
                 onCheckedChange = { dayState.isClosed = it },
@@ -1735,7 +1768,7 @@ fun HourEditRow(dayState: DayHourState, enabled: Boolean) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
                     value = dayState.openTime,
@@ -1743,7 +1776,8 @@ fun HourEditRow(dayState: DayHourState, enabled: Boolean) {
                     label = { Text("Open") },
                     modifier = Modifier.weight(1f),
                     enabled = enabled,
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
                 )
                 OutlinedTextField(
                     value = dayState.closeTime,
@@ -1751,7 +1785,8 @@ fun HourEditRow(dayState: DayHourState, enabled: Boolean) {
                     label = { Text("Close") },
                     modifier = Modifier.weight(1f),
                     enabled = enabled,
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
                 )
             }
         }

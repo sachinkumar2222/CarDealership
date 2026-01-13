@@ -58,18 +58,23 @@ class InternetLeadsViewModel @Inject constructor(
     }
 
     private fun loadLeads(apiType: String, isRefresh: Boolean = false) {
-        if (currentApiType != apiType) {
+
+        val isNewType = currentApiType != apiType
+
+        if (isNewType) {
+            // Reset state for new type
             _uiState.value = LeadsUiState(isLoading = true)
+            currentApiType = apiType
+        } else {
+            // For same type, avoid duplicate requests if already loading
+            if (_uiState.value.isLoading) return
+            _uiState.value = _uiState.value.copy(isLoading = true)
         }
 
-        currentApiType = apiType
         val pageToLoad = if (isRefresh) 1 else _uiState.value.currentPage
 
         if (isRefresh) {
             _uiState.value = _uiState.value.copy(isLoading = true, leads = emptyList(), error = null)
-        } else {
-            if (_uiState.value.isLoading) return
-            _uiState.value = _uiState.value.copy(isLoading = true)
         }
 
         viewModelScope.launch {

@@ -71,7 +71,7 @@ fun App() {
                             viewModel = authViewModel)
                 }
                 composable<Routes.HomeScreen>{
-                    HomeScreen(mainNavController = navController)
+                    HomeScreen(mainNavController = navController, authViewModel = authViewModel)
                 }
                 composable<Routes.SplashScreen> {
                     SplashScreen()

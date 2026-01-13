@@ -8,14 +8,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -44,9 +48,10 @@ import com.slt.cardealership.presentation.navigation.Routes
 
 @Composable
 fun LoginScreen(
-    viewModel: AuthViewModel = hiltViewModel()) {
-        val state by viewModel.authState.collectAsState()
-        val activity = LocalActivity.current
+    viewModel: AuthViewModel = hiltViewModel()
+) {
+    val state by viewModel.authState.collectAsState()
+    val activity = LocalActivity.current
     val blueGradient = Brush.horizontalGradient(
         colors = listOf(
             Color(0xFF2196F3), // Light Blue
@@ -54,85 +59,91 @@ fun LoginScreen(
         )
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color=Color.White),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Top 60%: Image
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.6f), // 60% of screen height
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.bac),
-                contentDescription = "Car Dealership background",
-                modifier = Modifier.fillMaxSize(0.9f),
-                contentScale = ContentScale.Fit
-            )
+    BoxWithConstraints {
+        val screenHeight = maxHeight
+        val scrollState = rememberScrollState()
 
-            // Login image slightly bigger
-            Image(
-                painter = painterResource(id = R.drawable.login),
-                contentDescription = "Car Dealership Logo",
-                modifier = Modifier
-                    .fillMaxWidth(0.9f) // slightly bigger than 0.8f
-                    .aspectRatio(1f),   // maintain square ratio
-                contentScale = ContentScale.Fit
-            )
-        }
-
-        // Bottom 40%: Texts + Button
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.4f), // 40% of screen height
-            contentAlignment = Alignment.BottomCenter
+                .fillMaxSize()
+                .background(color = Color.White)
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
+            // Top 60%: Image
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .height(screenHeight * 0.6f), // 60% of screen height
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Access Your Dealer Portal",
-                    lineHeight = 44.sp,
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                Image(
+                    painter = painterResource(id = R.drawable.bac),
+                    contentDescription = "Car Dealership background",
+                    modifier = Modifier.fillMaxSize(0.9f),
+                    contentScale = ContentScale.Fit
                 )
 
-                Text(
-                    text = "Manage your inventory, leads, and sales pipeline.",
-                    fontSize = 18.sp,
-                    lineHeight = 24.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 32.dp)
+                // Login image slightly bigger
+                Image(
+                    painter = painterResource(id = R.drawable.login),
+                    contentDescription = "Car Dealership Logo",
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f) // slightly bigger than 0.8f
+                        .aspectRatio(1f),   // maintain square ratio
+                    contentScale = ContentScale.Fit
                 )
+            }
 
-                Button(
-                    onClick = { viewModel.signIn(activity) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(12.dp),
+            // Bottom 40%: Texts + Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = screenHeight * 0.4f), // Minimum 40% of screen height
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
-                        .background(blueGradient, shape = RoundedCornerShape(12.dp))
+                        .padding(horizontal = 32.dp, vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "SECURE SIGN-IN",
-                        fontSize = 18.sp,
+                        text = "Access Your Dealer Portal",
+                        lineHeight = 44.sp,
+                        fontSize = 38.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
+
+                    Text(
+                        text = "Manage your inventory, leads, and sales pipeline.",
+                        fontSize = 18.sp,
+                        lineHeight = 24.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 32.dp)
+                    )
+
+                    Button(
+                        onClick = { viewModel.signIn(activity) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .background(blueGradient, shape = RoundedCornerShape(12.dp))
+                    ) {
+                        Text(
+                            text = "SECURE SIGN-IN",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }

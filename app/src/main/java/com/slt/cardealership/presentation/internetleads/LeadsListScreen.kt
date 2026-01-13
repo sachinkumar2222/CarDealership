@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -57,12 +58,13 @@ val leadCategories = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LeadsListScreen(
+    onBackClick: () -> Unit,
     onCategoryClick: (title: String) -> Unit = {},
     viewModel: InternetLeadsViewModel  = hiltViewModel()
 ) {
     Scaffold(
         topBar = {
-            LeadsTopBar()
+            LeadsTopBar(onBackClick = onBackClick)
         },
         containerColor = Color(0xFFF8F9FA)
     ) { paddingValues ->
@@ -87,14 +89,24 @@ fun LeadsListScreen(
 // 4. The Top App Bar (unchanged)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LeadsTopBar() {
+fun LeadsTopBar(onBackClick: () -> Unit) {
     TopAppBar(
+        modifier = Modifier.shadow(elevation = 8.dp),
         title = {
             Text(
                 "Internet Leads",
                 fontWeight = FontWeight.Bold,
                 color = BrandDarkBlue
             )
+        },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = BrandDarkBlue
+                )
+            }
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.White

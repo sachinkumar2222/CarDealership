@@ -1,6 +1,5 @@
 package com.slt.cardealership.data.remote.network
 
-
 import com.slt.cardealership.domain.model.AddSeoTagRequest
 import com.slt.cardealership.domain.model.Advertisement
 import com.slt.cardealership.domain.model.AdvertisementGalleryResponse
@@ -19,11 +18,10 @@ import com.slt.cardealership.domain.model.DealerService
 import com.slt.cardealership.domain.model.DealerServicesRequest
 import com.slt.cardealership.domain.model.Department
 import com.slt.cardealership.domain.model.Designation
-import com.slt.cardealership.domain.model.EvoxImageResponse
 import com.slt.cardealership.domain.model.FaqDetails
 import com.slt.cardealership.domain.model.FaqListResponse
 import com.slt.cardealership.domain.model.FaqRequest
-import com.slt.cardealership.domain.model.GalleryImageUploadResponse
+
 import com.slt.cardealership.domain.model.GalleryListResponse
 import com.slt.cardealership.domain.model.GalleryResponseObject
 import com.slt.cardealership.domain.model.InternetLeadsResponse
@@ -38,28 +36,32 @@ import com.slt.cardealership.domain.model.SeoMenu
 import com.slt.cardealership.domain.model.SeoMenuRequest
 import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.SeoTagListResponse
-import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import com.slt.cardealership.domain.model.UpdateHoursRequest
 import com.slt.cardealership.domain.model.UserProfile
 import com.slt.cardealership.domain.model.UserProfileUpdateRequest
 import com.slt.cardealership.domain.model.Vehicle
-import com.slt.cardealership.domain.model.VehicleGalleryResponse
-import com.slt.cardealership.domain.model.VehicleListResponse
-import com.slt.cardealership.domain.model.VehicleModel
-import com.slt.cardealership.domain.model.VehicleOptionsResponse
-import com.slt.cardealership.domain.model.VinRequest
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
-import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.DELETE
+import retrofit2.http.Multipart
+import retrofit2.http.Body
+import okhttp3.RequestBody
+import okhttp3.MultipartBody
+import com.slt.cardealership.domain.model.VehicleModel
+import com.slt.cardealership.domain.model.VinRequest
+import com.slt.cardealership.domain.model.VehicleOptionsResponse
+import com.slt.cardealership.domain.model.TrimListResponse
+import com.slt.cardealership.domain.model.EvoxImageResponse
+import com.slt.cardealership.domain.model.VehicleListResponse
+import com.slt.cardealership.domain.model.VehicleGalleryResponse
+import com.slt.cardealership.domain.model.GalleryImageUploadResponse
+import com.slt.cardealership.domain.model.ManageUsers
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.http.Field
 import retrofit2.http.FieldMap
 import retrofit2.http.FormUrlEncoded
-import retrofit2.http.GET
-import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -70,17 +72,24 @@ import retrofit2.http.Query
 
 interface ApiService {
 
-    @GET("organizations-api/businessListingUserAuthorize") // <--- CHANGED TO @GET
+    @GET("organizations-api/businessListingUserAuthorize")
     suspend fun getUserAuthorization(): UserProfile
 
-    @GET("organizations-api/users/{userId}") // <--- NEW API CALL with Path parameter
+    @GET("organizations-api/users/{userId}")
     suspend fun getDetailedUserProfile(@Path("userId") userId: Long): DetailedUserProfile
 
-    @POST("organizations-api/users/changePassword/{id}")
-    suspend fun changeUserPassword(
-        @Path("id") userId: Long,
-        @Body request: ChangePasswordRequest
-    ): Response<Unit>
+    @Multipart
+    @PUT("organizations-api/users/{userId}")
+    suspend fun putUserProfile(
+        @Path("userId") userId: Long,
+        @PartMap parts: Map<String, @JvmSuppressWildcards RequestBody>
+    ): DetailedUserProfile
+
+//    @POST("organizations-api/users/changePassword/{id}")
+//    suspend fun changeUserPassword(
+//        @Path("id") userId: Long,
+//        @Body request: ChangePasswordRequest
+//    ): Response<Unit>
 
     @GET("systems-api/departments/getAll")
     suspend fun getDepartments(
@@ -310,7 +319,16 @@ interface ApiService {
     @POST("research-api/vehicleInventory/{id}/gallery")
     suspend fun uploadVehicleGalleryImages(
         @Path("id") vehicleId: String,
-        @Part images: List<MultipartBody.Part>
+        @Part images: List<MultipartBody.Part>,
+        @Part("image_urls") imageUrls: RequestBody
+    ): Response<Unit>
+
+    @POST("research-api/vehicleInventory/{id}/gallery")
+    @FormUrlEncoded
+    suspend fun updateVehicleGallery(
+        @Path("id") vehicleId: String,
+        @Field("vehicle_id") formVehicleId: String,
+        @Field("image_urls") imageUrls: String
     ): Response<Unit>
 
     // Upload Single Image
@@ -519,22 +537,26 @@ interface ApiService {
         @Path("id") faqId: Int,
         @Query("type") type: String // You will need to determine what this 'type' is
     ): Response<Unit>
-
     @GET("organizations-api/users")
     suspend fun getUsers(
         @Query("page") page: Int,
         @Query("item_per_page") itemsPerPage: Int,
-        @Query("dealer_id") dealerId: Long?, // <-- ADDED this parameter
-        @Query("role_id") roleId: Int // <-- ADDED this parameter
+        @Query("dealer_id") dealerId: Long?,
+        @Query("role_id") roleId: Int
     ): ManageUsersResponse
 
-    @Multipart
-    @PUT("organizations-api/users/{userId}")
-    suspend fun putUserProfile(
+    @GET("organizations-api/users/getAll")
+    suspend fun getAllUsers(
+        @Query("dealer_id") dealerId: Long
+    ): List<ManageUsers>
+
+
+
+    @PUT("organizations-api/users/{userId}/change-password")
+    suspend fun changeUserPassword(
         @Path("userId") userId: Long,
-        // The payload is sent as a Map of RequestBody parts
-        @PartMap parts: Map<String, @JvmSuppressWildcards RequestBody>
-    ): DetailedUserProfile
+        @Body request: ChangePasswordRequest
+    ): Response<Unit>
 
     /**
      * Get the list of saved SEO Menus for a specific dealer
@@ -589,4 +611,195 @@ interface ApiService {
         @Query("search") search: String? = null
     ): InternetLeadsResponse
 
+    @GET("application-api/domains")
+    suspend fun getDomains(
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("dealer_id") dealerId: Long
+    ): com.slt.cardealership.domain.model.DomainResponse
+
+    @GET("application-api/domains/{id}")
+    suspend fun getDomainDetails(
+        @Path("id") domainId: Int
+    ): com.slt.cardealership.domain.model.DomainItem
+
+    @GET("application-api/domain-pages")
+    suspend fun getDomainPages(
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("domain_id") domainId: Int
+    ): com.slt.cardealership.domain.model.DomainPageResponse
+
+    @DELETE("application-api/domain-pages/{id}")
+    suspend fun deleteDomainPage(
+        @Path("id") pageId: String
+    ): Response<Unit>
+
+    @Multipart
+    @PUT("application-api/domain-pages/{id}")
+    suspend fun updateDomainPage(
+        @Path("id") pageId: String,
+        @PartMap partMap: Map<String, @JvmSuppressWildcards okhttp3.RequestBody>,
+        @Part featuredFile: okhttp3.MultipartBody.Part? = null,
+        @Part bannerFile: okhttp3.MultipartBody.Part? = null
+    ): Response<Unit>
+    @GET("application-api/domain-pages/{id}")
+    suspend fun getDomainPageDetails(
+        @Path("id") pageId: String
+    ): com.slt.cardealership.domain.model.DomainPageDetails
+
+    @Multipart
+    @POST("application-api/domain-pages")
+    suspend fun createDomainPage(
+        @PartMap partMap: Map<String, @JvmSuppressWildcards okhttp3.RequestBody>,
+        @Part featuredFile: okhttp3.MultipartBody.Part? = null,
+        @Part bannerFile: okhttp3.MultipartBody.Part? = null
+    ): Response<Unit>
+
+    @GET("application-api/domain-blogs")
+    suspend fun getDomainBlogs(
+        @Query("domain_id") domainId: Int,
+        @Query("page") page: Int,
+        @Query("item_per_page") limit: Int
+    ): com.slt.cardealership.domain.model.DomainBlogResponse
+
+    @GET("application-api/domain-blog-categories")
+    suspend fun getDomainBlogCategories(
+        @Query("domain_id") domainId: Int
+    ): com.slt.cardealership.domain.model.BlogCategoryResponse
+
+    @GET("application-api/domain-slider")
+    suspend fun getDomainSliders(
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("domain_id") domainId: Int,
+        @Query("s") search: String
+    ): List<com.slt.cardealership.domain.model.DomainSlider>
+
+    @POST("application-api/domain-slider")
+    suspend fun createDomainSlider(
+        @Body request: com.slt.cardealership.domain.model.DomainSliderCreateRequest
+    ): Response<com.slt.cardealership.domain.model.DomainSliderCreateResponse>
+
+    @GET("application-api/domain-slider/{id}")
+    suspend fun getDomainSliderDetails(
+        @Path("id") sliderId: String
+    ): com.slt.cardealership.domain.model.DomainSliderDetails
+
+    @Multipart
+    @POST("application-api/domain-slider/{id}/item")
+    suspend fun addDomainSlideItem(
+        @Path("id") sliderId: String,
+        @PartMap partMap: Map<String, @JvmSuppressWildcards okhttp3.RequestBody>,
+        @Part file: okhttp3.MultipartBody.Part
+    ): Response<Unit>
+
+    @Multipart
+    @PUT("application-api/domain-slider/{sliderId}/item/{slideId}")
+    suspend fun updateDomainSlideItem(
+        @Path("sliderId") sliderId: String,
+        @Path("slideId") slideId: String,
+        @PartMap partMap: Map<String, @JvmSuppressWildcards okhttp3.RequestBody>,
+        @Part file: okhttp3.MultipartBody.Part?
+    ): Response<Unit>
+
+    @DELETE("application-api/domain-slider/{id}")
+    suspend fun deleteDomainSlider(
+        @Path("id") sliderId: String
+    ): Response<Unit>
+
+    // --- Research API ---
+
+    @GET("research-api/makes/getAll")
+    suspend fun getResearchMakes(): List<com.slt.cardealership.domain.model.ResearchMake>
+
+    @GET("research-api/models/getAll")
+    suspend fun getResearchModels(
+        @Query("make_id") makeId: Int
+    ): List<com.slt.cardealership.domain.model.ResearchModel>
+
+    @GET("research-api/modelyears/getAll")
+    suspend fun getResearchModelYears(
+        @Query("make_id") makeId: Int,
+        @Query("model_id") modelId: Int
+    ): List<com.slt.cardealership.domain.model.ResearchYear>
+
+    @GET("research-api/modelyeartrims/getAll")
+    suspend fun getResearchTrims(
+        @Query("make_id") makeId: Int,
+        @Query("model_id") modelId: Int,
+        @Query("year") year: Int
+    ): List<com.slt.cardealership.domain.model.ResearchTrim>
+
+    // --- Create Blog ---
+
+    @Multipart
+    @POST("application-api/domain-blogs")
+    suspend fun createDomainBlog(
+        @PartMap partMap: Map<String, @JvmSuppressWildcards okhttp3.RequestBody>,
+        @Part file: okhttp3.MultipartBody.Part? = null
+    ): Response<Unit>
+
+    // --- Get Blog Details ---
+    
+    @GET("application-api/domain-blogs/{id}")
+    suspend fun getDomainBlogDetails(
+        @Path("id") blogId: String
+    ): com.slt.cardealership.domain.model.DomainBlogDetails
+
+    // --- Update Blog ---
+    
+    @Multipart
+    @PUT("application-api/domain-blogs/{id}")
+    suspend fun updateDomainBlog(
+        @Path("id") blogId: String,
+        @PartMap partMap: Map<String, @JvmSuppressWildcards okhttp3.RequestBody>,
+        @Part file: okhttp3.MultipartBody.Part? = null
+    ): Response<Unit>
+
+    @GET("application-api/domain-menus")
+    suspend fun getDomainMenus(
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("domain_id") domainId: Int,
+        @Query("menu_name") menuName: String
+    ): List<com.slt.cardealership.domain.model.DomainMenu>
+
+    @GET("application-api/domain-menus/{id}")
+    suspend fun getDomainMenuDetails(
+        @Path("id") menuId: String
+    ): com.slt.cardealership.domain.model.DomainMenuDetail
+
+    @GET("application-api/domain-research-compare-interlinks")
+    suspend fun getResearchCompareInterlinks(
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("domain_id") domainId: Int
+    ): List<com.slt.cardealership.domain.model.ResearchCompareItem>
+
+    @GET("application-api/domain-research-blog-categories")
+    suspend fun getResearchCompareCategories(
+        @Query("domain_id") domainId: Int
+    ): com.slt.cardealership.domain.model.ResearchCompareCategoryResponse
+
+    @POST("application-api/domain-research-compare-interlinks")
+    suspend fun createResearchCompare(
+        @Body request: com.slt.cardealership.domain.model.CreateResearchCompareRequest
+    ): Response<Unit>
+
+    @DELETE("application-api/domain-research-compare-interlinks/{id}")
+    suspend fun deleteResearchCompare(
+        @Path("id") id: String
+    ): Response<Unit>
+
+    @GET("application-api/domain-research-compare-interlinks/{id}")
+    suspend fun getResearchCompareDetails(
+        @Path("id") id: String
+    ): com.slt.cardealership.domain.model.ResearchCompareDetailsResponse
+
+    @PUT("application-api/domain-research-compare-interlinks/{id}")
+    suspend fun updateResearchCompare(
+        @Path("id") id: String,
+        @Body request: com.slt.cardealership.domain.model.CreateResearchCompareRequest
+    ): Response<Unit>
 }

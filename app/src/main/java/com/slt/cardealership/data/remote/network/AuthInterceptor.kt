@@ -24,18 +24,11 @@ class AuthInterceptor @Inject constructor(
         // 2. Decide what token to send (the real one or the test one)
         var tokenToSend = originalToken
 
-        // --- TEMPORARY CODE FOR TESTING ---
-//        if (!tokenToSend.isNullOrBlank()) {
-//            Log.d("AuthInterceptor", "Invalidating token for the test...")
-//            tokenToSend += "invalidate" // Corrupt the token
-//        }
-        // ------------------------------------
-
         val requestBuilder = chain.request().newBuilder()
 
         // 3. Add the (now corrupted) token to the header
         if (!tokenToSend.isNullOrBlank()) {
-            Log.d("AuthInterceptor", "Adding corrupted Authorization header for test.")
+            Log.d("AuthInterceptor", "Adding Authorization header.")
             requestBuilder.addHeader("Authorization", "Bearer $tokenToSend")
         } else {
             Log.w("AuthInterceptor", "No token found. Proceeding without Authorization header.")

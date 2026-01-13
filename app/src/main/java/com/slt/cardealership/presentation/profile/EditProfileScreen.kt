@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -85,18 +86,20 @@ fun EditProfileScreen(
     val editableProfile by viewModel.editableProfile.collectAsState() // Observe the editable draft
 
     // --- TextField Style ---
+    val brandBlue = Color(0xFF2196F3)
+
+    // --- TextField Style ---
     val textFieldColors = TextFieldDefaults.colors(
-        focusedContainerColor = MaterialTheme.colorScheme.surface,
-        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-        disabledContainerColor = MaterialTheme.colorScheme.surface,
-        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-        unfocusedIndicatorColor = Color.LightGray,
-        disabledIndicatorColor = Color.LightGray,
-        focusedLabelColor = MaterialTheme.colorScheme.primary,
-        unfocusedLabelColor = MaterialTheme.colorScheme.onSurface,
-        disabledLabelColor = Color.Gray,
-        focusedPlaceholderColor = Color.Gray,
-        unfocusedPlaceholderColor = Color.Gray
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
+        disabledContainerColor = Color(0xFFF5F5F5),
+        focusedIndicatorColor = brandBlue,
+        unfocusedIndicatorColor = Color(0xFFE0E0E0),
+        disabledIndicatorColor = Color.Transparent,
+        focusedLabelColor = brandBlue,
+        unfocusedLabelColor = Color.DarkGray,
+        disabledLabelColor = Color.DarkGray,
+        cursorColor = brandBlue
     )
 
     // --- Gradient for the Save Button (Moved to Form) ---
@@ -131,7 +134,7 @@ fun EditProfileScreen(
             )
         },
         // --- MODIFIED: Removed the bottomBar ---
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = Color(0xFFF5F7FA) // Light grey background
     ) { paddingValues ->
         when (uiState) {
             ProfileUiState.Loading -> {
@@ -205,12 +208,14 @@ fun EditProfileForm(
     var languageExpanded by remember { mutableStateOf(false) }
     var statusExpanded by remember { mutableStateOf(false) }
 
-    val textFieldColorsReadOnly = TextFieldDefaults.colors(
-        disabledContainerColor = MaterialTheme.colorScheme.surface,
-        disabledIndicatorColor = Color.LightGray, // Your unfocused color
-        disabledLabelColor = MaterialTheme.colorScheme.onSurface, // Your unfocused color
-        disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f), // Make text look normal
-        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant // Make icon look normal
+    // --- Read-Only / Clickable Fields Style (Looks active but handles clicks manually) ---
+    val clickableTextFieldColors = TextFieldDefaults.colors(
+        disabledContainerColor = Color.White,
+        disabledIndicatorColor = Color(0xFFE0E0E0),
+        disabledLabelColor = Color.DarkGray,
+        disabledTextColor = Color.Black,
+        disabledTrailingIconColor = Color.Gray,
+        disabledPlaceholderColor = Color.Gray
     )
 
     val genders = listOf("Male", "Female", "Other")
@@ -225,8 +230,13 @@ fun EditProfileForm(
     val dateFormat = remember { SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()) }
 
     // --- NEW: Gradient for the Save Button (copied from Scaffold) ---
-    val blueGradient = Brush.horizontalGradient(
-        colors = listOf(Color(0xFF2196F3), Color(0xFF1565C0))
+    val brandBlue = Color(0xFF2196F3)
+    // --- Theme Wrapper for Date Picker to be Blue ---
+    val datePickerTheme = MaterialTheme.colorScheme.copy(
+        primary = brandBlue,
+        onPrimary = Color.White,
+        surface = Color.White, // Dialog background
+        onSurface = Color.Black
     )
 
     // --- MODIFIED: Removed old DatePickerDialog code ---
@@ -234,48 +244,52 @@ fun EditProfileForm(
     // --- M3 Date Picker Dialog for DOB ---
     if (showDobDialog) {
         val datePickerState = rememberDatePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showDobDialog = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val dateString = dateFormat.format(Date(millis))
-                        onUpdateProfileField { it.copy(dob = dateString) }
+        MaterialTheme(colorScheme = datePickerTheme) {
+            DatePickerDialog(
+                onDismissRequest = { showDobDialog = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val dateString = dateFormat.format(Date(millis))
+                            onUpdateProfileField { it.copy(dob = dateString) }
+                        }
+                        showDobDialog = false
+                    }) {
+                        Text("OK")
                     }
-                    showDobDialog = false
-                }) {
-                    Text("OK")
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDobDialog = false }) { Text("Cancel") }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDobDialog = false }) { Text("Cancel") }
+            ) {
+                DatePicker(state = datePickerState)
             }
-        ) {
-            DatePicker(state = datePickerState)
         }
     }
 
     // --- M3 Date Picker Dialog for DOJ ---
     if (showDojDialog) {
         val datePickerState = rememberDatePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showDojDialog = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val dateString = dateFormat.format(Date(millis))
-                        onUpdateProfileField { it.copy(doj = dateString) }
+        MaterialTheme(colorScheme = datePickerTheme) {
+            DatePickerDialog(
+                onDismissRequest = { showDojDialog = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val dateString = dateFormat.format(Date(millis))
+                            onUpdateProfileField { it.copy(doj = dateString) }
+                        }
+                        showDojDialog = false
+                    }) {
+                        Text("OK")
                     }
-                    showDojDialog = false
-                }) {
-                    Text("OK")
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDojDialog = false }) { Text("Cancel") }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDojDialog = false }) { Text("Cancel") }
+            ) {
+                DatePicker(state = datePickerState)
             }
-        ) {
-            DatePicker(state = datePickerState)
         }
     }
 
@@ -351,7 +365,7 @@ fun EditProfileForm(
                 onValueChange = { newValue -> onUpdateProfileField { it.copy(firstName = newValue) } },
                 label = { Text("First Name") },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = textFieldColors,
                 singleLine = true
             )
@@ -360,7 +374,7 @@ fun EditProfileForm(
                 onValueChange = { newValue -> onUpdateProfileField { it.copy(lastName = newValue) } },
                 label = { Text("Last Name") },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = textFieldColors,
                 singleLine = true
             )
@@ -372,7 +386,7 @@ fun EditProfileForm(
             onValueChange = { /* Username/email usually has a separate update process */ },
             label = { Text("Username (email)") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = textFieldColors,
             singleLine = true,
             readOnly = true // Making username read-only as it often requires re-authentication
@@ -384,7 +398,7 @@ fun EditProfileForm(
             onValueChange = { /* Role is usually not directly editable */ },
             label = { Text("Role") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = textFieldColors,
             singleLine = true,
             readOnly = true
@@ -396,7 +410,7 @@ fun EditProfileForm(
             onValueChange = { /* Organization is usually not directly editable */ },
             label = { Text("Organization") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = textFieldColors,
             singleLine = true,
             readOnly = true
@@ -408,7 +422,7 @@ fun EditProfileForm(
             onValueChange = { newValue -> onUpdateProfileField { it.copy(departmentName = newValue) } },
             label = { Text("Department") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = textFieldColors,
             singleLine = true
         )
@@ -419,7 +433,7 @@ fun EditProfileForm(
             onValueChange = { newValue -> onUpdateProfileField { it.copy(designationName = newValue) } },
             label = { Text("Designation") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = textFieldColors,
             singleLine = true
         )
@@ -430,7 +444,7 @@ fun EditProfileForm(
             onValueChange = { /* Dealer is usually not directly editable */ },
             label = { Text("Dealer") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = textFieldColors,
             singleLine = true,
             readOnly = true
@@ -445,7 +459,7 @@ fun EditProfileForm(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { statusExpanded = true },
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = textFieldColors,
                 readOnly = true,
                 trailingIcon = {
@@ -484,8 +498,8 @@ fun EditProfileForm(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { genderExpanded = true },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColorsReadOnly,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = clickableTextFieldColors,
                     enabled = false,
                     trailingIcon = {
                         Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown for Gender")
@@ -518,8 +532,8 @@ fun EditProfileForm(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { languageExpanded = true },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColorsReadOnly,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = clickableTextFieldColors,
                     enabled = false,
                     trailingIcon = {
                         Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown for Language")
@@ -557,8 +571,8 @@ fun EditProfileForm(
                 modifier = Modifier
                     .weight(1f)
                     .clickable { showDobDialog = true },
-                shape = RoundedCornerShape(8.dp),
-                colors = textFieldColorsReadOnly,
+                shape = RoundedCornerShape(12.dp),
+                colors = clickableTextFieldColors,
                 enabled = false, // Make it read-only as picker handles input
                 trailingIcon = {
                     Icon(Icons.Default.CalendarToday, contentDescription = "Date Picker for DOB")
@@ -573,8 +587,8 @@ fun EditProfileForm(
                 modifier = Modifier
                     .weight(1f)
                     .clickable { showDojDialog = true },
-                shape = RoundedCornerShape(8.dp),
-                colors = textFieldColorsReadOnly,
+                shape = RoundedCornerShape(12.dp),
+                colors = clickableTextFieldColors,
                 enabled = false, // Make it read-only as picker handles input
                 trailingIcon = {
                     Icon(Icons.Default.CalendarToday, contentDescription = "Date Picker for DOJ")
@@ -588,7 +602,7 @@ fun EditProfileForm(
             onValueChange = { newValue -> onUpdateProfileField { it.copy(phone = newValue) } },
             label = { Text("Phone") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = textFieldColors,
             singleLine = true
         )
@@ -599,7 +613,7 @@ fun EditProfileForm(
             onValueChange = { newValue -> onUpdateProfileField { it.copy(address = newValue) } },
             label = { Text("Address") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = textFieldColors,
             singleLine = true
         )
@@ -609,13 +623,18 @@ fun EditProfileForm(
             onClick = onSaveProfile,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp) // Added padding for spacing
-                .background(blueGradient, shape = RoundedCornerShape(12.dp)),
+                .padding(vertical = 8.dp)
+                .height(54.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(12.dp),
+                    spotColor = Color(0xFF2196F3).copy(alpha = 0.5f)
+                ),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Transparent,
+                containerColor = Color(0xFF2196F3),
                 contentColor = Color.White
-            ),
+            ), // Removed blueGradient from here as we use solid color
             enabled = !isSaving
         ) {
             if (isSaving) {

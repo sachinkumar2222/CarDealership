@@ -21,13 +21,9 @@ data class AddEditArticleState(
     val post: Post? = null,
     val isLoading: Boolean = true, // For loading the initial article
     val isSaving: Boolean = false, // For save/upload operations
-    val error: String? = null
+    val error: String? = null,
+    val isEditMode: Boolean = false // Track mode explicitly
 )
-
-sealed class UiEvent {
-    object NavigateBack : UiEvent()
-    data class ShowSnackbar(val message: String) : UiEvent()
-}
 
 @HiltViewModel
 class AddEditArticleViewModel @Inject constructor(
@@ -42,15 +38,20 @@ class AddEditArticleViewModel @Inject constructor(
     private val articleArgs: HomeRoutes.AddEditArticle = savedStateHandle.toRoute()
     private val articleId = articleArgs.articleId
 
-    private val _events = Channel<UiEvent>()
-    val events = _events.receiveAsFlow()
+    private val _eventChannel = Channel<UiEvent>()
+    val events = _eventChannel.receiveAsFlow()
 
     init {
         if (articleId != null && articleId != "null") { // Handle "null" string case
+            state = state.copy(isEditMode = true)
             loadArticle(articleId)
         } else {
             // Initialize a blank post for "Add" mode
-            state = state.copy(isLoading = false, post = Post(id = null, dealerId = null, name = "", slug = "", status = "published", metaTitle = "", metaDescription = "", image = null, content = "", createdOn = null))
+            state = state.copy(
+                isLoading = false,
+                isEditMode = false,
+                post = Post(id = null, dealerId = null, name = "", slug = "", status = "published", metaTitle = "", metaDescription = "", image = null, content = "", createdOn = null)
+            )
         }
     }
 
@@ -102,13 +103,10 @@ class AddEditArticleViewModel @Inject constructor(
                 }
                 .onFailure {
                     state = state.copy(isSaving = false)
-                    _events.send(UiEvent.ShowSnackbar("Image upload failed."))
+                    _eventChannel.send(UiEvent.ShowSnackbar("Image upload failed."))
                 }
         }
     }
-
-
-// In: AddEditArticleViewModel.kt
 
     fun onSave() {
         viewModelScope.launch {
@@ -116,8 +114,9 @@ class AddEditArticleViewModel @Inject constructor(
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
             val currentPost = state.post ?: return@launch
 
+            // Basic validation
             if (currentPost.name.isNullOrBlank()) {
-                _events.send(UiEvent.ShowSnackbar("Title cannot be empty."))
+                _eventChannel.send(UiEvent.ShowSnackbar("Title cannot be empty."))
                 state = state.copy(isSaving = false)
                 return@launch
             }
@@ -128,17 +127,17 @@ class AddEditArticleViewModel @Inject constructor(
                 postRepository.updatePost(dealerId, articleId, currentPost)
             }
 
-            // --- THIS IS THE FIX ---
-            // The state is now only updated AFTER the result is received.
             result.onSuccess {
-                _events.send(UiEvent.ShowSnackbar("Article saved successfully!"))
-                _events.send(UiEvent.NavigateBack)
+                _eventChannel.send(UiEvent.NavigateBack)
             }.onFailure {
-                _events.send(UiEvent.ShowSnackbar(it.message ?: "Error saving post."))
-                // IMPORTANT: Only set isSaving to false on failure.
-                state = state.copy(isSaving = false)
+                _eventChannel.send(UiEvent.ShowSnackbar(it.message ?: "Error saving post."))
             }
+            state = state.copy(isSaving = false)
         }
     }
 
+    sealed class UiEvent {
+        object NavigateBack : UiEvent()
+        data class ShowSnackbar(val message: String) : UiEvent()
+    }
 }

@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,7 +55,7 @@ private val themeColor = Color(0xFF2196F3)
 @Composable
 fun InventoryScreen(
     navController: NavController,
-   // viewModel: VehicleViewModel = hiltViewModel() // Use the correct ViewModel
+    // viewModel: VehicleViewModel = hiltViewModel() // Use the correct ViewModel
 ) {
     val parentEntry = remember(navController.currentBackStackEntry) {
         navController.getBackStackEntry(HomeRoutes.Dashboard::class)
@@ -188,10 +190,14 @@ fun InventoryScreen(
                             if (vehicleId != null) { // Add null check for safety
                                 viewModel.loadVehicleForEdit(vehicleId) // Pre-load data using ID
                                 navController.navigate(HomeRoutes.AddVehicleScreen) // Navigate to edit/view screen
-                            } else {
-                                Log.e("InventoryScreen", "Clicked vehicle with null ID")
-                                // Optionally show an error to the user
                             }
+                        },
+                        onEditClick = { vehicleId ->
+                            viewModel.loadVehicleForEdit(vehicleId)
+                            navController.navigate(HomeRoutes.AddVehicleScreen)
+                        },
+                        onGalleryClick = { vehicleId, vin ->
+                            navController.navigate(HomeRoutes.VehicleGalleryScreen(vehicleId, vin))
                         }
                     )
                 }
@@ -208,7 +214,9 @@ fun InventoryList(
     isLoadingMore: Boolean, // To show loading indicator at the bottom
     canLoadMore: Boolean,   // To decide whether to trigger load more
     onLoadMore: () -> Unit, // Callback to load the next page
-    onVehicleClick: (String?) -> Unit // Callback when a vehicle card is clicked
+    onVehicleClick: (String?) -> Unit, // Callback when a vehicle card is clicked
+    onEditClick: (String) -> Unit,
+    onGalleryClick: (String, String) -> Unit
 ) {
     val listState = rememberLazyListState() // State for the LazyColumn
 
@@ -230,6 +238,8 @@ fun InventoryList(
             VehicleCard(
                 vehicle = vehicle,
                 onClick = { onVehicleClick(vehicle.id) }, // Pass VIN back on click
+                onEditClick = { vehicle.id?.let { onEditClick(it) } },
+                onGalleryClick = { vehicle.id?.let { id -> onGalleryClick(id, vehicle.vin) } },
                 modifier = Modifier.animateItem( // Basic fade-in animation
                     fadeInSpec = tween(300),
                     fadeOutSpec = tween(300)
@@ -277,69 +287,119 @@ fun InventoryList(
 
 
 @Composable
-fun VehicleCard(vehicle: Vehicle, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun VehicleCard(
+    vehicle: Vehicle,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onGalleryClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow( // Custom shadow for depth
+            .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = themeColor.copy(alpha = 0.3f),
-                ambientColor = themeColor.copy(alpha = 0.1f)
+                spotColor = Color(0x1A000000),
+                ambientColor = Color(0x0D000000)
             )
-            .clickable(onClick = onClick), // Make card clickable
-        shape = RoundedCornerShape(16.dp), // Rounded corners
-        colors = CardDefaults.cardColors(containerColor = Color.White) // White background
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column {
             // Image Section with Gradient Overlay
             Box(contentAlignment = Alignment.BottomStart) {
-                AsyncImage( // Using Coil3 for image loading
-                    model = vehicle.thumbnailImage.takeIf { !it.isNullOrBlank() } // Use thumbnail if not blank
-                        ?: "https://placehold.co/600x400/EAEAEA/9E9E9E?text=No+Image", // Placeholder
-                    contentDescription = "${vehicle.year} ${vehicle.brandName} ${vehicle.modelName}".trim(),
-                    contentScale = ContentScale.Crop, // Crop image to fit bounds
+                AsyncImage(
+                    model = (vehicle.thumbnailImage.takeIf { !it.isNullOrBlank() }
+                        ?: "https://placehold.co/600x400/EAEAEA/9E9E9E?text=No+Image") + "?t=${System.currentTimeMillis()}",
+                    contentDescription = "${vehicle.year} ${vehicle.brandName} ${vehicle.modelName}",
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
-                        // Clip top corners to match card shape
-                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                        .height(200.dp) // Slightly taller image
                 )
-                // Dark gradient overlay at the bottom of the image
+
+                // Gradient overlay
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
-                                startY = 200f // Adjust gradient start position
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                                startY = 300f
                             )
                         )
                 )
-                // Text overlaid on the gradient
-                Column(modifier = Modifier
-                    .padding(12.dp)
-                    .align(Alignment.BottomStart)) {
+
+                // Action Buttons (Edit / Gallery) - Top Right
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Edit Button
+                    Surface(
+                        color = Color.White.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.clickable { onEditClick() }
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(8.dp)) {
+                            Icon(
+                                Icons.Outlined.Edit,
+                                contentDescription = "Edit",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color(0xFF64748B)
+                            )
+                        }
+                    }
+
+                    // Gallery Button
+                    Surface(
+                        color = Color.White.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.clickable { onGalleryClick() }
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(8.dp)) {
+                            Icon(
+                                Icons.Outlined.PhotoLibrary,
+                                contentDescription = "Gallery",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color(0xFF64748B)
+                            )
+                        }
+                    }
+                }
+
+                // Title Overlay
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
                     Text(
-                        text = "${vehicle.year} ${vehicle.brandName}".trim(),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        text = "${vehicle.year} ${vehicle.brandName}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "${vehicle.modelName} ${vehicle.trimName}".trim(),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 20.sp,
+                        text = "${vehicle.modelName} ${vehicle.trimName}",
+                        style = MaterialTheme.typography.headlineSmall, // Larger title
                         color = Color.White,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            // Details Section below the image
-            Column(modifier = Modifier.padding(16.dp)) {
+
+            // Info Section
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 // Price and Condition Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -352,37 +412,46 @@ fun VehicleCard(vehicle: Vehicle, onClick: () -> Unit, modifier: Modifier = Modi
                                 "%,.0f",
                                 vehicle.dealerPrice ?: 0.0
                             )
-                        }", // Format price
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 24.sp,
-                        color = themeColor
+                        }",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = themeColor // Blue price
                     )
-                    // Show condition chip if condition is available
+
+                    // Condition Chip
                     vehicle.condition?.let { condition ->
-                        Chip(condition.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }) // Capitalize
+                        Surface(
+                            color = themeColor.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = condition.uppercase(),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = themeColor
+                            )
+                        }
                     }
                 }
-                Divider(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = Color.LightGray.copy(alpha = 0.3f)
-                )
-                // Row for Mileage, Stock #, VIN
+
+                Divider(color = Color(0xFFF1F5F9))
+
+                // Key Stats Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround // Distribute space evenly
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Format mileage, handle null
                     VehicleInfoChip(
                         icon = Icons.Outlined.Speed,
                         label = "MILEAGE",
                         value = "${String.format("%,d", vehicle.mileage?.toInt() ?: 0)} mi"
                     )
-                    // Show Stock # or N/A
                     VehicleInfoChip(
                         icon = Icons.Outlined.ConfirmationNumber,
                         label = "STOCK #",
-                        value = vehicle.stockNo?.takeIf { it.isNotBlank() } ?: "N/A")
-                    // Show last 6 digits of VIN
+                        value = vehicle.stockNo?.takeIf { it.isNotBlank() } ?: "N/A"
+                    )
                     VehicleInfoChip(
                         icon = Icons.Outlined.Key,
                         label = "VIN",
@@ -398,106 +467,65 @@ fun VehicleCard(vehicle: Vehicle, onClick: () -> Unit, modifier: Modifier = Modi
 // --- Other Composables (InventoryHeader, Chip, VehicleInfoChip, Dialogs) ---
 @Composable
 fun InventoryHeader(vehicleCount: Int, onFiltersClicked: () -> Unit, onSortClicked: () -> Unit) {
-    Column(
+    // Simplified Header: Only shows count as requested
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White) // White background for the header area
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Display the count of currently loaded vehicles
         Text(
             "Showing $vehicleCount vehicles",
-            style = MaterialTheme.typography.titleSmall,
-            color = Color.Gray
+            style = MaterialTheme.typography.titleMedium,
+            color = Color(0xFF64748B), // Slate gray
+            fontWeight = FontWeight.Medium
         )
-        Spacer(Modifier.height(8.dp))
-        // Row containing Filter and Sort buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp) // Space between buttons
-        ) {
-            // Filters Button
-            Button(
-                onClick = onFiltersClicked,
-                modifier = Modifier.weight(1f), // Take up half the width
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE9ECEF)), // Light gray background
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(
-                    Icons.Default.FilterList,
-                    contentDescription = "Filters",
-                    modifier = Modifier.size(20.dp),
-                    tint = Color(0xFF495057)
-                ) // Dark icon
-                Spacer(Modifier.width(8.dp))
-                Text("Filters", color = Color(0xFF495057)) // Dark text
-            }
-            // Sort Button
-            OutlinedButton(
-                onClick = onSortClicked,
-                modifier = Modifier.weight(1f), // Take up half the width
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Color(0xFFDEE2E6)) // Light border
-            ) {
-                Icon(
-                    Icons.Default.Sort,
-                    contentDescription = "Sort",
-                    modifier = Modifier.size(20.dp),
-                    tint = Color(0xFF495057)
-                ) // Dark icon
-                Spacer(Modifier.width(8.dp))
-                Text("Sort By", color = Color(0xFF495057)) // Dark text
-            }
-        }
     }
 }
 
 @Composable
 fun Chip(text: String) {
-    // Simple Chip composable for displaying tags like 'New', 'Used'
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp)) // Rounded corners
-            .background(themeColor.copy(alpha = 0.1f)) // Light blue background
-            .padding(horizontal = 10.dp, vertical = 6.dp) // Padding inside the chip
+    // Deprecated in favor of inline Surface in VehicleCard for custom styling
+    // Kept to avoid breaking other references if any, but implemented as no-op or simple
+    Surface(
+        color = themeColor.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(8.dp)
     ) {
         Text(
-            text = text.uppercase(), // Display text in uppercase
-            color = themeColor, // Use theme color for text
+            text = text.uppercase(),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            fontSize = 12.sp
+            color = themeColor
         )
     }
 }
 
 @Composable
 fun VehicleInfoChip(icon: ImageVector, label: String, value: String) {
-    // Composable to display small pieces of info with an icon (Mileage, Stock #, VIN)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(IntrinsicSize.Min) // Adjust width to content
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.width(100.dp) // Fixed width for alignment
     ) {
         Icon(
-            icon,
-            contentDescription = label,
+            imageVector = icon,
+            contentDescription = null,
             tint = themeColor,
-            modifier = Modifier.size(28.dp)
-        ) // Icon
-        Spacer(modifier = Modifier.height(4.dp))
+            modifier = Modifier.size(24.dp)
+        )
         Text(
-            label,
-            fontSize = 10.sp,
-            color = Color.Gray,
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            maxLines = 1
-        ) // Label (e.g., MILEAGE)
-        Text( // Value (e.g., 22,150 mi)
-            value,
-            fontSize = 14.sp,
+            color = Color(0xFF94A3B8) // Muted gray
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF0D1B2A), // Dark text color
+            color = Color(0xFF1E293B), // Dark slate
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis // Prevent long values from wrapping awkwardly
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -583,38 +611,38 @@ fun AddOptionCard(title: String, subtitle: String, icon: ImageVector, onClick: (
 @Composable
 fun EmptyInventory() {
     // Composable shown when the inventory list is empty
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center // Center content vertically and horizontally
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.offset(y = (-50).dp) // Move content up slightly
-        ) {
-            Icon(
-                Icons.Outlined.DirectionsCar, // Car icon
-                contentDescription = "Empty Inventory",
-                modifier = Modifier.size(120.dp),
-                tint = Color.LightGray.copy(alpha = 0.8f) // Light gray tint
-            )
-            Text(
-                "No Vehicles Found",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                color = Color.DarkGray
-            )
-            Text(
-                "Tap the '+' button below to add your first vehicle to the inventory.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.Gray,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 24.dp) // Add horizontal padding for longer text
-            )
-        }
+        Image(
+            painter = painterResource(id = com.slt.cardealership.R.drawable.file_searching_rafiki),
+            contentDescription = "No Vehicles Found",
+            modifier = Modifier
+                .size(280.dp)
+                .padding(bottom = 24.dp)
+        )
+
+        Text(
+            "No Vehicles Found",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1E293B), // Darker slate for better readability
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            "Your inventory is currently empty. Tap the '+' button below to add your first vehicle.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFF64748B), // Slate gray
+            textAlign = TextAlign.Center,
+            lineHeight = 24.sp
+        )
     }
 }
 

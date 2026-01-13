@@ -39,12 +39,9 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="msauth"
                     android:host="com.slt.cardealership"
-                    android:path="/LvNNxev6AklGdq5u5cHvuED9sBw%D" />
+                    android:path="/9G8k36W96umVJHwOz0S7uCBhisA=" />
             </intent-filter>
         </activity>
-
-
-
     </application>
 
 </manifest>

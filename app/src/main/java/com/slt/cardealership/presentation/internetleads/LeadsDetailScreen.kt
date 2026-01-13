@@ -34,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -139,6 +140,7 @@ fun LeadsDetailTopBar(
     onBackClick: () -> Unit
 ) {
     TopAppBar(
+        modifier = Modifier.shadow(elevation = 8.dp),
         title = {
             Text(
                 text = title,
@@ -229,13 +231,12 @@ fun LeadDetailRow(label: String, value: String) {
     }
 }
 
-// --- Empty Leads View (Unchanged) ---
 @Composable
 fun EmptyLeadsView() {
     Column(
-        modifier = Modifier.fillMaxSize().padding(top = 80.dp),
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
+        verticalArrangement = Arrangement.Center
     ) {
         Image(
             painter = painterResource(id = R.drawable.file_searching_rafiki),

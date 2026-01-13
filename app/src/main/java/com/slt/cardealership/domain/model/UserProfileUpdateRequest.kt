@@ -24,6 +24,7 @@ data class UserProfileUpdateRequest(
     @SerializedName("address") val address: String?, // Can be empty string
     @SerializedName("doj") val doj: String?, // Can be empty string
     @SerializedName("dob") val dob: String?, // Can be empty string
+    val imageFile: java.io.File? = null
 
 
 )

@@ -114,21 +114,7 @@ fun ServiceDetailScreen(
                 )
             )
         },
-        bottomBar = {
-            Button(
-                onClick = { viewModel.saveServices() },
-                enabled = !uiState.isSaving,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = customColor, contentColor = Color.White)
-            ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                } else {
-                    Text(text = "Save", modifier = Modifier.padding(vertical = 8.dp))
-                }
-            }
-        },
+
         containerColor = MaterialTheme.colorScheme.surface
     ) { paddingValues ->
 
@@ -179,7 +165,7 @@ fun ServiceDetailScreen(
 
                             customColor = customColor
                         )
-                        Spacer(modifier = Modifier.height(80.dp))
+
                     }
                 }
 
@@ -197,6 +183,23 @@ fun ServiceDetailScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = { viewModel.saveServices() },
+                    enabled = !uiState.isSaving,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3), contentColor = Color.White)
+                ) {
+                    if (uiState.isSaving) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Text(text = "Save", modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                }
+                Spacer(modifier = Modifier.height(40.dp)) // Extra padding at bottom
             }
         }
     }
@@ -266,10 +269,12 @@ fun ServiceContentPage(
         focusedContainerColor = MaterialTheme.colorScheme.surface,
         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
         disabledContainerColor = MaterialTheme.colorScheme.surface,
-        focusedIndicatorColor = customColor,
+        focusedIndicatorColor = Color(0xFF2196F3),
         unfocusedIndicatorColor = Color.LightGray,
         focusedTextColor = customColor,
-        unfocusedTextColor = customColor
+        unfocusedTextColor = customColor,
+        cursorColor = Color(0xFF2196F3),
+        focusedLabelColor = Color(0xFF2196F3)
     )
 
     Column(
@@ -288,7 +293,7 @@ fun ServiceContentPage(
             Icon(
                 Icons.Default.Info,
                 contentDescription = "Info",
-                tint = customColor,
+                tint = Color(0xFF2196F3),
                 modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -465,10 +470,12 @@ fun ServiceInputField(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     disabledContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedIndicatorColor = customColor,
+                    focusedIndicatorColor = Color(0xFF2196F3),
                     unfocusedIndicatorColor = Color.LightGray,
                     focusedTextColor = customColor,
-                    unfocusedTextColor = customColor
+                    unfocusedTextColor = customColor,
+                    cursorColor = Color(0xFF2196F3),
+                    focusedLabelColor = Color(0xFF2196F3)
                 )
             )
         }

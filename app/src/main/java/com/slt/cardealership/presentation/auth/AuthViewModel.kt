@@ -47,81 +47,103 @@ class AuthViewModel @Inject constructor(
         trySilentLoginOnAppStart()
     }
 
-
-
     fun signIn(activity: Activity?) {
         _authState.value = ResultState.Loading
         viewModelScope.launch {
-            val result = signInUseCase(activity)
-            _authState.value = result.fold(
-                onSuccess = { token ->
-                    sessionManager.saveAuthToken(token)
-
-                    val user = TokenParser.parse(token)
-                    _userState.value = user
-
-
-                    TokenParser.getDealerIdFromToken(token)?.let { dealerId ->
-                        sessionManager.saveDealerSlug(dealerId.toString())
-                        Log.d("AuthViewModel", "Dealer slug SAVED on login: $dealerId")
+            try {
+                val result = signInUseCase(activity)
+                result.fold(
+                    onSuccess = { token ->
+                        handleLoginSuccess(token)
+                    },
+                    onFailure = { e ->
+                        handleLoginFailure(e)
                     }
-
-                    _events.send(AuthEvent.NavigateToHome(token))
-                    ResultState.Success(token)
-                },
-                onFailure = { e ->
-                    _events.send(AuthEvent.ShowSnackbar(e.message ?: "Unknown error"))
-                    ResultState.Error(e.message ?: "Unknown error")
-                }
-            )
+                )
+            } catch (e: Exception) {
+                handleLoginFailure(e)
+            }
         }
     }
 
     private fun trySilentLoginOnAppStart() {
         viewModelScope.launch {
-            silentLoginUseCase().fold(
-                onSuccess = { token ->
-                    // --- ALSO CALL THE PARSER HERE ---
-                    sessionManager.saveAuthToken(token)
-                    val user = TokenParser.parse(token)
-                    _userState.value = user // Store the parsed user
-                    TokenParser.getDealerIdFromToken(token)?.let { dealerId ->
-                        sessionManager.saveDealerSlug(dealerId.toString())
-                        Log.d("AuthViewModel", "Dealer slug SAVED on silent login: $dealerId")
+            try {
+                silentLoginUseCase().fold(
+                    onSuccess = { token ->
+                        handleLoginSuccess(token, isSilent = true)
+                    },
+                    onFailure = {
+                        _events.send(AuthEvent.NavigateToLogin)
                     }
-
-                    Log.d("AuthViewModel", "Silent login successful for: ${user?.name}")
-
-                    _events.send(AuthEvent.NavigateToHome(token))
-                },
-                onFailure = {
-                    _events.send(AuthEvent.NavigateToLogin)
-                }
-            )
+                )
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Silent login crashed", e)
+                _events.send(AuthEvent.NavigateToLogin)
+            }
         }
     }
 
-
     fun signOut() {
         viewModelScope.launch {
-            // You can show a loading state here if you want
-            val result = signOutUseCase()
-            _authState.value = result.fold(
-                onSuccess = {
-                    // --- FIX 1: CLEAR ALL SAVED DATA ---
-                    sessionManager.clearSession() // You need to create this function
+            _authState.value = ResultState.Loading
+            
+            // 1. Attempt remote sign-out (best effort)
+            try {
+                signOutUseCase()
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Remote sign out failed", e)
+                // We proceed anyway because we MUST log out locally
+            }
 
-                    // --- FIX 2: SEND NAVIGATION EVENT ---
-                    // Navigate back to login instead of just showing a snackbar
-                    _events.send(AuthEvent.NavigateToLogin)
+            // 2. Clear local session data
+            try {
+                sessionManager.clearSession()
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Failed to clear session", e)
+            }
 
-                    ResultState.Success("Signed out")
-                },
-                onFailure = { e ->
-                    _events.send(AuthEvent.ShowSnackbar(e.message ?: "Sign out failed"))
-                    ResultState.Error(e.message ?: "Sign out failed")
-                }
-            )
+            // 3. Reset local state
+            _userState.value = null
+            _authState.value = ResultState.Success("Signed out")
+
+            // 4. Navigate to Login
+            _events.send(AuthEvent.NavigateToLogin)
         }
+    }
+
+    private suspend fun handleLoginSuccess(token: String, isSilent: Boolean = false) {
+        try {
+            // Save token
+            sessionManager.saveAuthToken(token)
+
+            // Parse and save user info
+            val user = TokenParser.parse(token)
+            _userState.value = user
+
+            TokenParser.getDealerIdFromToken(token)?.let { dealerId ->
+                sessionManager.saveDealerSlug(dealerId.toString())
+                if (!isSilent) {
+                    Log.d("AuthViewModel", "Dealer slug SAVED on login: $dealerId")
+                }
+            }
+
+            if (isSilent) {
+                Log.d("AuthViewModel", "Silent login successful for: ${user?.name}")
+            }
+
+            _authState.value = ResultState.Success(token)
+            _events.send(AuthEvent.NavigateToHome(token))
+
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error handling login success", e)
+            handleLoginFailure(e)
+        }
+    }
+
+    private suspend fun handleLoginFailure(e: Throwable) {
+        Log.e("AuthViewModel", "Login failed", e)
+        _authState.value = ResultState.Error(e.message ?: "Unknown error")
+        _events.send(AuthEvent.ShowSnackbar(e.message ?: "Login failed"))
     }
 }

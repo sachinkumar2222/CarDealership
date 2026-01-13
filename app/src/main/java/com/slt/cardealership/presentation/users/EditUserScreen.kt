@@ -11,7 +11,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -97,6 +99,13 @@ fun EditUserScreen(
         viewModel.fetchUserDetails(userId)
     }
 
+    // --- Success Listener ---
+    LaunchedEffect(uiState.isSaveSuccess) {
+        if (uiState.isSaveSuccess) {
+            onBackClick()
+        }
+    }
+
     // --- Clean up the state when leaving the screen ---
     DisposableEffect(Unit) {
         onDispose {
@@ -142,6 +151,20 @@ fun EditUserScreen(
         }
     )
 
+    // --- Password Change State ---
+    var showPasswordSheet by remember { mutableStateOf(false) }
+    val passwordState by viewModel.changePasswordState.collectAsState()
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // --- Success Listener for Password ---
+    LaunchedEffect(passwordState.isSuccess) {
+        if (passwordState.isSuccess) {
+            showPasswordSheet = false
+            viewModel.clearChangePasswordState()
+            // Optional: Show a snackbar or toast here
+        }
+    }
+
     // --- Full-screen state handling ---
     Box(modifier = Modifier.fillMaxSize().background(backgroundColor)) {
         when {
@@ -153,7 +176,6 @@ fun EditUserScreen(
             uiState.detailError != null -> {
                 FullScreenError(
                     errorMessage = uiState.detailError!!,
-                    // --- FIX 3: Pass the userId to the retry function ---
                     onTryAgain = { viewModel.fetchUserDetails(userId) }
                 )
             }
@@ -176,7 +198,7 @@ fun EditUserScreen(
                     username = username,
                     imageUrl = imageUrl,
                     imageUri = selectedImageUri,
-                    isSaving = uiState.isSaving, // Pass saving state
+                    isSaving = uiState.isSaving,
                     onBackClick = onBackClick,
                     onUpdateClick = {
                         viewModel.saveUserChanges(
@@ -187,7 +209,8 @@ fun EditUserScreen(
                             imageUri = selectedImageUri
                         )
                     },
-                    onChangePasswordClick = { onChangePasswordClick(user.id) },
+                    // --- Change: Open Sheet instead of Navigate ---
+                    onChangePasswordClick = { showPasswordSheet = true },
                     onImageClick = {
                         photoPickerLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -195,11 +218,116 @@ fun EditUserScreen(
                     },
                     imageCacheKey = imageCacheKey
                 )
+
+                // --- Password Change Bottom Sheet ---
+                if (showPasswordSheet) {
+                    androidx.compose.material3.ModalBottomSheet(
+                        onDismissRequest = {
+                            showPasswordSheet = false
+                            viewModel.clearChangePasswordState()
+                        },
+                        sheetState = sheetState,
+                        containerColor = Color.White
+                    ) {
+                        ChangePasswordSheetContent(
+                            isLoading = passwordState.isLoading,
+                            error = passwordState.error,
+                            onSave = { p1, p2 -> viewModel.changePassword(user.id, p1, p2) },
+                            onCancel = { showPasswordSheet = false }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+@Composable
+fun ChangePasswordSheetContent(
+    isLoading: Boolean,
+    error: String?,
+    onSave: (String, String) -> Unit,
+    onCancel: () -> Unit
+) {
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    val brandBlue = Color(0xFF2196F3)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .padding(bottom = 20.dp), // Add extra padding for navigation bar
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Change Password",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("New Password") },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedIndicatorColor = brandBlue,
+                cursorColor = brandBlue
+            )
+        )
+
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirm Password") },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedIndicatorColor = brandBlue,
+                cursorColor = brandBlue
+            )
+        )
+
+        if (error != null) {
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { onSave(password, confirmPassword) },
+            enabled = !isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = brandBlue)
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+            } else {
+                Text("Update Password", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+// --- This is your UI, now as a separate composable ---
 // --- This is your UI, now as a separate composable ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -215,332 +343,353 @@ fun EditUserScreenContent(
     username: String,
     imageUri: Uri?,
     imageUrl: String,
-    isSaving: Boolean, // Added isSaving
+    isSaving: Boolean,
     onBackClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onChangePasswordClick: () -> Unit,
     onImageClick: () -> Unit,
     imageCacheKey: String?
 ) {
-
     var isStatusMenuExpanded by remember { mutableStateOf(false) }
     val statusOptions = listOf("Active", "Inactive")
-    // --- TextField Style (Unchanged) ---
+
+    // --- Animation State ---
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    val brandBlue = Color(0xFF2196F3)
+
+    // --- TextField Style ---
     val textFieldColors = TextFieldDefaults.colors(
-        focusedContainerColor = surfaceColor,
-        unfocusedContainerColor = surfaceColor,
-        disabledContainerColor = surfaceColor,
-        focusedIndicatorColor = businessDarkBlue,
-        unfocusedIndicatorColor = Color.LightGray,
-        disabledIndicatorColor = Color.LightGray,
-        focusedLabelColor = businessDarkBlue,
-        unfocusedLabelColor = Color.Gray,
-        disabledLabelColor = Color.Gray,
-        focusedPlaceholderColor = Color.Gray,
-        unfocusedPlaceholderColor = Color.Gray
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
+        disabledContainerColor = Color(0xFFF5F5F5),
+        focusedIndicatorColor = brandBlue,
+        unfocusedIndicatorColor = Color(0xFFE0E0E0),
+        disabledIndicatorColor = Color.Transparent,
+        focusedLabelColor = brandBlue,
+        unfocusedLabelColor = Color.DarkGray,
+        disabledLabelColor = Color.DarkGray,
+        cursorColor = brandBlue
     )
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Edit User", fontWeight = FontWeight.Bold) },
+                title = { Text("Edit User", color = Color.Black, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.Black)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = surfaceColor
-                )
+                    containerColor = Color.White
+                ),
+                modifier = Modifier.shadow(4.dp)
             )
         },
-        bottomBar = {
-            Button(
-                onClick = onUpdateClick,
-                enabled = !isSaving, // Disable button when saving
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(surfaceColor) // Match scaffold bg
-                    .padding(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Black,
-                    contentColor = Color.White
-                )
-            ) {
-                if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        text = "Update",
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-            }
-        },
-        containerColor = surfaceColor
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
 
-            // --- Profile Image Section ---
-            Box(
-                contentAlignment = Alignment.BottomEnd,
-                modifier = Modifier.clickable { onImageClick() }
+        containerColor = Color(0xFFF5F7FA) // Light grey background
+    ) { paddingValues ->
+        androidx.compose.animation.AnimatedVisibility(
+            visible = visible,
+            enter = androidx.compose.animation.slideInVertically { it / 2 } + androidx.compose.animation.fadeIn(),
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
             ) {
-                Log.d("AsyncImage", "Image URL: $imageUrl")
-                Log.d("AsyncImage", "Image URI: $imageUri")
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        // --- 9. SHOW NEW URI OR FALL BACK TO SERVER URL ---
-                        .data(imageUri ?: imageUrl)
-                        .error(R.drawable.file_searching_rafiki)
-                        .crossfade(true)
-                        .diskCacheKey(imageCacheKey)
-                        .memoryCacheKey(imageCacheKey)
-                        .build(),
-                    contentDescription = "Profile Picture",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray)
-                )
+                // --- Header & Profile Image Section ---
                 Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black)
-                        .border(2.dp, Color.White, CircleShape),
+                    modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Edit Profile Image",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                    // Profile Image
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .padding(top = 20.dp, bottom = 20.dp)
+                            .clickable { onImageClick() }
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(imageUri ?: imageUrl)
+                                .error(R.drawable.file_searching_rafiki)
+                                .crossfade(true)
+                                .diskCacheKey(imageCacheKey)
+                                .memoryCacheKey(imageCacheKey)
+                                .build(),
+                            contentDescription = "Profile Picture",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .border(4.dp, Color.White, CircleShape) // Thick white border for separation
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(brandBlue)
+                                .border(2.dp, Color.White, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "Edit",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // --- User Info Summary ---
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "$firstName $lastName".trim().ifBlank { "New User" },
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = username,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            // --- User Name and Handle ---
-            Text(
-                text = "$firstName $lastName".trim(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-            Text(
-                text = username,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
-            )
-
-            // --- Info Rows ---
-            Spacer(modifier = Modifier.height(16.dp))
-            ProfileInfoItem(
-                icon = Icons.Outlined.Work,
-                text = "Designation: $designation"
-            )
-            ProfileInfoItem(
-                icon = Icons.Outlined.Work,
-                text = "Department: $department"
-            )
-
-            Divider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            ProfileMenuItem(
-                icon = Icons.Outlined.Key,
-                text = "Change Password",
-                onClick = onChangePasswordClick
-            )
-            Divider(modifier = Modifier.padding(horizontal = 16.dp))
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "User Information",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // --- Row 1: First Name / Last Name (Half Width) ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                OutlinedTextField(
-                    value = firstName,
-                    onValueChange = onFirstNameChange,
-                    label = { Text("First Name") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = lastName,
-                    onValueChange = onLastNameChange,
-                    label = { Text("Last Name") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // --- Row 2: Phone / Role (Half Width) ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = onPhoneChange,
-                    label = { Text("Business Phone") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = role,
-                    onValueChange = onRoleChange,
-                    label = { Text("Role") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true,
-                    enabled = false // Role is usually not editable
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // --- Status (Full Width) ---
-            ExposedDropdownMenuBox(
-                expanded = isStatusMenuExpanded,
-                onExpandedChange = { isStatusMenuExpanded = !isStatusMenuExpanded },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = status,
-                    onValueChange = {}, // ReadOnly, so no action here
-                    label = { Text("Status") },
+                // --- Form Content ---
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(), // This is the anchor for the menu
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    readOnly = true, // Still readOnly, click is handled by the box
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = isStatusMenuExpanded
-                        )
-                    }
-                )
-                // This is the actual menu that pops up
-                ExposedDropdownMenu(
-                    expanded = isStatusMenuExpanded,
-                    onDismissRequest = { isStatusMenuExpanded = false }
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    statusOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option) },
-                            onClick = {
-                                onStatusChange(option) // Update the state
-                                isStatusMenuExpanded = false // Close the menu
-                            }
+                    // Section: Personal Details
+                    FormSection(title = "Personal Details") {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = firstName,
+                                onValueChange = onFirstNameChange,
+                                label = { Text("First Name") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = lastName,
+                                onValueChange = onLastNameChange,
+                                label = { Text("Last Name") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                singleLine = true
+                            )
+                        }
+                        OutlinedTextField(
+                            value = phone,
+                            onValueChange = onPhoneChange,
+                            label = { Text("Phone Number") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = textFieldColors,
+                            singleLine = true
                         )
                     }
+
+                    // Section: Work
+                    FormSection(title = "Work Information") {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Read-only fields styling
+                            OutlinedTextField(
+                                value = department,
+                                onValueChange = {},
+                                label = { Text("Department") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                enabled = false,
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = designation,
+                                onValueChange = {},
+                                label = { Text("Designation") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                enabled = false,
+                                singleLine = true
+                            )
+                        }
+                        OutlinedTextField(
+                            value = role,
+                            onValueChange = {},
+                            label = { Text("Role") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = textFieldColors,
+                            enabled = false,
+                            singleLine = true
+                        )
+                    }
+
+                    // Section: Account
+                    FormSection(title = "Account Settings") {
+                        ExposedDropdownMenuBox(
+                            expanded = isStatusMenuExpanded,
+                            onExpandedChange = { isStatusMenuExpanded = !isStatusMenuExpanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = status,
+                                onValueChange = {},
+                                label = { Text("Account Status") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = textFieldColors,
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = isStatusMenuExpanded)
+                                }
+                            )
+                            ExposedDropdownMenu(
+                                expanded = isStatusMenuExpanded,
+                                onDismissRequest = { isStatusMenuExpanded = false }
+                            ) {
+                                statusOptions.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            onStatusChange(option)
+                                            isStatusMenuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Change Password Tile
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White)
+                                .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                                .clickable { onChangePasswordClick() }
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(brandBlue.copy(alpha = 0.1f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Key,
+                                        contentDescription = null,
+                                        tint = brandBlue
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "Change Password",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+
+                    // Bottom Padding for scroll
+                    // Bottom Padding before button
+                    Spacer(modifier = Modifier.height(30.dp))
+
+                    // Floating Button (Now Scrollable)
+                    Button(
+                        onClick = {
+                            if (!isSaving) {
+                                onUpdateClick()
+                            }
+                        },
+                        // Keep enabled to preserve style, handle click above
+                        enabled = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = RoundedCornerShape(12.dp),
+                                spotColor = brandBlue.copy(alpha = 0.5f) // Colored shadow
+                            ),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = brandBlue,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 3.dp
+                            )
+                        } else {
+                            Text(
+                                text = "Save Changes",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
             }
         }
     }
 }
 
-// --- This composable is for non-clickable info items ---
 @Composable
-fun ProfileInfoItem(
-    icon: ImageVector,
-    text: String
+private fun FormSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
 ) {
-    val contentColor = Color.Black
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp), // <-- REDUCED PADDING
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = text,
-            tint = contentColor,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = contentColor
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black // Brand Blue
         )
-    }
-}
-
-// --- This composable is for clickable menu items ---
-@Composable
-fun ProfileMenuItem(
-    icon: ImageVector,
-    text: String,
-    onClick: () -> Unit
-) {
-    val contentColor = Color.Black
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp), // <-- REDUCED PADDING
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = icon,
-                contentDescription = text,
-                tint = contentColor,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = contentColor
-            )
-        }
-        Icon(
-            imageVector = Icons.Default.ChevronRight,
-            contentDescription = "Go to $text",
-            tint = Color.Gray
-        )
+        content()
     }
 }

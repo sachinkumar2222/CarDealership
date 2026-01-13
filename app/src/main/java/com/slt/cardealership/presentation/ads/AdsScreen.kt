@@ -12,7 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.outlined.FolderOff
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Advertisement // Import the correct model
 import com.slt.cardealership.presentation.home.HomeRoutes
 import kotlinx.coroutines.flow.collectLatest
@@ -168,28 +170,38 @@ fun AdvertisementList(
     onDeleteClick: (Advertisement) -> Unit
 ) {
     Column(modifier = modifier) {
-        Text(
-            text = "Manage your advertisements here",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.DarkGray,
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
+        // Removed fixed Text header from here
 
-        when {
-            listState.isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 100.dp) // Add padding for FAB
+        ) {
+            // Header item - Always visible and scrollable
+            item {
+                Text(
+                    text = "Manage your advertisements here",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.DarkGray,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
+
+            when {
+                listState.isLoading -> {
+                    item {
+                        Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
                 }
-            }
-            listState.ads.isEmpty() -> {
-                EmptyState()
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                listState.ads.isEmpty() -> {
+                    item {
+                        EmptyState()
+                    }
+                }
+                else -> {
                     items(listState.ads, key = { it.id ?: it.title }) { ad ->
                         AdvertisementListItem(
                             advertisement = ad,
@@ -301,11 +313,10 @@ fun EmptyState() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Outlined.FolderOff,
+        Image(
+            painter = painterResource(id = R.drawable.file_searching_rafiki),
             contentDescription = "No advertisement found",
-            modifier = Modifier.size(120.dp),
-            tint = Color.LightGray
+            modifier = Modifier.size(200.dp) // Adjusted size for illustration
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(

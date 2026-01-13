@@ -60,8 +60,20 @@ import android.net.Uri
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +93,26 @@ fun ProfileScreen(
             viewModel.onImageSelected(uri)
         }
     )
+
+    // --- Password Change State ---
+    var showPasswordSheet by remember { mutableStateOf(false) }
+    val passwordState by viewModel.changePasswordState.collectAsState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
+
+    // --- Success Listener for Password ---
+    androidx.compose.runtime.LaunchedEffect(passwordState.isSuccess) {
+        if (passwordState.isSuccess) {
+            showPasswordSheet = false
+            viewModel.clearChangePasswordState()
+            Toast.makeText(context, "Password updated successfully", Toast.LENGTH_SHORT).show()
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(passwordState.error) {
+        if (passwordState.error != null) {
+            Toast.makeText(context, passwordState.error, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -138,11 +170,33 @@ fun ProfileScreen(
                         photoPickerLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                         )
+                    },
+                    onChangePasswordClick = {
+                        showPasswordSheet = true
                     }
                 )
             }
-
             else -> {}
+        }
+    }
+
+    // --- Password Change Bottom Sheet ---
+    if (showPasswordSheet && uiState is ProfileUiState.Success) {
+        val userProfile = (uiState as ProfileUiState.Success).userProfile
+        ModalBottomSheet(
+            onDismissRequest = {
+                showPasswordSheet = false
+                viewModel.clearChangePasswordState()
+            },
+            sheetState = sheetState,
+            containerColor = Color.White
+        ) {
+            ChangePasswordSheetContent(
+                isLoading = passwordState.isLoading,
+                error = passwordState.error,
+                onSave = { p1, p2 -> viewModel.changePassword(userProfile.id, p1, p2) },
+                onCancel = { showPasswordSheet = false }
+            )
         }
     }
 }
@@ -153,7 +207,8 @@ fun UserProfileContent(
     onEditProfileClick: (userId: Long) -> Unit,
     onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onImageClick: () -> Unit
+    onImageClick: () -> Unit,
+    onChangePasswordClick: () -> Unit // <-- NEW Callback
 ) {
     Column(
         modifier = modifier,
@@ -258,7 +313,7 @@ fun UserProfileContent(
         ProfileMenuItem(
             icon = Icons.Outlined.Key,
             text = "Change Password",
-            onClick = { /* TODO: Handle Password Click, e.g., navigate to ChangePasswordScreen */ }
+            onClick = onChangePasswordClick
         )
 
         Divider(modifier = Modifier.padding(vertical = 16.dp), color = Color.LightGray.copy(alpha = 0.5f))
@@ -350,4 +405,92 @@ fun ProfileMenuItem(
     }
 }
 
+@Composable
+fun ChangePasswordSheetContent(
+    isLoading: Boolean,
+    error: String?,
+    onSave: (String, String) -> Unit,
+    onCancel: () -> Unit
+) {
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    val brandBlue = Color(0xFF2196F3)
 
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .padding(bottom = 20.dp), // Add extra padding for navigation bar
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Handle visual indicator for bottom sheet handle if needed, usually built-in
+
+        Text(
+            text = "Change Password",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("New Password") },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedIndicatorColor = brandBlue,
+                cursorColor = brandBlue,
+                focusedLabelColor = brandBlue
+            )
+        )
+
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirm Password") },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedIndicatorColor = brandBlue,
+                cursorColor = brandBlue,
+                focusedLabelColor = brandBlue
+            )
+        )
+
+        // Error message handling is done via Toast in parent, but can show here too if persistent
+        if (error != null) {
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { onSave(password, confirmPassword) },
+            enabled = !isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = brandBlue)
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+            } else {
+                Text("Update Password", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}

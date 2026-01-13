@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,8 +39,7 @@ fun AddSeoMenuScreen(
     val uiState by viewModel.addMenuUiState.collectAsState()
     val context = LocalContext.current
 
-    var isMenuTargetExpanded by remember { mutableStateOf(false) }
-    var isCategoryExpanded by remember { mutableStateOf(false) }
+
 
     // --- 4. Load categories when the screen starts ---
     LaunchedEffect(key1 = true) {
@@ -63,24 +63,25 @@ fun AddSeoMenuScreen(
         }
     }
 
-    val customColor = Color(0xFF11233c)
+    val customColor = Color(0xFF2196F3)
     val textFieldColors = TextFieldDefaults.colors(
         focusedContainerColor = MaterialTheme.colorScheme.surface,
         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
         disabledContainerColor = MaterialTheme.colorScheme.surface,
         focusedIndicatorColor = customColor,
-        unfocusedIndicatorColor = customColor.copy(alpha = 0.7f),
+        unfocusedIndicatorColor = Color.LightGray,
         focusedLabelColor = customColor,
-        unfocusedLabelColor = customColor,
-        focusedTextColor = customColor,
-        unfocusedTextColor = customColor,
+        unfocusedLabelColor = Color.Gray,
+        focusedTextColor = Color.Black,
+        unfocusedTextColor = Color.Black,
         focusedTrailingIconColor = customColor,
-        unfocusedTrailingIconColor = customColor
+        unfocusedTrailingIconColor = Color.Gray
     )
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Add SEO Menu", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -88,9 +89,9 @@ fun AddSeoMenuScreen(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = customColor,
-                    navigationIconContentColor = customColor
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black,
+                    navigationIconContentColor = Color.Black
                 )
             )
         },
@@ -136,40 +137,15 @@ fun AddSeoMenuScreen(
                 ) {
 
                     // --- 7. Menu Category Dropdown (Connected) ---
-                    ExposedDropdownMenuBox(
-                        expanded = isCategoryExpanded,
-                        onExpandedChange = { isCategoryExpanded = it }
-                    ) {
-                        OutlinedTextField(
-                            value = uiState.selectedCategory?.name ?: "",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Menu Category") },
-                            placeholder = { Text("Select Category") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryExpanded)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = textFieldColors
-                        )
-                        ExposedDropdownMenu(
-                            expanded = isCategoryExpanded,
-                            onDismissRequest = { isCategoryExpanded = false }
-                        ) {
-                            uiState.allCategories.forEach { category ->
-                                DropdownMenuItem(
-                                    text = { Text(category.name, color = customColor) },
-                                    onClick = {
-                                        viewModel.updateAddFormCategory(category)
-                                        isCategoryExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    // --- 7. Menu Category Dropdown (Connected) ---
+                    SeoDropdown(
+                        label = "Menu Category",
+                        selectedOption = uiState.selectedCategory?.name ?: "",
+                        options = uiState.allCategories,
+                        onOptionSelected = { viewModel.updateAddFormCategory(it) },
+                        optionLabel = { it.name },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     // --- 8. Menu Label (Connected) ---
                     OutlinedTextField(
@@ -194,41 +170,18 @@ fun AddSeoMenuScreen(
                     )
 
                     // --- 10. Menu Target Dropdown (Connected) ---
-                    ExposedDropdownMenuBox(
-                        expanded = isMenuTargetExpanded,
-                        onExpandedChange = { isMenuTargetExpanded = it }
-                    ) {
-                        OutlinedTextField(
-                            value = uiState.selectedTarget,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Menu Target") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuTargetExpanded)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = textFieldColors
-                        )
-                        ExposedDropdownMenu(
-                            expanded = isMenuTargetExpanded,
-                            onDismissRequest = { isMenuTargetExpanded = false }
-                        ) {
-                            viewModel.menuTargets.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option, color = customColor) },
-                                    onClick = {
-                                        viewModel.updateAddFormTarget(option)
-                                        isMenuTargetExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    // --- 10. Menu Target Dropdown (Connected) ---
+                    SeoDropdown(
+                        label = "Menu Target",
+                        selectedOption = uiState.selectedTarget,
+                        options = viewModel.menuTargets,
+                        onOptionSelected = { viewModel.updateAddFormTarget(it) },
+                        optionLabel = { it },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
     }
 }
+

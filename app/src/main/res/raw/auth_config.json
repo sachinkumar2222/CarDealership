@@ -1,7 +1,7 @@
 {
   "client_id": "be9222f6-c405-488d-8629-4453077b7d02",
   "authorization_user_agent": "WEBVIEW",
-  "redirect_uri": "msauth://com.slt.cardealership/LvNNxev6AklGdq5u5cHvuED9sBw%3D",
+  "redirect_uri": "msauth://com.slt.cardealership/9G8k36W96umVJHwOz0S7uCBhisA%3D",
   "authorities": [
     {
       "type": "B2C",
@@ -10,4 +10,3 @@
     }
   ]
 }
-

@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.Log
 import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.data.remote.network.ApiService
+import com.slt.cardealership.domain.repo.DealerRepository
 import com.slt.cardealership.domain.model.AddSeoTagRequest
 import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.domain.model.Advertisement
@@ -12,6 +13,7 @@ import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.model.SeoMenu
 import com.slt.cardealership.domain.model.SeoCategory
 import com.slt.cardealership.domain.model.Department
+import com.slt.cardealership.domain.model.DealerService
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -31,43 +33,51 @@ import com.slt.cardealership.domain.model.FaqItem
 import com.slt.cardealership.domain.model.FaqDetails
 import com.slt.cardealership.domain.model.VehicleModel
 import com.slt.cardealership.domain.model.DealerInfo
-import com.slt.cardealership.domain.model.DealerMetasResponse
-import com.slt.cardealership.domain.model.FaqRequest
-import com.slt.cardealership.domain.model.GalleryImage
-import com.slt.cardealership.domain.model.HomeDelivery
-import com.slt.cardealership.domain.model.HomeTestDrive
-import com.slt.cardealership.domain.repo.DealerRepository
-import com.slt.cardealership.domain.model.Vehicle
-import com.slt.cardealership.domain.model.InternetLeadsResponse
-import com.slt.cardealership.domain.model.Post
-import com.slt.cardealership.domain.model.VinRequest
-import com.slt.cardealership.domain.model.TrimListResponse
-import com.slt.cardealership.domain.model.ProductType
-import com.slt.cardealership.domain.model.DealerService
 import com.slt.cardealership.domain.model.DealerServicesRequest
+import com.slt.cardealership.domain.model.InternetLeadsResponse
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.File
-import com.slt.cardealership.domain.model.GalleryImageUploadResponse
-import com.slt.cardealership.domain.model.ManageUsersResponse
-import com.slt.cardealership.domain.model.MapSeoTagsRequest
-import com.slt.cardealership.domain.model.ModifyDealerRequest
-import com.slt.cardealership.domain.model.SeoMenuRequest
-import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import com.slt.cardealership.domain.model.UpdateHoursRequest
 import com.slt.cardealership.domain.model.UserProfileUpdateRequest
+import com.slt.cardealership.domain.model.UserProfile
 import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import org.json.JSONObject
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.IOException
+import com.slt.cardealership.domain.model.ModifyDealerRequest
+import com.slt.cardealership.domain.model.GalleryImageUploadResponse
+import com.slt.cardealership.domain.model.ManageUsersResponse
+import com.slt.cardealership.domain.model.ManageUsers
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import kotlinx.coroutines.coroutineScope
+
+
+import com.slt.cardealership.domain.model.ResearchMake
+import com.slt.cardealership.domain.model.ResearchModel
+import com.slt.cardealership.domain.model.ResearchTrim
+import com.slt.cardealership.domain.model.ResearchYear
+import com.slt.cardealership.domain.model.VinRequest
+import com.slt.cardealership.domain.model.TrimListResponse
+import com.slt.cardealership.domain.model.HomeDelivery
+import com.slt.cardealership.domain.model.HomeTestDrive
+import com.slt.cardealership.domain.model.Post
+import com.slt.cardealership.domain.model.PostListResponse
+import com.slt.cardealership.domain.model.Vehicle
+import com.slt.cardealership.domain.model.VehicleListResponse
+import com.slt.cardealership.domain.model.ProductType
+import com.slt.cardealership.domain.model.FaqRequest
+import com.slt.cardealership.domain.model.GalleryImage
+import com.slt.cardealership.domain.model.DealerMetasResponse
+import com.slt.cardealership.domain.model.SeoMenuRequest
+import com.slt.cardealership.domain.model.UpdateDomainsRequest
+import com.slt.cardealership.domain.model.MapSeoTagsRequest
 import javax.inject.Inject
 
 
@@ -95,6 +105,178 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun addUser(
+        firstName: String,
+        lastName: String,
+        username: String,
+        password: String,
+        phone: String?,
+        imageUri: Uri?,
+        departmentId: Int?,
+        designationId: Int
+    ): Result<Long> {
+        return try {
+            val partMap = mutableMapOf<String, RequestBody>()
+            
+            fun addPart(key: String, value: String) {
+                partMap[key] = value.toRequestBody("text/plain".toMediaTypeOrNull())
+            }
+
+            addPart("first_name", firstName)
+            addPart("last_name", lastName)
+            addPart("username", username)
+            addPart("password", password)
+            phone?.let { addPart("phone", it) }
+            departmentId?.let { addPart("department_id", it.toString()) }
+            addPart("designation_id", designationId.toString())
+            
+            imageUri?.let { uri ->
+                 try {
+                     val contentResolver = context.contentResolver
+                     val type = contentResolver.getType(uri) ?: "image/*"
+                     val inputStream = contentResolver.openInputStream(uri)
+                     val bytes = inputStream?.readBytes()
+                     inputStream?.close()
+                     
+                     if (bytes != null) {
+                         val requestFile = bytes.toRequestBody(type.toMediaTypeOrNull())
+                         // Using a hack to send filename in PartMap if ApiService doesn't use @Part MultipartBody.Part
+                         partMap["image\"; filename=\"profile.jpg"] = requestFile
+                     }else{}
+                 } catch (e: Exception) {
+                     Log.e("DealerRepository", "Error reading image uri", e)
+                 }
+            }
+
+            val response = apiService.addUser(partMap)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getUserAuthorization(): Result<UserProfile> {
+        return try {
+            val response = apiService.getUserAuthorization()
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun updateDealerInfoWithImage(
+        dealerInfo: DealerInfo,
+        newImageUri: Uri?
+    ): Result<DealerInfo> {
+        return try {
+            val partMap = mutableMapOf<String, RequestBody>()
+            
+            fun addPart(key: String, value: String?) {
+                if (value != null) {
+                    partMap[key] = value.toRequestBody("text/plain".toMediaTypeOrNull())
+                }
+            }
+
+            addPart("name", dealerInfo.name)
+            addPart("phone", dealerInfo.phone)
+            addPart("website_url", dealerInfo.websiteUrl)
+            addPart("address", dealerInfo.address)
+            addPart("description", dealerInfo.description)
+            addPart("city_name", dealerInfo.city)
+            addPart("state_name", dealerInfo.state)
+            addPart("zip_code", dealerInfo.zipCode)
+            addPart("dealer_type", dealerInfo.dealerType)
+
+            newImageUri?.let { uri ->
+                 try {
+                     val contentResolver = context.contentResolver
+                     val type = contentResolver.getType(uri) ?: "image/*"
+                     val inputStream = contentResolver.openInputStream(uri)
+                     val bytes = inputStream?.readBytes()
+                     inputStream?.close()
+                     
+                     if (bytes != null) {
+                         val requestFile = bytes.toRequestBody(type.toMediaTypeOrNull())
+                         partMap["image\"; filename=\"dealer_image.jpg\""] = requestFile
+                     }else{}
+                 } catch (e: Exception) {
+                     Log.e("DealerRepository", "Error reading image uri", e)
+                 }
+            }
+            
+            val response = apiService.updateDealerInfoMultipart(dealerInfo.id.toLong(), partMap)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun getUsers(page: Int, itemsPerPage: Int, dealerId: Long, roleId: Int): Result<ManageUsersResponse> {
+        return try {
+            val response = apiService.getUsers(page, itemsPerPage, dealerId, roleId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getAllUsers(dealerId: Long): Result<List<ManageUsers>> {
+        return try {
+            val response = apiService.getAllUsers(dealerId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getUserDetails(userId: Long): Result<DetailedUserProfile> {
+        return try {
+            val response = apiService.getDetailedUserProfile(userId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDesignations(departmentId: Int): Result<List<Designation>> {
+        return try {
+            val response = apiService.getDesignations(departmentId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateUserProfile(
+        userId: Long,
+        request: UserProfileUpdateRequest
+    ): Result<DetailedUserProfile> {
+        return try {
+            val partMap = mutableMapOf<String, RequestBody>()
+            fun addPart(key: String, value: String?) {
+                if (value != null) {
+                    partMap[key] = value.toRequestBody("text/plain".toMediaTypeOrNull())
+                }
+            }
+            
+            addPart("first_name", request.firstName)
+            addPart("last_name", request.lastName)
+            addPart("phone", request.phone)
+            addPart("designation_id", request.designationId?.toString())
+            addPart("department_id", request.departmentId?.toString())
+            
+            request.imageFile?.let { file ->
+                 val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                 partMap["image\"; filename=\"${file.name}"] = requestFile
+            }
+
+            val response = apiService.putUserProfile(userId, partMap)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun changeUserPassword(
         userId: Long,
         request: ChangePasswordRequest
@@ -116,318 +298,10 @@ class DealerRepositoryImpl @Inject constructor(
         parts: Map<String, @JvmSuppressWildcards RequestBody>
     ): Result<DetailedUserProfile> {
         return try {
-            // Call the ApiService function
             val response = apiService.putUserProfile(userId, parts)
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
-        }
-    }
-
-    override suspend fun getSeoMenus(dealerId: Long): Result<List<SeoMenu>> {
-        return try {
-            val response = apiService.getSeoMenus(dealerId)
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun getSeoCategories(): Result<List<SeoCategory>> {
-        return try {
-            val response = apiService.getSeoCategories()
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun saveSeoMenus(dealerId: Long, request: SeoMenuRequest): Result<Unit> {
-        return try {
-            val response = apiService.saveSeoMenus(dealerId, request)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(HttpException(response))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun getDealerMetas(dealerId: Long): DealerMetasResponse {
-        return apiService.getDealerMetas(dealerId)
-    }
-
-    override suspend fun getFullUserProfile(): Result<DetailedUserProfile> {
-        return try {
-            // Step 1: Get the user ID from the authorization endpoint
-            val authorizationResponse = apiService.getUserAuthorization()
-            val userId = authorizationResponse.userId
-
-            // Step 2: Use the userId to get the detailed profile
-            val detailedProfileResponse = apiService.getDetailedUserProfile(userId)
-
-            Result.success(detailedProfileResponse)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-
-    // Helper function to convert any value to a 'text/plain' RequestBody
-    private fun Any?.toTextRequestBody(): RequestBody {
-        return (this?.toString() ?: "").toRequestBody("text/plain".toMediaType())
-    }
-
-    override suspend fun updateDealerInfoWithImage(
-        dealerInfo: DealerInfo,
-        newImageUri: Uri? // Image is optional
-    ): Result<DealerInfo> {
-        return try {
-            // 1. "we fill other data from get"
-            // We build the full map of text parts from the dealerInfo object.
-            val parts = buildDealerPartsMap(dealerInfo)
-
-            // 2. "use upload image as file in binary"
-            // If a new image is provided, we create and add it to the map.
-            if (newImageUri != null) {
-                // Your API log shows the key is "file"
-                val imagePart = createMultipartBodyPart(newImageUri, "file")
-                parts[imagePart.first] = imagePart.second
-            }
-
-            // 3. Make the API call
-            // We need a new ApiService function for this. Let's call it updateDealerInfoMultipart
-            val response = apiService.updateDealerInfoMultipart(dealerInfo.id, parts)
-            Result.success(response)
-
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    @Throws(IOException::class)
-    private fun createMultipartBodyPart(uri: Uri, partName: String): Pair<String, RequestBody> {
-        val contentResolver = context.contentResolver
-
-        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, uri))
-        } else {
-            @Suppress("DEPRECATION")
-            android.provider.MediaStore.Images.Media.getBitmap(contentResolver, uri)
-        }
-
-        val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-        val compressedFileBytes = outputStream.toByteArray()
-
-        val filename = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            cursor.moveToFirst()
-            cursor.getString(nameIndex)
-        } ?: "image.jpg"
-
-        val requestFile = compressedFileBytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
-
-        val formDataName = "$partName\"; filename=\"$filename"
-        return Pair(formDataName, requestFile)
-    }
-
-    /**
-     * A private helper to build the complete map of text fields
-     * for the dealer update API, based on your payload log.
-     */
-    private fun buildDealerPartsMap(dealerInfo: DealerInfo): MutableMap<String, RequestBody> {
-        val map = mutableMapOf<String, RequestBody>()
-
-        // Add all fields from your payload log
-        map["name"] = (dealerInfo.name ?: "").toTextRequestBody()
-        map["slug"] = (dealerInfo.slug ?: "").toTextRequestBody()
-        map["is_virtual"] = (if (dealerInfo.isVirtual == true) "1" else "0").toTextRequestBody()
-        map["phone"] = (dealerInfo.phone ?: "").toTextRequestBody()
-        map["website_url"] = (dealerInfo.websiteUrl ?: "").toTextRequestBody()
-        map["address"] = (dealerInfo.address ?: "").toTextRequestBody()
-        map["image_url"] = (dealerInfo.headerImageUrl ?: "").toTextRequestBody()
-        map["description"] = (dealerInfo.description ?: "").toTextRequestBody()
-        map["id"] = dealerInfo.id.toString().toTextRequestBody()
-        map["is_claimed"] = (if (dealerInfo.isClaimed == true) "1" else "0").toTextRequestBody()
-        map["updated_on"] = (System.currentTimeMillis() / 1000).toString().toTextRequestBody()
-        map["zipcode_id"] = (dealerInfo.zipcodeId ?: 0).toString().toTextRequestBody()
-        map["makes"] = "".toTextRequestBody()
-
-        return map
-    }
-
-
-    override suspend fun addUser(
-        firstName: String,
-        lastName: String,
-        username: String,
-        password: String,
-        phone: String?,
-        imageUri: Uri?,
-        departmentId: Int?,
-        designationId: Int// <-- 1. ADD THIS PARAMETER
-    ): Result<Long> {
-        return try {
-            // 2. Get data from SessionManager and Profile
-            val dealerId = sessionManager.getDealerId() ?: throw Exception("Session expired: Dealer ID missing")
-            val creatorProfile = getFullUserProfile().getOrThrow()
-
-            val createdById = creatorProfile.id
-            val organizationId = creatorProfile.organizationId
-
-            // 3. Use hard-coded IDs from payload log (as you requested)
-            val roleId = 9
-            val designationId = 25
-
-            val parts = mutableMapOf<String, @JvmSuppressWildcards RequestBody>()
-            val timestamp = (System.currentTimeMillis() / 1000).toString()
-
-            parts["first_name"] = firstName.toTextRequestBody()
-            parts["last_name"] = lastName.toTextRequestBody()
-            parts["username"] = username.toTextRequestBody()
-            parts["password"] = password.toTextRequestBody()
-            parts["phone"] = phone.toTextRequestBody()
-            parts["dealer_id"] = dealerId.toString().toTextRequestBody()
-            parts["group_id"] = "null".toTextRequestBody()
-            parts["role_id"] = roleId.toString().toTextRequestBody()
-            parts["created_by"] = createdById.toString().toTextRequestBody()
-            parts["updated_by"] = createdById.toString().toTextRequestBody()
-            parts["created_on"] = timestamp.toTextRequestBody()
-            parts["updated_on"] = timestamp.toTextRequestBody()
-            parts["organization_id"] = organizationId.toString().toTextRequestBody()
-
-            // --- 4. THIS IS THE FIX ---
-            // Use the parameter instead of a hard-coded value
-            parts["department_id"] = departmentId.toString().toTextRequestBody()
-            parts["designation_id"] = designationId.toString().toTextRequestBody()
-
-            parts["is_active"] = "active".toTextRequestBody()
-
-            // ... (imageUri handling is unchanged) ...
-            if (imageUri != null) {
-                val inputStream = context.contentResolver.openInputStream(imageUri)
-                val fileBytes = inputStream?.readBytes()
-                inputStream?.close()
-                if (fileBytes == null) throw Exception("Could not read image file")
-
-                val mimeType = context.contentResolver.getType(imageUri)
-                val requestFile = fileBytes.toRequestBody(mimeType?.toMediaTypeOrNull())
-                parts["image_url"] = requestFile
-            } else {
-                parts["image_url"] = "".toTextRequestBody()
-            }
-
-            val response = apiService.addUser(parts)
-            Result.success(response)
-
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun getDesignations(departmentId: Int): Result<List<Designation>> {
-        return try {
-            val response = apiService.getDesignations(departmentId)
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun updateUserProfile(userId: Long, request: UserProfileUpdateRequest): Result<DetailedUserProfile> {
-
-        // 1. Create the map that @PartMap expects
-        val partMap = mutableMapOf<String, RequestBody>()
-
-        partMap["first_name"] = request.firstName.toTextRequestBody()
-        partMap["last_name"] = request.lastName.toTextRequestBody()
-        partMap["username"] = request.username.toTextRequestBody()
-        partMap["role_id"] = request.roleId.toTextRequestBody()
-        partMap["created_by"] = request.createdBy.toTextRequestBody()
-        partMap["created_on"] = request.createdOn.toTextRequestBody()
-        partMap["updated_by"] = request.updatedBy.toTextRequestBody()
-        partMap["updated_on"] = request.updatedOn.toTextRequestBody()
-        partMap["organization_id"] = request.organizationId.toTextRequestBody()
-        partMap["department_id"] = request.departmentId.toTextRequestBody()
-        partMap["designation_id"] = request.designationId.toTextRequestBody()
-        partMap["image_url"] = request.imageUrl.toTextRequestBody()
-        partMap["dealer_id"] = request.dealerId.toTextRequestBody()
-        partMap["dealername"] = request.dealerName.toTextRequestBody()
-        partMap["gender"] = request.gender.toTextRequestBody()
-        partMap["language"] = request.language.toTextRequestBody()
-        partMap["phone"] = request.phone.toTextRequestBody()
-        partMap["address"] = request.address.toTextRequestBody()
-         partMap["dob"] = request.dob.toTextRequestBody()
-         partMap["doj"] = request.doj.toTextRequestBody()
-
-        // 3. Make the API call with the new 'partMap'
-        return try {
-            val response = apiService.putUserProfile(userId, partMap)
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun updateUserProfileWithImage(
-        userId: Long,
-        parts: Map<String, @JvmSuppressWildcards RequestBody>
-    ): Result<DetailedUserProfile> {
-        return try {
-            // This calls the SAME ApiService 'putUserProfile'
-            // but passes the map instead of the data class.
-            val response = apiService.putUserProfile(userId, parts)
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun getUsers(
-        page: Int,
-        itemsPerPage: Int,
-        roleId: Int
-    ): Result<ManageUsersResponse> { // <-- This is kotlin.Result
-        return try {
-            // Get the dealer_id from your session
-            val dealerId = sessionManager.getDealerId()
-                ?: return Result.failure(Exception("User session not found")) // <-- FIX 1
-
-            val response = apiService.getUsers(
-                page = page,
-                itemsPerPage = itemsPerPage,
-                dealerId = dealerId.toLong(),
-                roleId = roleId
-            )
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun getUserDetails(userId: Long): Result<DetailedUserProfile> {
-        return try {
-            val response = apiService.getDetailedUserProfile(userId)
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, String>): Result<Unit> {
-        return try {
-            // This now correctly calls the @FormUrlEncoded function
-            val response = apiService.updateDealerInfo(dealerId, updateMap)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to update info")))
-            }
-        } catch (e: Exception) {
-            Result.failure(Exception(getErrorMessage(e)))
         }
     }
 
@@ -666,7 +540,7 @@ class DealerRepositoryImpl @Inject constructor(
             // 2. Transform the 'images' list from that object into the list the UI needs
             val imageList = responseObject.images?.map { imageUrl ->
                 GalleryImage(id = responseObject.id, imageUrl = imageUrl)
-            } ?: emptyList() // If 'images' is null, return an empty list
+            } ?: emptyList<GalleryImage>() // If 'images' is null, return an empty list
 
             Result.success(imageList)
         } catch (e: Exception) {
@@ -720,7 +594,7 @@ class DealerRepositoryImpl @Inject constructor(
 
     override suspend fun getVehicles(dealerId: Long): Result<List<Vehicle>> {
         return try {
-            val response = apiService.getVehicles(dealerId)
+            val response: VehicleListResponse = apiService.getVehicles(dealerId)
             Result.success(response.list)
         } catch (e: Exception) {
             Result.failure(e)
@@ -803,13 +677,10 @@ class DealerRepositoryImpl @Inject constructor(
         itemsPerPage: Int
     ): Result<List<Vehicle>> {
         return try {
-            val response = apiService.getResearchVehicles(
+            val response: VehicleListResponse = apiService.getResearchVehicles(
                 dealerId = dealerId,
                 page = page,
                 itemsPerPage = itemsPerPage
-                // Pass default or specified filters here too if needed
-                // isActive = "yes",
-                // isDeleted = "no"
             )
 
             Result.success(response.list ?: emptyList())
@@ -866,17 +737,83 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun uploadVehicleGalleryImages(vehicleId: String, imageFiles: List<File>): Result<Unit> {
+    override suspend fun uploadVehicleGalleryImages(vehicleId: String, imageFiles: List<File>, existingImageUrls: List<String>): Result<Unit> {
         return try {
             val imageParts = imageFiles.map { file ->
                 val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
-                MultipartBody.Part.createFormData("images", file.name, requestBody) // "images" is a guess
+                MultipartBody.Part.createFormData("images", file.name, requestBody)
             }
-            val response = apiService.uploadVehicleGalleryImages(vehicleId, imageParts)
+
+            // Convert list of URLs to comma-separated string (or whatever the API expects for "image_urls")
+            // Based on addGalleryImage usage: urlsRequestBody = existingUrls.joinToString(",").toRequestBody(...)
+            val urlsString = existingImageUrls.joinToString(",")
+            val urlsRequestBody = urlsString.toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val response = apiService.uploadVehicleGalleryImages(vehicleId, imageParts, urlsRequestBody)
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
                 Result.failure(Exception("Failed to upload images. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteVehicleGalleryImage(vehicleId: String, imageUrl: String): Result<Unit> {
+        return try {
+            // 1. Get current gallery to filter the list
+            val currentGalleryResult = getVehicleGallery(vehicleId)
+
+            if (currentGalleryResult.isSuccess) {
+                val currentImages = currentGalleryResult.getOrNull()?.images ?: emptyList()
+                // 2. Filter out the image to delete
+                val updatedImages = currentImages.filter { it != imageUrl }
+
+                // 3. Update the gallery on server
+                // We pass vehicleId as the path param, and also as the field "vehicle_id"
+                // and the list of images as "images[]"
+                val response = apiService.updateVehicleGallery(
+                    vehicleId = vehicleId,
+                    formVehicleId = vehicleId,
+                    imageUrls = updatedImages.joinToString(",")
+                )
+
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("Failed to delete image. Code: ${response.code()}"))
+                }
+            } else {
+                Result.failure(Exception("Failed to fetch gallery for deletion."))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteVehicleGalleryImages(vehicleId: String, imageUrls: List<String>): Result<Unit> {
+        return try {
+            val currentGalleryResult = getVehicleGallery(vehicleId)
+
+            if (currentGalleryResult.isSuccess) {
+                val currentImages = currentGalleryResult.getOrNull()?.images ?: emptyList()
+                // Filter out ALL images provided in the deletion list
+                val updatedImages = currentImages.filter { !imageUrls.contains(it) }
+
+                val response = apiService.updateVehicleGallery(
+                    vehicleId = vehicleId,
+                    formVehicleId = vehicleId,
+                    imageUrls = updatedImages.joinToString(",")
+                )
+
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("Failed to delete images. Code: ${response.code()}"))
+                }
+            } else {
+                Result.failure(Exception("Failed to fetch gallery for deletion."))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -935,6 +872,233 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun createDomainSlider(name: String, domainId: String): Result<String> {
+        return try {
+            val request = com.slt.cardealership.domain.model.DomainSliderCreateRequest(
+                name = name,
+                sqlDomainId = domainId
+            )
+            val response = apiService.createDomainSlider(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!.id)
+            } else {
+                Result.failure(Exception("Failed to create slider. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainSliderDetails(sliderId: String): Result<com.slt.cardealership.domain.model.DomainSliderDetails> {
+        return try {
+            val response = apiService.getDomainSliderDetails(sliderId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun addDomainSlideItem(
+        sliderId: String,
+        domainId: String,
+        title: String,
+        link: String,
+        target: String,
+        startDate: Long,
+        endDate: Long,
+        imageFile: java.io.File
+    ): Result<Unit> {
+        return try {
+            val partMap = mutableMapOf<String, RequestBody>()
+            fun addPart(key: String, value: String) {
+                partMap[key] = value.toRequestBody("text/plain".toMediaTypeOrNull())
+            }
+
+            addPart("sql_domain_id", domainId)
+            addPart("title", title)
+            addPart("link", link)
+            addPart("target", target)
+            // API expects timestamp in seconds
+            addPart("start_date", (startDate / 1000).toString())
+            addPart("end_date", (endDate / 1000).toString())
+            
+            val requestBody = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
+            val imagePart = MultipartBody.Part.createFormData("file", imageFile.name, requestBody)
+
+            val response = apiService.addDomainSlideItem(sliderId, partMap, imagePart)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to add slide item. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteDomainSlider(sliderId: String): Result<Unit> {
+        return try {
+            val response = apiService.deleteDomainSlider(sliderId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete slider. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateDomainSlideItem(
+        sliderId: String,
+        slideId: String,
+        domainId: String,
+        title: String,
+        link: String,
+        target: String,
+        startDate: Long,
+        endDate: Long,
+        imageFile: java.io.File?,
+        imageUrl: String?
+    ): Result<Unit> {
+        return try {
+            val partMap = mutableMapOf<String, RequestBody>()
+            fun addPart(key: String, value: String) {
+                partMap[key] = value.toRequestBody("text/plain".toMediaTypeOrNull())
+            }
+
+            addPart("sql_domain_id", domainId)
+            addPart("title", title)
+            addPart("link", link)
+            addPart("target", target)
+            // API expects timestamp in seconds
+            addPart("start_date", (startDate / 1000).toString())
+            addPart("end_date", (endDate / 1000).toString())
+            
+            if (imageUrl != null) {
+                addPart("image_url", imageUrl)
+            }
+
+            val imagePart = if (imageFile != null) {
+                val requestBody = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("file", imageFile.name, requestBody)
+            } else {
+                null
+            }
+
+            val response = apiService.updateDomainSlideItem(sliderId, slideId, partMap, imagePart)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update slide item. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
+    override suspend fun getDomainBlogDetails(blogId: String): Result<com.slt.cardealership.domain.model.DomainBlogDetails> {
+        return try {
+            val response = apiService.getDomainBlogDetails(blogId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateDomainBlog(
+        blogId: String,
+        title: String,
+        slug: String,
+        description: String,
+        metaTitle: String,
+        metaDescription: String,
+        blogType: String,
+        status: String,
+        domainId: Int,
+        cta: String,
+        researchCompare: String,
+        category: String,
+        shortDescription: String,
+        createdBy: Long,
+        updatedBy: Long,
+        file: File?
+    ): Result<Unit> {
+        return try {
+            val partMap = mutableMapOf<String, RequestBody>()
+            fun addPart(key: String, value: String) {
+                partMap[key] = value.toRequestBody("text/plain".toMediaTypeOrNull())
+            }
+
+            addPart("title", title)
+            addPart("slug", slug)
+            addPart("description", description)
+            addPart("meta_title", metaTitle)
+            addPart("meta_description", metaDescription)
+            addPart("blog_type", blogType)
+            addPart("status", status)
+            addPart("sql_domain_id", domainId.toString())
+            addPart("cta", cta)
+            addPart("research_compare", researchCompare)
+            addPart("category", category)
+            addPart("short_description", shortDescription)
+            addPart("created_by", createdBy.toString())
+            addPart("updated_by", updatedBy.toString())
+
+            val filePart = file?.let {
+                val requestBody = it.asRequestBody("image/*".toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("file", it.name, requestBody)
+            }
+
+            val response = apiService.updateDomainBlog(blogId, partMap, filePart)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update blog. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getResearchMakes(): Result<List<ResearchMake>> {
+        return try {
+            val response = apiService.getResearchMakes()
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getResearchModels(makeId: Int): Result<List<ResearchModel>> {
+        return try {
+            val response = apiService.getResearchModels(makeId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getResearchModelYears(makeId: Int, modelId: Int): Result<List<ResearchYear>> {
+        return try {
+            val response = apiService.getResearchModelYears(makeId, modelId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getResearchTrims(makeId: Int, modelId: Int, year: Int): Result<List<ResearchTrim>> {
+        return try {
+            val response = apiService.getResearchTrims(makeId, modelId, year)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
     override suspend fun getDecodedDataByTrim(trimId: String): Result<Vehicle> {
         return try {
             val vehicle = apiService.getDecodedDataByTrim(trimId)
@@ -978,11 +1142,12 @@ class DealerRepositoryImpl @Inject constructor(
     override suspend fun getAdvertisements(dealerId: Long): Result<List<Advertisement>> {
         return try {
             val response = apiService.getAdvertisements(dealerId)
-            Result.success(response.list ?: emptyList()) // Handle null list
+            Result.success(response.list ?: emptyList())
         } catch (e: Exception) {
             Result.failure(Exception(getErrorMessage(e)))
         }
     }
+
 
     override suspend fun getAdvertisementDetails(dealerId: Long, advertisementId: String): Result<Advertisement> {
         return try {
@@ -1003,29 +1168,32 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+
     override suspend fun getAdvertisementGoals(): Result<List<AdvertisementGoal>> {
         return try {
             val response = apiService.getAdvertisementGoals()
-            Result.success(response ?: emptyList()) // Handle direct list response
+            Result.success(response ?: emptyList())
         } catch (e: Exception) {
             Result.failure(Exception(getErrorMessage(e)))
         }
     }
+
 
     override suspend fun getAdvertisementGoalTypes(goalId: Int): Result<List<AdvertisementGoalType>> {
         return try {
             val response = apiService.getAdvertisementGoalTypes(goalId)
-            Result.success(response ?: emptyList()) // Handle direct list response
+            Result.success(response ?: emptyList())
         } catch (e: Exception) {
             Result.failure(Exception(getErrorMessage(e)))
         }
     }
 
-    override suspend fun addAdvertisement(dealerId: Long, advertisement: Advertisement): Result<String> { // <-- FIX
+
+    override suspend fun addAdvertisement(dealerId: Long, advertisement: Advertisement): Result<String> {
         return try {
             val response = apiService.addAdvertisement(dealerId, advertisement)
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!) // <-- FIX: Return the String
+                Result.success(response.body()!!)
             } else {
                 Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to add advertisement")))
             }
@@ -1033,6 +1201,7 @@ class DealerRepositoryImpl @Inject constructor(
             Result.failure(Exception(getErrorMessage(e)))
         }
     }
+
 
     override suspend fun updateAdvertisement(dealerId: Long, advertisementId: String, advertisement: Advertisement): Result<Advertisement> {
         return try {
@@ -1078,11 +1247,12 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+
     override suspend fun updateAdvertisementGallery(dealerId: Long, advertisementId: String, imageFiles: List<File>): Result<Unit> {
         return try {
             val imageParts = imageFiles.map { file ->
                 val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
-                MultipartBody.Part.createFormData("images[]", file.name, requestBody) // Use images[] for array
+                MultipartBody.Part.createFormData("images[]", file.name, requestBody)
             }
             val response = apiService.updateAdvertisementGallery(dealerId, advertisementId, imageParts)
             if (response.isSuccessful) Result.success(Unit)
@@ -1091,6 +1261,7 @@ class DealerRepositoryImpl @Inject constructor(
             Result.failure(Exception(getErrorMessage(e)))
         }
     }
+
 
     // In DealerRepositoryImpl.kt
 
@@ -1156,6 +1327,37 @@ class DealerRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun getSeoMenus(dealerId: Long): Result<List<SeoMenu>> {
+        return try {
+            val response = apiService.getSeoMenus(dealerId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getSeoCategories(): Result<List<SeoCategory>> {
+        return try {
+            val response = apiService.getSeoCategories()
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveSeoMenus(dealerId: Long, request: SeoMenuRequest): Result<Unit> {
+        return try {
+            val response = apiService.saveSeoMenus(dealerId, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to save SEO menus. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -1267,6 +1469,537 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getDomains(
+        page: Int,
+        itemsPerPage: Int,
+        dealerId: Long
+    ): Result<com.slt.cardealership.domain.model.DomainResponse> {
+        return try {
+            val response = apiService.getDomains(
+                page = page,
+                itemsPerPage = itemsPerPage,
+                dealerId = dealerId
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainDetails(domainId: Int): Result<com.slt.cardealership.domain.model.DomainItem> {
+        return try {
+            val response = apiService.getDomainDetails(domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainPages(
+        page: Int,
+        itemsPerPage: Int,
+        domainId: Int
+    ): Result<com.slt.cardealership.domain.model.DomainPageResponse> {
+        return try {
+            val response = apiService.getDomainPages(
+                page = page,
+                itemsPerPage = itemsPerPage,
+                domainId = domainId
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteDomainPage(pageId: String): Result<Unit> {
+        return try {
+            val response = apiService.deleteDomainPage(pageId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to delete page")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun updateDomainPage(request: com.slt.cardealership.domain.model.DomainPageUpdateRequest): Result<Unit> {
+        return try {
+            val builder = okhttp3.MultipartBody.Builder().setType(okhttp3.MultipartBody.FORM)
+            
+            // Helper to add parts
+            fun addPart(key: String, value: Any?) {
+                if (value != null) {
+                    builder.addFormDataPart(key, value.toString())
+                }
+            }
+
+            addPart("id", request.id)
+            addPart("page_name", request.pageName)
+            addPart("page_slug", request.pageSlug)
+            addPart("status", request.status)
+            addPart("sql_domain_id", request.sqlDomainId)
+            addPart("page_type_id", request.pageTypeId)
+            addPart("created_by", request.createdBy)
+            addPart("created_on", request.createdOn)
+            addPart("updated_by", request.updatedBy)
+            addPart("updated_on", request.updatedOn)
+            
+            // Optional fields
+            addPart("page_description", request.pageDescription ?: "")
+            addPart("page_title", request.pageTitle ?: "")
+            addPart("meta_title", request.metaTitle ?: "")
+            addPart("meta_description", request.metaDescription ?: "")
+            addPart("robots_meta_tags", request.robotsMetaTags ?: "")
+            addPart("header_script", request.headerScript ?: "")
+            addPart("footer_script", request.footerScript ?: "")
+            addPart("featured_image", request.featuredImage ?: "")
+            addPart("slider_id", request.sliderId ?: "")
+            addPart("banner_type", request.bannerType ?: "")
+            addPart("banner_url", request.bannerUrl ?: "")
+            addPart("insert_to_sitemap", request.insertToSitemap ?: false)
+
+            // Convert to map for Retrofit @PartMap
+            // Actually, since we changed ApiService to accept Map<String, RequestBody>, we should construct that map directly.
+            // Using MultipartBody.Builder is for @Body MultipartBody.
+            // For @PartMap, we need Map<String, RequestBody>.
+            
+            val partMap = mutableMapOf<String, okhttp3.RequestBody>()
+            
+            fun addRequestBody(key: String, value: Any?) {
+                val stringValue = value?.toString() ?: ""
+                val requestBody = okhttp3.RequestBody.create("text/plain".toMediaTypeOrNull(), stringValue)
+                partMap[key] = requestBody
+            }
+
+            addRequestBody("id", request.id)
+            addRequestBody("page_name", request.pageName)
+            addRequestBody("page_slug", request.pageSlug)
+            addRequestBody("status", request.status)
+            addRequestBody("sql_domain_id", request.sqlDomainId)
+            addRequestBody("page_type_id", request.pageTypeId)
+            addRequestBody("created_by", request.createdBy)
+            addRequestBody("created_on", request.createdOn)
+            addRequestBody("updated_by", request.updatedBy)
+            addRequestBody("updated_on", request.updatedOn)
+            
+            addRequestBody("page_description", request.pageDescription)
+            addRequestBody("page_title", request.pageTitle)
+            addRequestBody("meta_title", request.metaTitle)
+            addRequestBody("meta_description", request.metaDescription)
+            addRequestBody("robots_meta_tags", request.robotsMetaTags)
+            addRequestBody("header_script", request.headerScript)
+            addRequestBody("footer_script", request.footerScript)
+            addRequestBody("featured_image", request.featuredImage)
+            addRequestBody("slider_id", request.sliderId)
+            addRequestBody("banner_type", request.bannerType)
+            addRequestBody("banner_url", request.bannerUrl)
+            addRequestBody("insert_to_sitemap", request.insertToSitemap ?: false)
+
+            // Handle Files
+            var featuredFilePart: okhttp3.MultipartBody.Part? = null
+            request.featuredFilePath?.let { path ->
+                val file = File(path)
+                // If it's a content URI (which it likely is from the picker), we need to handle it differently.
+                // But for now, let's assume the UI passes a path we can read or we use ContentResolver.
+                // Since we have context, let's try to resolve it if it's a URI, or just file if it's a path.
+                
+                // Simplified approach: Try to create a file from path. 
+                // In a real app, we might need to copy stream to a temp file if it's a content URI.
+                // Let's assume for now the UI gives us a usable URI string.
+                
+                try {
+                    val uri = Uri.parse(path)
+                    val contentResolver = context.contentResolver
+                    val type = contentResolver.getType(uri) ?: "image/*"
+                    val inputStream = contentResolver.openInputStream(uri)
+                    val bytes = inputStream?.readBytes()
+                    inputStream?.close()
+                    
+                    if (bytes != null) {
+                        val requestFile = okhttp3.RequestBody.create(type.toMediaTypeOrNull(), bytes)
+                        featuredFilePart = okhttp3.MultipartBody.Part.createFormData("featured_file", "featured_image.jpg", requestFile)
+                    }else{}
+                } catch (e: Exception) {
+                    android.util.Log.e("DealerRepository", "Error reading featured file", e)
+                }
+            }
+
+            var bannerFilePart: okhttp3.MultipartBody.Part? = null
+            request.bannerFilePath?.let { path ->
+                try {
+                    val uri = Uri.parse(path)
+                    val contentResolver = context.contentResolver
+                    val type = contentResolver.getType(uri) ?: "image/*"
+                    val inputStream = contentResolver.openInputStream(uri)
+                    val bytes = inputStream?.readBytes()
+                    inputStream?.close()
+                    
+                    if (bytes != null) {
+                        val requestFile = okhttp3.RequestBody.create(type.toMediaTypeOrNull(), bytes)
+                        bannerFilePart = okhttp3.MultipartBody.Part.createFormData("banner_file", "banner_image.jpg", requestFile)
+                    }else{}
+                } catch (e: Exception) {
+                    android.util.Log.e("DealerRepository", "Error reading banner file", e)
+                }
+            }
+
+            val response = apiService.updateDomainPage(request.id, partMap, featuredFilePart, bannerFilePart)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                if (response.code() == 413) {
+                    Result.failure(Exception("Image too large. Please upload a smaller image (max 1MB)."))
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    android.util.Log.e("DealerRepository", "Update failed: Code=${response.code()}, Body=$errorBody")
+                    
+                    val errorMessage = errorBody?.let {
+                        try {
+                            if (it.trim().startsWith("[")) {
+                                val jsonArray = org.json.JSONArray(it)
+                                if (jsonArray.length() > 0) jsonArray.getString(0) else "Failed to update page"
+                            } else {
+                                val json = JSONObject(it)
+                                json.optString("message", json.optString("error", "Failed to update page"))
+                            }
+                        } catch (e: Exception) {
+                            it.ifBlank { "Failed to update page. Code: ${response.code()}" }
+                        }
+                    } ?: "Failed to update page. Code: ${response.code()}"
+
+                    Result.failure(Exception(errorMessage))
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DealerRepository", "Update exception", e)
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun getDomainPageDetails(pageId: String): Result<com.slt.cardealership.domain.model.DomainPageDetails> {
+        return try {
+            val response = apiService.getDomainPageDetails(pageId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun getDomainBlogs(
+        domainId: Int,
+        page: Int,
+        limit: Int
+    ): Result<com.slt.cardealership.domain.model.DomainBlogResponse> {
+        return try {
+            val response = apiService.getDomainBlogs(
+                domainId = domainId,
+                page = page,
+                limit = limit
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun getDomainBlogCategories(domainId: Int): Result<com.slt.cardealership.domain.model.BlogCategoryResponse> {
+        return try {
+            val response = apiService.getDomainBlogCategories(domainId = domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun getDomainSliders(
+        page: Int,
+        itemsPerPage: Int,
+        domainId: Int,
+        search: String
+    ): Result<List<com.slt.cardealership.domain.model.DomainSlider>> {
+        return try {
+            val response = apiService.getDomainSliders(
+                page = page,
+                itemsPerPage = itemsPerPage,
+                domainId = domainId,
+                search = search
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun createDomainPage(request: com.slt.cardealership.domain.model.DomainPageCreateRequest): Result<Unit> {
+        return try {
+            val partMap = mutableMapOf<String, okhttp3.RequestBody>()
+            fun addRequestBody(key: String, value: Any?) {
+                if (value != null) {
+                    partMap[key] = value.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                }
+            }
+
+            addRequestBody("page_name", request.pageName)
+            addRequestBody("page_slug", request.pageSlug)
+            addRequestBody("status", request.status)
+            addRequestBody("page_type_id", request.pageTypeId)
+            addRequestBody("sql_domain_id", request.sqlDomainId)
+            addRequestBody("created_by", request.createdBy)
+            addRequestBody("created_on", request.createdOn)
+            addRequestBody("updated_by", request.updatedBy)
+            addRequestBody("updated_on", request.updatedOn)
+
+            addRequestBody("page_title", request.pageTitle)
+            addRequestBody("page_description", request.pageDescription)
+            addRequestBody("meta_title", request.metaTitle)
+            addRequestBody("meta_description", request.metaDescription)
+            addRequestBody("robots_meta_tags", request.robotsMetaTags)
+            addRequestBody("header_script", request.headerScript)
+            addRequestBody("footer_script", request.footerScript)
+            addRequestBody("featured_image", request.featuredImage)
+            addRequestBody("slider_id", request.sliderId)
+            addRequestBody("banner_type", request.bannerType)
+            addRequestBody("banner_url", request.bannerUrl)
+            addRequestBody("insert_to_sitemap", request.insertToSitemap ?: false)
+
+            // Handle Files
+            var featuredFilePart: okhttp3.MultipartBody.Part? = null
+            request.featuredFilePath?.let { path ->
+                try {
+                    val file = java.io.File(path)
+                    if (file.exists()) {
+                        val requestFile = okhttp3.RequestBody.create("image/*".toMediaTypeOrNull(), file)
+                        featuredFilePart = okhttp3.MultipartBody.Part.createFormData("featured_file", file.name, requestFile)
+                    }else{}
+                } catch (e: Exception) {
+                    android.util.Log.e("DealerRepository", "Error reading featured file", e)
+                }
+            }
+
+            var bannerFilePart: okhttp3.MultipartBody.Part? = null
+            request.bannerFilePath?.let { path ->
+                try {
+                    val file = java.io.File(path)
+                    if (file.exists()) {
+                        val requestFile = okhttp3.RequestBody.create("image/*".toMediaTypeOrNull(), file)
+                        bannerFilePart = okhttp3.MultipartBody.Part.createFormData("banner_file", file.name, requestFile)
+                    }else{}
+                } catch (e: Exception) {
+                    android.util.Log.e("DealerRepository", "Error reading banner file", e)
+                }
+            }
+
+            val response = apiService.createDomainPage(partMap, featuredFilePart, bannerFilePart)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to create page")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
 
 
+    override suspend fun createDomainBlog(
+        title: String,
+        slug: String,
+        description: String,
+        metaTitle: String,
+        metaDescription: String,
+        blogType: String,
+        status: String,
+        domainId: Int,
+        cta: String,
+        researchCompare: String,
+        category: String,
+        shortDescription: String,
+        createdBy: Long,
+        updatedBy: Long,
+        file: File?
+    ): Result<Unit> {
+        return try {
+            val partMap = mutableMapOf<String, okhttp3.RequestBody>()
+            fun addRequestBody(key: String, value: Any?) {
+                if (value != null) {
+                    partMap[key] = value.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                }
+            }
+
+            addRequestBody("title", title)
+            addRequestBody("slug", slug)
+            addRequestBody("description", description)
+            addRequestBody("meta_title", metaTitle)
+            addRequestBody("meta_description", metaDescription)
+            addRequestBody("blog_type", blogType)
+            addRequestBody("status", status)
+            addRequestBody("sql_domain_id", domainId) // Changed from domain_id to sql_domain_id
+            addRequestBody("cta", cta)
+            addRequestBody("research_compare", researchCompare)
+            addRequestBody("category", category)
+            addRequestBody("short_description", shortDescription)
+            addRequestBody("created_by", createdBy)
+            addRequestBody("updated_by", updatedBy)
+
+            var filePart: okhttp3.MultipartBody.Part? = null
+            if (file != null && file.exists()) {
+                val requestFile = okhttp3.RequestBody.create("image/*".toMediaTypeOrNull(), file)
+                filePart = okhttp3.MultipartBody.Part.createFormData("file", file.name, requestFile)
+            }
+
+            val response = apiService.createDomainBlog(partMap, filePart)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to create blog. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDealerMetas(dealerId: Long): DealerMetasResponse {
+        return apiService.getDealerMetas(dealerId)
+    }
+
+    override suspend fun getFullUserProfile(): Result<DetailedUserProfile> {
+        return try {
+            val authUser = apiService.getUserAuthorization()
+            val response = apiService.getDetailedUserProfile(authUser.userId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateUserProfileWithImage(
+        userId: Long,
+        parts: Map<String, @JvmSuppressWildcards RequestBody>
+    ): Result<DetailedUserProfile> {
+        return try {
+            val response = apiService.putUserProfile(userId, parts)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateDealerInfo(dealerId: Long, updateMap: Map<String, String>): Result<Unit> {
+        return try {
+            val response = apiService.updateDealerInfo(dealerId, updateMap)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update dealer info"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainMenus(
+        page: Int,
+        itemsPerPage: Int,
+        domainId: Int,
+        menuName: String
+    ): Result<List<com.slt.cardealership.domain.model.DomainMenu>> {
+        return try {
+            val response = apiService.getDomainMenus(
+                page = page,
+                itemsPerPage = itemsPerPage,
+                domainId = domainId,
+                menuName = menuName
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(Exception(getErrorMessage(e)))
+        }
+    }
+
+    override suspend fun getDomainMenuDetails(menuId: String): Result<com.slt.cardealership.domain.model.DomainMenuDetail> {
+        return try {
+            val response = apiService.getDomainMenuDetails(menuId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getResearchCompareInterlinks(
+        page: Int,
+        itemsPerPage: Int,
+        domainId: Int
+    ): Result<List<com.slt.cardealership.domain.model.ResearchCompareItem>> {
+        return try {
+            val response = apiService.getResearchCompareInterlinks(page, itemsPerPage, domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getResearchCompareCategories(domainId: Int): Result<com.slt.cardealership.domain.model.ResearchCompareCategoryResponse> {
+        return try {
+            val response = apiService.getResearchCompareCategories(domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun createResearchCompare(request: com.slt.cardealership.domain.model.CreateResearchCompareRequest): Result<Unit> {
+        return try {
+            val response = apiService.createResearchCompare(request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to create research compare. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteResearchCompare(id: String): Result<Unit> {
+        return try {
+            val response = apiService.deleteResearchCompare(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete research compare. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getResearchCompareDetails(id: String): Result<com.slt.cardealership.domain.model.ResearchCompareDetailsResponse> {
+        return try {
+            val response = apiService.getResearchCompareDetails(id)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateResearchCompare(
+        id: String,
+        request: com.slt.cardealership.domain.model.CreateResearchCompareRequest
+    ): Result<Unit> {
+        return try {
+            val response = apiService.updateResearchCompare(id, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update research compare. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+
+

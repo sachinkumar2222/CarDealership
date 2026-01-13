@@ -10,9 +10,9 @@ data class ManageUsers(
     val last_name: String?,
     val username: String, // This is the email
     val phone: String?,
-    val is_active: Boolean,
+    val is_active: Boolean = false, // Default for partial response
     val role_type: String?,
-    val role_id: Int,
+    val role_id: Int = 0, // Default for partial response
     val role_name: String?,
     val organization_id: Int?,
     val organization_name: String?,

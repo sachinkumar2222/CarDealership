@@ -1,4 +1,4 @@
-package com.slt.cardealership.presentation.users // Or your correct UI package
+package com.slt.cardealership.presentation.users
 
 import android.net.Uri
 import android.util.Log
@@ -9,7 +9,7 @@ import com.slt.cardealership.domain.model.ChangePasswordRequest
 import com.slt.cardealership.domain.model.Department
 import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.domain.model.DetailedUserProfile
-import com.slt.cardealership.domain.model.ManageUsers // Corrected to domain.repository
+import com.slt.cardealership.domain.model.ManageUsers
 import com.slt.cardealership.domain.repo.DealerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -83,10 +83,29 @@ class UserViewModel @Inject constructor(
                         departments = departments
                     )
                 }
-                .onFailure { exception ->
+                .onFailure { exception: Throwable ->
                     _addUserUiState.value = _addUserUiState.value.copy(
                         isLoading = false,
                         error = exception.message ?: "Failed to load departments"
+                    )
+                }
+        }
+    }
+
+    fun loadDesignations(departmentId: Int) {
+        viewModelScope.launch {
+            _addUserUiState.value = _addUserUiState.value.copy(isLoading = true, error = null)
+            dealerRepository.getDesignations(departmentId)
+                .onSuccess { designations ->
+                    _addUserUiState.value = _addUserUiState.value.copy(
+                        isLoading = false,
+                        designations = designations
+                    )
+                }
+                .onFailure { exception: Throwable ->
+                    _addUserUiState.value = _addUserUiState.value.copy(
+                        isLoading = false,
+                        error = exception.message ?: "Failed to load designations"
                     )
                 }
         }
@@ -97,9 +116,21 @@ class UserViewModel @Inject constructor(
             // --- FIX 3: Update the correct state object ---
             _userListState.value = UserScreenUiState(isLoading = true)
 
+            // Get dealerId from session
+            val dealerIdInt = sessionManager.getDealerId()
+            if (dealerIdInt == null) {
+                _userListState.value = UserScreenUiState(
+                    isLoading = false,
+                    error = "Dealer ID not found. Please login again."
+                )
+                return@launch
+            }
+            val dealerId = dealerIdInt.toLong()
+
             dealerRepository.getUsers(
                 page = 1,
                 itemsPerPage = itemsPerPage,
+                dealerId = dealerId,
                 roleId = defaultRoleId
             ).onSuccess { response ->
                 _userListState.value = UserScreenUiState(
@@ -109,7 +140,7 @@ class UserViewModel @Inject constructor(
                     totalUsers = response.pagination.total,
                     canLoadMore = response.list.size < response.pagination.total
                 )
-            }.onFailure { exception ->
+            }.onFailure { exception: Throwable ->
                 _userListState.value = UserScreenUiState(
                     isLoading = false,
                     error = exception.message ?: "An unknown error occurred"
@@ -127,9 +158,21 @@ class UserViewModel @Inject constructor(
             _userListState.value = currentState.copy(isLoadingMore = true)
             val nextPage = currentState.currentPage + 1
 
+            // Get dealerId from session
+            val dealerIdInt = sessionManager.getDealerId()
+            if (dealerIdInt == null) {
+                _userListState.value = currentState.copy(
+                    isLoadingMore = false,
+                    error = "Dealer ID not found."
+                )
+                return@launch
+            }
+            val dealerId = dealerIdInt.toLong()
+
             dealerRepository.getUsers(
                 page = nextPage,
                 itemsPerPage = itemsPerPage,
+                dealerId = dealerId,
                 roleId = defaultRoleId
             ).onSuccess { response ->
                 val allUsers = currentState.users + response.list
@@ -140,7 +183,7 @@ class UserViewModel @Inject constructor(
                     totalUsers = response.pagination.total,
                     canLoadMore = allUsers.size < response.pagination.total
                 )
-            }.onFailure { exception ->
+            }.onFailure { exception: Throwable ->
                 _userListState.value = currentState.copy(
                     isLoadingMore = false,
                     error = exception.message ?: "Failed to load more users"
@@ -173,7 +216,7 @@ class UserViewModel @Inject constructor(
                 .onSuccess { userProfile ->
                     _userDetailState.value = EditUserUiState(isLoading = false, user = userProfile)
                 }
-                .onFailure { exception ->
+                .onFailure { exception: Throwable ->
                     _userDetailState.value = EditUserUiState(
                         isLoading = false,
                         detailError = exception.message ?: "Failed to load user"
@@ -201,33 +244,26 @@ class UserViewModel @Inject constructor(
                 // Build the multipart map
                 val parts = buildMultipartMap(originalUser, firstName, lastName, phone, status,imageUri)
 
-                dealerRepository.updateUser(originalUser.id, parts)
-                    .onSuccess { updatedUser ->
-                        val localDraft = originalUser.copy(
-                            firstName = firstName,
-                            lastName = lastName,
-                            phone = phone
-                        )
-                        val updatedUser = localDraft.copy(
-                        imageUrl = updatedUser.imageUrl,
-                        updatedOn = System.currentTimeMillis() / 1000
-                    )
-                        val finalUpdatedUser = localDraft.copy( // <-- 4. Use a new variable name
-                            imageUrl = updatedUser.imageUrl,
-                            updatedOn = System.currentTimeMillis() / 1000
-                        )
-                        _userDetailState.value = currentState.copy(
-                            isSaving = false,
-                            user = finalUpdatedUser // Update state with fresh data
-                        )
-                        // TODO: Add a "Save Success" event for a Snackbar
-                    }
-                    .onFailure { exception ->
-                        _userDetailState.value = currentState.copy(
-                            isSaving = false,
-                            detailError = exception.message ?: "Failed to save user"
-                        )
-                    }
+                val updatedUser = dealerRepository.updateUser(originalUser.id, parts).getOrThrow()
+
+                val localDraft = originalUser.copy(
+                    firstName = firstName,
+                    lastName = lastName,
+                    phone = phone
+                )
+                val finalUpdatedUser = localDraft.copy(
+                    imageUrl = updatedUser.imageUrl,
+                    updatedOn = System.currentTimeMillis() / 1000
+                )
+                _userDetailState.value = currentState.copy(
+                    isSaving = false,
+                    isSaveSuccess = true, // Signal success
+                    user = finalUpdatedUser // Update state with fresh data
+                )
+
+                // Refresh the main list so "UserScreen" is up to date when we go back
+                loadUsers()
+                // TODO: Add a "Save Success" event for a Snackbar
 
             } catch (e: Exception) {
                 _userDetailState.value = currentState.copy(
@@ -268,11 +304,11 @@ class UserViewModel @Inject constructor(
                 phone = phone,
                 imageUri = imageUri,
                 departmentId = departmentId,
-                designationId = designationId
+                designationId = designationId!! // Force unwrap since we checked for null
             ).onSuccess {
                 _addUserUiState.value = AddUserUiState(isSuccess = true)
                 loadUsers() // Refresh the user list after adding a new one
-            }.onFailure { exception ->
+            }.onFailure { exception: Throwable ->
                 _addUserUiState.value = AddUserUiState(
                     error = exception.message ?: "Failed to add user"
                 )
@@ -311,7 +347,7 @@ class UserViewModel @Inject constructor(
         map["phone"] = phone.toTextRequestBody()
 
         // 2. Convert "Active" -> "true", "Inactive" -> "false"
-       // map["is_active"] = status.lowercase().toTextRequestBody()
+        // map["is_active"] = status.lowercase().toTextRequestBody()
 
         // 3. Add all other fields from the original user object to match payload
         //    (Your API requires all fields, even ones you didn't change)
@@ -391,43 +427,17 @@ class UserViewModel @Inject constructor(
             val request = ChangePasswordRequest(password = pass)
 
             // 3. Make API Call
-            dealerRepository.changeUserPassword(userId, request)
-                .onSuccess {
-                    _changePasswordState.value = ChangePasswordUiState(isSuccess = true)
-                }
-                .onFailure { exception ->
-                    _changePasswordState.value = ChangePasswordUiState(
-                        error = exception.message ?: "Failed to change password"
-                    )
-                }
+            try {
+                dealerRepository.changeUserPassword(userId, request).getOrThrow()
+                _changePasswordState.value = ChangePasswordUiState(isSuccess = true)
+            } catch (exception: Throwable) {
+                _changePasswordState.value = ChangePasswordUiState(
+                    error = exception.message ?: "Failed to change password"
+                )
+            }
         }
     }
 
-    fun loadDesignations(departmentId: Int) {
-        viewModelScope.launch {
-            // Set loading and clear old designations
-            _addUserUiState.value = _addUserUiState.value.copy(isLoading = true, designations = emptyList())
-
-            dealerRepository.getDesignations(departmentId)
-                .onSuccess { designations ->
-                    _addUserUiState.value = _addUserUiState.value.copy(
-                        isLoading = false,
-                        designations = designations
-                    )
-                }
-                .onFailure { exception ->
-                    _addUserUiState.value = _addUserUiState.value.copy(
-                        isLoading = false,
-                        error = exception.message ?: "Failed to load designations"
-                    )
-                }
-        }
-    }
-
-    /**
-     * Resets the state for the change password screen,
-     * so it's fresh the next time it's opened.
-     */
     fun clearChangePasswordState() {
         _changePasswordState.value = ChangePasswordUiState()
     }
@@ -448,7 +458,8 @@ data class UserScreenUiState(
 // --- STATE for Edit User Screen ---
 data class EditUserUiState(
     val isLoading: Boolean = false,
-    val isSaving: Boolean = false, // <-- ADDED THIS
+    val isSaving: Boolean = false,
+    val isSaveSuccess: Boolean = false, // <-- ADDED THIS
     val user: DetailedUserProfile? = null,
     val detailError: String? = null
 )

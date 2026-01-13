@@ -210,6 +210,12 @@ class SeoMenuViewModel @Inject constructor(
         }
     }
 
+    fun refreshSeoMenus() {
+        dealerId?.let { id ->
+            loadSeoMenuData(id.toLong())
+        }
+    }
+
     /**
      * Adds a new, blank menu item to the end of the list.
      */
@@ -332,7 +338,12 @@ class SeoMenuViewModel @Inject constructor(
 
                 // 2. Convert old list to payload
                 val oldPayload = oldMenuList.map {
-                    SeoMenuPayload(it.seoCategoryId, it.menuLabel, it.menuUrl, it.menuTarget)
+                    SeoMenuPayload(
+                        seo_category_id = it.seoCategoryId,
+                        menu_label = it.menuLabel,
+                        menu_target = it.menuTarget,
+                        menu_url = it.menuUrl
+                    )
                 }
 
                 // 3. Create the new item from our UI state

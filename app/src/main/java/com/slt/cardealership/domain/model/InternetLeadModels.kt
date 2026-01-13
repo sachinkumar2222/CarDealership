@@ -12,9 +12,9 @@ data class InternetLeadsResponse(
     val pagination: Pagination
 )
 
-data class Pagination(
-    val total: Int
-)
+//data class Pagination(
+//    val total: Int
+//)
 
 /**
  * A unified model representing any type of Internet Lead.

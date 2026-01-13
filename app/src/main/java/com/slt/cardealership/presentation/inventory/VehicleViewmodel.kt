@@ -68,6 +68,7 @@ data class VehicleGalleryState(
 data class AddEditVehicleFormState(
     val isEditing: Boolean = false,
     val isSaving: Boolean = false,
+    val isSaveSuccess: Boolean = false,
     val formError: String? = null,
     val id: String? = null, // Stores the UUID when editing
     val vin: String = "",
@@ -141,6 +142,10 @@ class VehicleViewModel @Inject constructor(
     fun prepareNewVehicleForm() {
         _formState.value = AddEditVehicleFormState()
         _modelState.value = VehicleModelState() // Clear models
+    }
+
+    fun onSaveSuccessConsumed() {
+        _formState.update { it.copy(isSaveSuccess = false) }
     }
 
     // --- List functions ---
@@ -359,8 +364,8 @@ class VehicleViewModel @Inject constructor(
             }
 
             result.onSuccess {
-                _formState.update { it.copy(isSaving = false) }
-                _events.send(InventoryEvent.NavigateBack)
+                _formState.update { it.copy(isSaving = false, isSaveSuccess = true) }
+                // _events.send(InventoryEvent.NavigateBack) // Handled by state now
                 getResearchVehicles()
             }.onFailure { error ->
                 val errorMessage = error.message ?: "Unknown error occurred while saving."
@@ -433,11 +438,16 @@ class VehicleViewModel @Inject constructor(
     // --- Vehicle Gallery functions (unchanged) ---
     fun getVehicleGallery(vehicleId: String) {
         viewModelScope.launch {
-            _galleryState.update { it.copy(isLoading = true, error = null) }
+            // Reset upload success state on refresh to avoid toast repetition
+            _galleryState.update { it.copy(isLoading = true, error = null, multiUploadSuccess = false) }
             repository.getVehicleGallery(vehicleId)
                 .onSuccess { galleryResponse -> _galleryState.update { it.copy(isLoading = false, gallery = galleryResponse) } }
                 .onFailure { error -> _galleryState.update { it.copy(isLoading = false, error = error.message) } }
         }
+    }
+
+    fun onGalleryEventConsumed() {
+        _galleryState.update { it.copy(multiUploadSuccess = false, error = null) }
     }
     fun uploadVehicleGallerySingleImage(file: File) {
         viewModelScope.launch {
@@ -447,15 +457,46 @@ class VehicleViewModel @Inject constructor(
                 .onFailure { error -> _galleryState.update { it.copy(isLoading = false, error = error.message) } }
         }
     }
+
     fun uploadVehicleGalleryImages(vehicleId: String, files: List<File>) {
         viewModelScope.launch {
+            val currentImages = _galleryState.value.gallery?.images ?: emptyList()
+
             _galleryState.update { it.copy(isLoading = true, error = null, multiUploadSuccess = false) }
-            repository.uploadVehicleGalleryImages(vehicleId, files)
+            repository.uploadVehicleGalleryImages(vehicleId, files, currentImages)
                 .onSuccess {
                     _galleryState.update { it.copy(isLoading = false, multiUploadSuccess = true) }
                     getVehicleGallery(vehicleId) // Refresh
                 }
                 .onFailure { error -> _galleryState.update { it.copy(isLoading = false, error = error.message) } }
+        }
+    }
+
+
+    fun deleteGalleryImage(vehicleId: String, imageUrl: String) {
+        viewModelScope.launch {
+            _galleryState.update { it.copy(isLoading = true, error = null) }
+            repository.deleteVehicleGalleryImage(vehicleId, imageUrl)
+                .onSuccess {
+                    // Refresh gallery after deletion
+                    getVehicleGallery(vehicleId)
+                }
+                .onFailure { error ->
+                    _galleryState.update { it.copy(isLoading = false, error = error.message) }
+                }
+        }
+    }
+
+    fun deleteGalleryImages(vehicleId: String, images: List<String>) {
+        viewModelScope.launch {
+            _galleryState.update { it.copy(isLoading = true, error = null) }
+            repository.deleteVehicleGalleryImages(vehicleId, images)
+                .onSuccess {
+                    getVehicleGallery(vehicleId)
+                }
+                .onFailure { error ->
+                    _galleryState.update { it.copy(isLoading = false, error = error.message) }
+                }
         }
     }
 

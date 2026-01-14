@@ -367,4 +367,31 @@ interface DealerRepository {
         id: String,
         request: com.slt.cardealership.domain.model.CreateResearchCompareRequest
     ): Result<Unit>
+
+    suspend fun getDomainThemeSetting(domainId: Int): Result<com.slt.cardealership.domain.model.DomainThemeSetting>
+    suspend fun getDomainDefaultThemes(domainId: Int): Result<List<com.slt.cardealership.domain.model.DomainDefaultTheme>>
+    suspend fun saveDomainThemeSetting(domainId: Int, settings: com.slt.cardealership.domain.model.DomainThemeSetting): Result<com.slt.cardealership.domain.model.DomainThemeSetting>
+    suspend fun uploadDomainImage(domainId: Int, file: File): Result<String>
+
+
+    // Inventory Settings
+    // Inventory Settings
+    suspend fun getDomainViSetting(domainId: Int): Result<com.slt.cardealership.domain.model.DomainInventorySetting>
+    suspend fun getDomainResearchSetting(domainId: Int): Result<com.slt.cardealership.domain.model.DomainResearchSetting>
+    suspend fun saveDomainResearchSetting(settings: com.slt.cardealership.domain.model.DomainResearchSetting): Result<com.slt.cardealership.domain.model.DomainResearchSetting>
+
+    // Font Methods
+    suspend fun getDomainFonts(domainId: Int): Result<com.slt.cardealership.domain.model.DomainFontsResponse>
+    suspend fun addDomainFont(domainId: Int, name: String, file: java.io.File): Result<com.slt.cardealership.domain.model.DomainFont>
+    suspend fun deleteDomainFont(fontId: Int): Result<Unit>
+
+    suspend fun getAllMakes(): Result<List<com.slt.cardealership.domain.model.Make>>
+    suspend fun getAllBodyTypes(): Result<List<com.slt.cardealership.domain.model.BodyType>>
+    suspend fun getDomainSettingMakes(domainId: Int, vehicleModule: String, condition: String?): Result<List<com.slt.cardealership.domain.model.DomainMakeSetting>>
+    suspend fun saveDomainViSetting(settings: com.slt.cardealership.domain.model.DomainInventorySetting): Result<com.slt.cardealership.domain.model.DomainInventorySetting>
+    suspend fun saveDomainSettingMakes(domainId: Int, vehicleModule: String, condition: String?, makeIds: List<Int>): Result<List<com.slt.cardealership.domain.model.DomainMakeSetting>>
+
+    suspend fun getDomainSettingBodyTypes(domainId: Int, vehicleModule: String): Result<List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>>
+    suspend fun saveDomainSettingBodyTypes(domainId: Int, vehicleModule: String, bodyTypeIds: List<Int>): Result<List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>>
+
 }

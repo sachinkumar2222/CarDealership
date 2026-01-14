@@ -46,8 +46,8 @@ import retrofit2.http.GET
 import retrofit2.http.DELETE
 import retrofit2.http.Multipart
 import retrofit2.http.Body
-import okhttp3.RequestBody
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import com.slt.cardealership.domain.model.VehicleModel
 import com.slt.cardealership.domain.model.VinRequest
 import com.slt.cardealership.domain.model.VehicleOptionsResponse
@@ -741,14 +741,14 @@ interface ApiService {
     ): Response<Unit>
 
     // --- Get Blog Details ---
-    
+
     @GET("application-api/domain-blogs/{id}")
     suspend fun getDomainBlogDetails(
         @Path("id") blogId: String
     ): com.slt.cardealership.domain.model.DomainBlogDetails
 
     // --- Update Blog ---
-    
+
     @Multipart
     @PUT("application-api/domain-blogs/{id}")
     suspend fun updateDomainBlog(
@@ -802,4 +802,95 @@ interface ApiService {
         @Path("id") id: String,
         @Body request: com.slt.cardealership.domain.model.CreateResearchCompareRequest
     ): Response<Unit>
+
+    @GET("application-api/domain-theme-setting/{domainId}")
+    suspend fun getDomainThemeSetting(@Path("domainId") domainId: Int): com.slt.cardealership.domain.model.DomainThemeSetting
+
+    @PUT("application-api/domain-theme-setting/{domainId}")
+    suspend fun saveDomainThemeSetting(
+        @Path("domainId") domainId: Int,
+        @Body settings: com.slt.cardealership.domain.model.DomainThemeSetting
+    ): com.slt.cardealership.domain.model.DomainThemeSetting
+
+    @Multipart
+    @POST("application-api/domain-image-upload")
+    suspend fun uploadDomainImage(
+        @PartMap parts: Map<String, @JvmSuppressWildcards RequestBody>,
+        @Part file: MultipartBody.Part
+    ): String
+
+    @GET("application-api/domain-default-themes/getAll")
+    suspend fun getDomainDefaultThemes(
+        @Query("domain_id") domainId: Int
+    ): List<com.slt.cardealership.domain.model.DomainDefaultTheme>
+
+    // Inventory Settings APIs
+    @GET("application-api/domain-vi-setting/{domainId}")
+    suspend fun getDomainViSetting(
+        @Path("domainId") domainId: Int
+    ): com.slt.cardealership.domain.model.DomainInventorySetting
+
+    @GET("application-api/domain-research-setting/{domainId}")
+    suspend fun getDomainResearchSetting(
+        @Path("domainId") domainId: Int
+    ): com.slt.cardealership.domain.model.DomainResearchSetting
+
+    @PUT("application-api/domain-research-setting/{domainId}")
+    suspend fun saveDomainResearchSetting(
+        @Path("domainId") domainId: Int,
+        @Body settings: com.slt.cardealership.domain.model.DomainResearchSetting
+    ): com.slt.cardealership.domain.model.DomainResearchSetting
+
+    @GET("application-api/domain-fonts")
+    suspend fun getDomainFonts(
+        @Query("domain_id") domainId: Int
+    ): com.slt.cardealership.domain.model.DomainFontsResponse
+
+    @Multipart
+    @POST("application-api/domain-fonts")
+    suspend fun addDomainFont(
+        @Part("domain_id") domainId: RequestBody,
+        @Part("name") name: RequestBody,
+        @Part file: MultipartBody.Part
+    ): com.slt.cardealership.domain.model.DomainFont
+
+    @DELETE("application-api/domain-fonts/{id}")
+    suspend fun deleteDomainFont(
+        @Path("id") fontId: Int
+    ): Response<Unit>
+
+    @GET("research-api/makes/getAll")
+    suspend fun getAllMakes(): List<com.slt.cardealership.domain.model.Make>
+
+    @GET("research-api/bodyTypes/getAll")
+    suspend fun getAllBodyTypes(): List<com.slt.cardealership.domain.model.BodyType>
+
+    @GET("application-api/domain-setting-makes")
+    suspend fun getDomainSettingMakes(
+        @Query("domain_id") domainId: Int,
+        @Query("vehicle_module") vehicleModule: String,
+        @Query("condition") condition: String?
+    ): List<com.slt.cardealership.domain.model.DomainMakeSetting>
+
+    @PUT("application-api/domain-vi-setting/{domainId}")
+    suspend fun saveDomainViSetting(
+        @Path("domainId") domainId: Int,
+        @Body settings: com.slt.cardealership.domain.model.DomainInventorySetting
+    ): com.slt.cardealership.domain.model.DomainInventorySetting
+
+    @GET("application-api/domain-setting-body-types")
+    suspend fun getDomainSettingBodyTypes(
+        @Query("domain_id") domainId: Int,
+        @Query("vehicle_module") vehicleModule: String
+    ): List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>
+
+    @POST("application-api/domain-setting-makes")
+    suspend fun saveDomainSettingMakes(
+        @Body request: com.slt.cardealership.domain.model.SaveDomainMakesRequest
+    ): List<com.slt.cardealership.domain.model.DomainMakeSetting>
+
+    @POST("application-api/domain-setting-body-types")
+    suspend fun saveDomainSettingBodyTypes(
+        @Body request: com.slt.cardealership.domain.model.SaveDomainBodyTypesRequest
+    ): List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>
 }

@@ -287,6 +287,9 @@ sealed class HomeRoutes {
         val researchCompareId: String,
         val domainName: String = ""
     ) : HomeRoutes()
+
+    @Serializable
+    data class WebsiteSettings(val domainId: Int) : HomeRoutes()
 }
 
 // --- NEW Data class for the stats grid ---
@@ -714,6 +717,14 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                         domainId = args.domainId,
                         domainName = args.domainName,
                         researchCompareId = args.researchCompareId
+                    )
+                }
+
+                composable<HomeRoutes.WebsiteSettings> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.WebsiteSettings>()
+                    com.slt.cardealership.presentation.websitedashboard.settings.SettingsScreen(
+                        navController = homeNavController,
+                        domainId = args.domainId
                     )
                 }
 

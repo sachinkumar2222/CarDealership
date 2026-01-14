@@ -133,9 +133,6 @@ fun DashboardContent(domain: com.slt.cardealership.domain.model.DomainItem, navC
     )
 
     Column(modifier = Modifier.padding(16.dp)) {
-        // Optional: Add a section title or summary here if needed
-        // Text("Quick Actions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = BrandDarkBlue)
-        // Spacer(modifier = Modifier.height(16.dp))
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
@@ -150,7 +147,7 @@ fun DashboardContent(domain: com.slt.cardealership.domain.model.DomainItem, navC
                         "sliders" -> navController.navigate(HomeRoutes.WebsiteSliders(domain.id))
                         "menus" -> navController.navigate(HomeRoutes.WebsiteMenus(domain.id))
                         "research_compare" -> navController.navigate(HomeRoutes.WebsiteResearchCompare(domain.id))
-                        // Add other routes as they become available
+                        "settings" -> navController.navigate(HomeRoutes.WebsiteSettings(domain.id))
                     }
                 }
             }

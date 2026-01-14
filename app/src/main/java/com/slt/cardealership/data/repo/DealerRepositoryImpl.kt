@@ -117,7 +117,7 @@ class DealerRepositoryImpl @Inject constructor(
     ): Result<Long> {
         return try {
             val partMap = mutableMapOf<String, RequestBody>()
-            
+
             fun addPart(key: String, value: String) {
                 partMap[key] = value.toRequestBody("text/plain".toMediaTypeOrNull())
             }
@@ -129,23 +129,23 @@ class DealerRepositoryImpl @Inject constructor(
             phone?.let { addPart("phone", it) }
             departmentId?.let { addPart("department_id", it.toString()) }
             addPart("designation_id", designationId.toString())
-            
+
             imageUri?.let { uri ->
-                 try {
-                     val contentResolver = context.contentResolver
-                     val type = contentResolver.getType(uri) ?: "image/*"
-                     val inputStream = contentResolver.openInputStream(uri)
-                     val bytes = inputStream?.readBytes()
-                     inputStream?.close()
-                     
-                     if (bytes != null) {
-                         val requestFile = bytes.toRequestBody(type.toMediaTypeOrNull())
-                         // Using a hack to send filename in PartMap if ApiService doesn't use @Part MultipartBody.Part
-                         partMap["image\"; filename=\"profile.jpg"] = requestFile
-                     }else{}
-                 } catch (e: Exception) {
-                     Log.e("DealerRepository", "Error reading image uri", e)
-                 }
+                try {
+                    val contentResolver = context.contentResolver
+                    val type = contentResolver.getType(uri) ?: "image/*"
+                    val inputStream = contentResolver.openInputStream(uri)
+                    val bytes = inputStream?.readBytes()
+                    inputStream?.close()
+
+                    if (bytes != null) {
+                        val requestFile = bytes.toRequestBody(type.toMediaTypeOrNull())
+                        // Using a hack to send filename in PartMap if ApiService doesn't use @Part MultipartBody.Part
+                        partMap["image\"; filename=\"profile.jpg"] = requestFile
+                    }else{}
+                } catch (e: Exception) {
+                    Log.e("DealerRepository", "Error reading image uri", e)
+                }
             }
 
             val response = apiService.addUser(partMap)
@@ -170,7 +170,7 @@ class DealerRepositoryImpl @Inject constructor(
     ): Result<DealerInfo> {
         return try {
             val partMap = mutableMapOf<String, RequestBody>()
-            
+
             fun addPart(key: String, value: String?) {
                 if (value != null) {
                     partMap[key] = value.toRequestBody("text/plain".toMediaTypeOrNull())
@@ -188,22 +188,22 @@ class DealerRepositoryImpl @Inject constructor(
             addPart("dealer_type", dealerInfo.dealerType)
 
             newImageUri?.let { uri ->
-                 try {
-                     val contentResolver = context.contentResolver
-                     val type = contentResolver.getType(uri) ?: "image/*"
-                     val inputStream = contentResolver.openInputStream(uri)
-                     val bytes = inputStream?.readBytes()
-                     inputStream?.close()
-                     
-                     if (bytes != null) {
-                         val requestFile = bytes.toRequestBody(type.toMediaTypeOrNull())
-                         partMap["image\"; filename=\"dealer_image.jpg\""] = requestFile
-                     }else{}
-                 } catch (e: Exception) {
-                     Log.e("DealerRepository", "Error reading image uri", e)
-                 }
+                try {
+                    val contentResolver = context.contentResolver
+                    val type = contentResolver.getType(uri) ?: "image/*"
+                    val inputStream = contentResolver.openInputStream(uri)
+                    val bytes = inputStream?.readBytes()
+                    inputStream?.close()
+
+                    if (bytes != null) {
+                        val requestFile = bytes.toRequestBody(type.toMediaTypeOrNull())
+                        partMap["image\"; filename=\"dealer_image.jpg\""] = requestFile
+                    }else{}
+                } catch (e: Exception) {
+                    Log.e("DealerRepository", "Error reading image uri", e)
+                }
             }
-            
+
             val response = apiService.updateDealerInfoMultipart(dealerInfo.id.toLong(), partMap)
             Result.success(response)
         } catch (e: Exception) {
@@ -258,16 +258,16 @@ class DealerRepositoryImpl @Inject constructor(
                     partMap[key] = value.toRequestBody("text/plain".toMediaTypeOrNull())
                 }
             }
-            
+
             addPart("first_name", request.firstName)
             addPart("last_name", request.lastName)
             addPart("phone", request.phone)
             addPart("designation_id", request.designationId?.toString())
             addPart("department_id", request.departmentId?.toString())
-            
+
             request.imageFile?.let { file ->
-                 val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                 partMap["image\"; filename=\"${file.name}"] = requestFile
+                val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                partMap["image\"; filename=\"${file.name}"] = requestFile
             }
 
             val response = apiService.putUserProfile(userId, partMap)
@@ -921,7 +921,7 @@ class DealerRepositoryImpl @Inject constructor(
             // API expects timestamp in seconds
             addPart("start_date", (startDate / 1000).toString())
             addPart("end_date", (endDate / 1000).toString())
-            
+
             val requestBody = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
             val imagePart = MultipartBody.Part.createFormData("file", imageFile.name, requestBody)
 
@@ -974,7 +974,7 @@ class DealerRepositoryImpl @Inject constructor(
             // API expects timestamp in seconds
             addPart("start_date", (startDate / 1000).toString())
             addPart("end_date", (endDate / 1000).toString())
-            
+
             if (imageUrl != null) {
                 addPart("image_url", imageUrl)
             }
@@ -1528,7 +1528,7 @@ class DealerRepositoryImpl @Inject constructor(
     override suspend fun updateDomainPage(request: com.slt.cardealership.domain.model.DomainPageUpdateRequest): Result<Unit> {
         return try {
             val builder = okhttp3.MultipartBody.Builder().setType(okhttp3.MultipartBody.FORM)
-            
+
             // Helper to add parts
             fun addPart(key: String, value: Any?) {
                 if (value != null) {
@@ -1546,7 +1546,7 @@ class DealerRepositoryImpl @Inject constructor(
             addPart("created_on", request.createdOn)
             addPart("updated_by", request.updatedBy)
             addPart("updated_on", request.updatedOn)
-            
+
             // Optional fields
             addPart("page_description", request.pageDescription ?: "")
             addPart("page_title", request.pageTitle ?: "")
@@ -1565,9 +1565,9 @@ class DealerRepositoryImpl @Inject constructor(
             // Actually, since we changed ApiService to accept Map<String, RequestBody>, we should construct that map directly.
             // Using MultipartBody.Builder is for @Body MultipartBody.
             // For @PartMap, we need Map<String, RequestBody>.
-            
+
             val partMap = mutableMapOf<String, okhttp3.RequestBody>()
-            
+
             fun addRequestBody(key: String, value: Any?) {
                 val stringValue = value?.toString() ?: ""
                 val requestBody = okhttp3.RequestBody.create("text/plain".toMediaTypeOrNull(), stringValue)
@@ -1584,7 +1584,7 @@ class DealerRepositoryImpl @Inject constructor(
             addRequestBody("created_on", request.createdOn)
             addRequestBody("updated_by", request.updatedBy)
             addRequestBody("updated_on", request.updatedOn)
-            
+
             addRequestBody("page_description", request.pageDescription)
             addRequestBody("page_title", request.pageTitle)
             addRequestBody("meta_title", request.metaTitle)
@@ -1605,11 +1605,11 @@ class DealerRepositoryImpl @Inject constructor(
                 // If it's a content URI (which it likely is from the picker), we need to handle it differently.
                 // But for now, let's assume the UI passes a path we can read or we use ContentResolver.
                 // Since we have context, let's try to resolve it if it's a URI, or just file if it's a path.
-                
-                // Simplified approach: Try to create a file from path. 
+
+                // Simplified approach: Try to create a file from path.
                 // In a real app, we might need to copy stream to a temp file if it's a content URI.
                 // Let's assume for now the UI gives us a usable URI string.
-                
+
                 try {
                     val uri = Uri.parse(path)
                     val contentResolver = context.contentResolver
@@ -1617,7 +1617,7 @@ class DealerRepositoryImpl @Inject constructor(
                     val inputStream = contentResolver.openInputStream(uri)
                     val bytes = inputStream?.readBytes()
                     inputStream?.close()
-                    
+
                     if (bytes != null) {
                         val requestFile = okhttp3.RequestBody.create(type.toMediaTypeOrNull(), bytes)
                         featuredFilePart = okhttp3.MultipartBody.Part.createFormData("featured_file", "featured_image.jpg", requestFile)
@@ -1636,7 +1636,7 @@ class DealerRepositoryImpl @Inject constructor(
                     val inputStream = contentResolver.openInputStream(uri)
                     val bytes = inputStream?.readBytes()
                     inputStream?.close()
-                    
+
                     if (bytes != null) {
                         val requestFile = okhttp3.RequestBody.create(type.toMediaTypeOrNull(), bytes)
                         bannerFilePart = okhttp3.MultipartBody.Part.createFormData("banner_file", "banner_image.jpg", requestFile)
@@ -1655,7 +1655,7 @@ class DealerRepositoryImpl @Inject constructor(
                 } else {
                     val errorBody = response.errorBody()?.string()
                     android.util.Log.e("DealerRepository", "Update failed: Code=${response.code()}, Body=$errorBody")
-                    
+
                     val errorMessage = errorBody?.let {
                         try {
                             if (it.trim().startsWith("[")) {
@@ -1996,6 +1996,182 @@ class DealerRepositoryImpl @Inject constructor(
             } else {
                 Result.failure(Exception("Failed to update research compare. Code: ${response.code()}"))
             }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainThemeSetting(domainId: Int): Result<com.slt.cardealership.domain.model.DomainThemeSetting> {
+        return try {
+            val response = apiService.getDomainThemeSetting(domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainFonts(domainId: Int): Result<com.slt.cardealership.domain.model.DomainFontsResponse> {
+        return try {
+            val response = apiService.getDomainFonts(domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveDomainThemeSetting(
+        domainId: Int,
+        settings: com.slt.cardealership.domain.model.DomainThemeSetting
+    ): Result<com.slt.cardealership.domain.model.DomainThemeSetting> {
+        return try {
+            val response = apiService.saveDomainThemeSetting(domainId, settings)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun uploadDomainImage(
+        domainId: Int,
+        file: File
+    ): Result<String> {
+        return try {
+            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+            val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
+            val domainIdBody = domainId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+
+            val parts = mapOf("domain_id" to domainIdBody)
+
+            val response = apiService.uploadDomainImage(parts, body)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainDefaultThemes(domainId: Int): Result<List<com.slt.cardealership.domain.model.DomainDefaultTheme>> {
+        return try {
+            val response = apiService.getDomainDefaultThemes(domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
+    override suspend fun getDomainViSetting(domainId: Int): Result<com.slt.cardealership.domain.model.DomainInventorySetting> {
+        return try {
+            val response = apiService.getDomainViSetting(domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getAllMakes(): Result<List<com.slt.cardealership.domain.model.Make>> {
+        return try {
+            val response = apiService.getAllMakes()
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getAllBodyTypes(): Result<List<com.slt.cardealership.domain.model.BodyType>> {
+        return try {
+            val response = apiService.getAllBodyTypes()
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainResearchSetting(domainId: Int): Result<com.slt.cardealership.domain.model.DomainResearchSetting> {
+        return try {
+            val response = apiService.getDomainResearchSetting(domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveDomainResearchSetting(settings: com.slt.cardealership.domain.model.DomainResearchSetting): Result<com.slt.cardealership.domain.model.DomainResearchSetting> {
+        return try {
+            val response = apiService.saveDomainResearchSetting(settings.domainId, settings)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun addDomainFont(domainId: Int, name: String, file: java.io.File): Result<com.slt.cardealership.domain.model.DomainFont> {
+        return try {
+            val domainIdBody = domainId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+            val nameBody = name.toRequestBody("text/plain".toMediaTypeOrNull())
+            val requestFile = file.asRequestBody("font/woff2".toMediaTypeOrNull())
+            val body = okhttp3.MultipartBody.Part.createFormData("file", file.name, requestFile)
+
+            val response = apiService.addDomainFont(domainIdBody, nameBody, body)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteDomainFont(fontId: Int): Result<Unit> {
+        return try {
+            val response = apiService.deleteDomainFont(fontId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete font: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainSettingMakes(domainId: Int, vehicleModule: String, condition: String?): Result<List<com.slt.cardealership.domain.model.DomainMakeSetting>> {
+        return try {
+            val response = apiService.getDomainSettingMakes(domainId, vehicleModule, condition)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveDomainViSetting(settings: com.slt.cardealership.domain.model.DomainInventorySetting): Result<com.slt.cardealership.domain.model.DomainInventorySetting> {
+        return try {
+            val response = apiService.saveDomainViSetting(settings.domainId, settings)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    override suspend fun saveDomainSettingMakes(domainId: Int, vehicleModule: String, condition: String?, makeIds: List<Int>): Result<List<com.slt.cardealership.domain.model.DomainMakeSetting>> {
+        return try {
+            val request = com.slt.cardealership.domain.model.SaveDomainMakesRequest(domainId.toString(), vehicleModule, condition, makeIds)
+            val response = apiService.saveDomainSettingMakes(request)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainSettingBodyTypes(domainId: Int, vehicleModule: String): Result<List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>> {
+        return try {
+            val response = apiService.getDomainSettingBodyTypes(domainId, vehicleModule)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveDomainSettingBodyTypes(domainId: Int, vehicleModule: String, bodyTypeIds: List<Int>): Result<List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>> {
+        return try {
+            val request = com.slt.cardealership.domain.model.SaveDomainBodyTypesRequest(domainId.toString(), vehicleModule, bodyTypeIds)
+            val response = apiService.saveDomainSettingBodyTypes(request)
+            Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -893,4 +893,50 @@ interface ApiService {
     suspend fun saveDomainSettingBodyTypes(
         @Body request: com.slt.cardealership.domain.model.SaveDomainBodyTypesRequest
     ): List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>
+    // Contact Info APIs
+    @GET("application-api/domain-contacts")
+    suspend fun getDomainContacts(
+        @Query("domain_id") domainId: Int,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 10
+    ): com.slt.cardealership.domain.model.ContactInfoListResponse
+
+    @POST("application-api/domain-contacts")
+    suspend fun createDomainContact(
+        @Body request: com.slt.cardealership.domain.model.DomainContactRequest
+    ): Response<Unit>
+
+    @GET("application-api/domain-contacts/{id}")
+    suspend fun getDomainContactDetails(
+        @Path("id") id: Int
+    ): com.slt.cardealership.domain.model.ContactDomainItem
+
+    @PUT("application-api/domain-contacts/{id}")
+    suspend fun updateDomainContact(
+        @Path("id") id: Int,
+        @Body request: com.slt.cardealership.domain.model.DomainContactRequest
+    ): Response<Unit>
+
+    @DELETE("application-api/domain-contacts/{id}")
+    suspend fun deleteDomainContact(
+        @Path("id") id: Int
+    ): Response<Unit>
+
+    // Social Info APIs
+    @GET("application-api/domain-social-media")
+    suspend fun getDomainSocialMedia(
+        @Query("domain_id") domainId: Int,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 10
+    ): com.slt.cardealership.domain.model.SocialMediaListResponse
+
+    @POST("application-api/domain-social-media")
+    suspend fun saveDomainSocialMedia(
+        @Body request: com.slt.cardealership.domain.model.SaveSocialMediaRequest
+    ): Response<Unit>
+
+    @GET("application-api/domain-social-media/{id}")
+    suspend fun getDomainSocialMediaDetails(
+        @Path("id") id: Int
+    ): com.slt.cardealership.domain.model.SocialMediaItem
 }

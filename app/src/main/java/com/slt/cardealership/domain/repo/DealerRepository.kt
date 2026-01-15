@@ -394,4 +394,16 @@ interface DealerRepository {
     suspend fun getDomainSettingBodyTypes(domainId: Int, vehicleModule: String): Result<List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>>
     suspend fun saveDomainSettingBodyTypes(domainId: Int, vehicleModule: String, bodyTypeIds: List<Int>): Result<List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>>
 
+    // Contact Info
+    suspend fun getDomainContacts(domainId: Int): Result<com.slt.cardealership.domain.model.ContactInfoListResponse>
+    suspend fun createDomainContact(domainId: String, label: String, phoneNo: String, email: String): Result<Unit>
+    suspend fun getDomainContactDetails(id: Int): Result<com.slt.cardealership.domain.model.ContactDomainItem>
+    suspend fun updateDomainContact(id: Int, domainId: String, label: String, phoneNo: String, email: String): Result<Unit>
+    suspend fun deleteDomainContact(id: Int): Result<Unit>
+
+    // Social Info
+    suspend fun getDomainSocialMedia(domainId: Int): Result<com.slt.cardealership.domain.model.SocialMediaListResponse>
+    suspend fun saveDomainSocialMedia(domainId: Int, url: String, mediaType: String): Result<Unit>
+    suspend fun getDomainSocialMediaDetails(id: Int): Result<com.slt.cardealership.domain.model.SocialMediaItem>
+
 }

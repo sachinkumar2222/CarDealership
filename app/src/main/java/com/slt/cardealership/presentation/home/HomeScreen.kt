@@ -290,6 +290,15 @@ sealed class HomeRoutes {
 
     @Serializable
     data class WebsiteSettings(val domainId: Int) : HomeRoutes()
+
+    @Serializable
+    data class GeneralSettings(val domainId: Int) : HomeRoutes()
+
+    @Serializable
+    data class ContactInfo(val domainId: Int) : HomeRoutes()
+
+    @Serializable
+    data class SocialInfo(val domainId: Int) : HomeRoutes()
 }
 
 // --- NEW Data class for the stats grid ---
@@ -723,6 +732,30 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                 composable<HomeRoutes.WebsiteSettings> { backStackEntry ->
                     val args = backStackEntry.toRoute<HomeRoutes.WebsiteSettings>()
                     com.slt.cardealership.presentation.websitedashboard.settings.SettingsScreen(
+                        navController = homeNavController,
+                        domainId = args.domainId
+                    )
+                }
+
+                composable<HomeRoutes.GeneralSettings> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.GeneralSettings>()
+                    com.slt.cardealership.presentation.websitedashboard.settings.applicationsettings.general.GeneralSettingsScreen(
+                        navController = homeNavController,
+                        domainId = args.domainId
+                    )
+                }
+
+                composable<HomeRoutes.ContactInfo> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.ContactInfo>()
+                    com.slt.cardealership.presentation.websitedashboard.settings.applicationsettings.contactinfo.ContactInfoScreen(
+                        navController = homeNavController,
+                        domainId = args.domainId
+                    )
+                }
+
+                composable<HomeRoutes.SocialInfo> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.SocialInfo>()
+                    com.slt.cardealership.presentation.websitedashboard.settings.applicationsettings.socialinfo.SocialInfoScreen(
                         navController = homeNavController,
                         domainId = args.domainId
                     )

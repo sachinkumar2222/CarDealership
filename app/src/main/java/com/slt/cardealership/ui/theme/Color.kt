@@ -12,6 +12,6 @@ val Pink40 = Color(0xFF7D5260)
 val blue = Color(0xFF1A72E6)
 
 val BrandDarkBlue = Color(0xFF0A2540)
-val BrandBlue = Color(0xFF007BFF)
+val BrandBlue = Color(0xFF2196F3)
 val LightBackground = Color(0xFFF0F4F8)
 val LightCardBackground = Color(0xFFF5F5FF)

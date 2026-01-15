@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
+import com.slt.cardealership.presentation.websitedashboard.settings.applicationsettings.ApplicationSettingsScreen
 import com.slt.cardealership.presentation.websitedashboard.settings.inventory.InventorySettingsScreen
 import com.slt.cardealership.presentation.websitedashboard.settings.buildandprice.BuildAndPriceSettingsScreen
 import com.slt.cardealership.presentation.websitedashboard.settings.research.ResearchSettingsScreen
@@ -145,7 +146,7 @@ fun SettingsScreen(
                     2 -> BuildAndPriceSettingsScreen(domainId = domainId)
                     3 -> ResearchSettingsScreen(domainId = domainId)
                     4 -> ManageFontsScreen(domainId = domainId)
-                    else -> Text(text = "Content for ${tabs[selectedTabIndex]}")
+                    5 -> ApplicationSettingsScreen(domainId = domainId, navController = navController)
                 }
             }
         }

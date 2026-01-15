@@ -2176,6 +2176,100 @@ class DealerRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+
+    // Contact Info Implementation
+    override suspend fun getDomainContacts(domainId: Int): Result<com.slt.cardealership.domain.model.ContactInfoListResponse> {
+        return try {
+            val response = apiService.getDomainContacts(domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun createDomainContact(domainId: String, label: String, phoneNo: String, email: String): Result<Unit> {
+        return try {
+            val request = com.slt.cardealership.domain.model.DomainContactRequest(domainId, label, phoneNo, email)
+            val response = apiService.createDomainContact(request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to create contact: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainContactDetails(id: Int): Result<com.slt.cardealership.domain.model.ContactDomainItem> {
+        return try {
+            val response = apiService.getDomainContactDetails(id)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateDomainContact(id: Int, domainId: String, label: String, phoneNo: String, email: String): Result<Unit> {
+        return try {
+            val request = com.slt.cardealership.domain.model.DomainContactRequest(domainId, label, phoneNo, email)
+            val response = apiService.updateDomainContact(id, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update contact: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteDomainContact(id: Int): Result<Unit> {
+        return try {
+            val response = apiService.deleteDomainContact(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete contact: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Social Info Implementation
+    override suspend fun getDomainSocialMedia(domainId: Int): Result<com.slt.cardealership.domain.model.SocialMediaListResponse> {
+        return try {
+            val response = apiService.getDomainSocialMedia(domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveDomainSocialMedia(domainId: Int, url: String, mediaType: String): Result<Unit> {
+        return try {
+            val request = com.slt.cardealership.domain.model.SaveSocialMediaRequest(domainId, url, mediaType)
+            val response = apiService.saveDomainSocialMedia(request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to save social media: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainSocialMediaDetails(id: Int): Result<com.slt.cardealership.domain.model.SocialMediaItem> {
+        return try {
+            val response = apiService.getDomainSocialMediaDetails(id)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -19,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 import com.slt.cardealership.presentation.home.HomeRoutes
+import com.slt.cardealership.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +49,7 @@ fun WebsiteSlidersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Manage Sliders") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -62,7 +66,7 @@ fun WebsiteSlidersScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate(HomeRoutes.AddSlider(domainId)) },
-                containerColor = Color(0xFF1976D2),
+                containerColor = BrandBlue,
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add New")
@@ -74,18 +78,15 @@ fun WebsiteSlidersScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp) // Reduced padding
         ) {
             // Header Section Removed (moved to TopAppBar and FAB)
-
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             // Content Section
             when (val state = uiState) {
                 is WebsiteSlidersUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = BrandBlue)
                     }
                 }
                 is WebsiteSlidersUiState.Error -> {
@@ -155,8 +156,9 @@ fun WebsiteSlidersScreen(
 fun SliderCard(slider: DomainSlider, onEditClick: () -> Unit, onDeleteClick: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = MaterialTheme.shapes.medium
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF))
     ) {
         Column(
             modifier = Modifier
@@ -172,7 +174,8 @@ fun SliderCard(slider: DomainSlider, onEditClick: () -> Unit, onDeleteClick: () 
                     Text(
                         text = slider.name,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -183,14 +186,14 @@ fun SliderCard(slider: DomainSlider, onEditClick: () -> Unit, onDeleteClick: () 
                 }
                 Row {
                     IconButton(onClick = onEditClick) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.Gray)
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = BrandBlue)
                     }
                     IconButton(onClick = onDeleteClick) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray)
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
             Divider(color = Color(0xFFEEEEEE))
             Spacer(modifier = Modifier.height(16.dp))
@@ -207,7 +210,8 @@ fun SliderCard(slider: DomainSlider, onEditClick: () -> Unit, onDeleteClick: () 
                     )
                     Text(
                         text = formatDate(slider.createdOn),
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -218,7 +222,8 @@ fun SliderCard(slider: DomainSlider, onEditClick: () -> Unit, onDeleteClick: () 
                     )
                     Text(
                         text = formatDate(slider.updatedOn),
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }

@@ -17,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,7 @@ fun MyWebsitesScreen(
                 modifier = Modifier.zIndex(1f)
             ) {
                 TopAppBar(
+                    modifier = Modifier.shadow(8.dp),
                     title = {
                         Text(
                             "My Websites",
@@ -51,9 +53,9 @@ fun MyWebsitesScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                        containerColor = Color.White,
+                        titleContentColor = Color.Black,
+                        navigationIconContentColor = Color.Black
                     )
                 )
             }
@@ -63,6 +65,7 @@ fun MyWebsitesScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             when (val state = uiState) {
                 is MyWebsitesUiState.Loading -> {
@@ -113,9 +116,9 @@ fun MyWebsitesScreen(
 fun DomainItemCard(domain: DomainItem, onManageClick: (Int) -> Unit) {
     val brandBlue = Color(0xFF2196F3)
     Card(
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(

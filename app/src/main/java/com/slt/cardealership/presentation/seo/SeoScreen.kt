@@ -130,12 +130,12 @@ fun SeoScreen(
 
 
                         // --- List Items ---
-                        itemsIndexed(uiState.allTags, key = { _, item -> item.id }) { index, item ->
+                        itemsIndexed(uiState.allTags, key = { _, item -> item.id ?: item.tagName }) { index, item ->
                             Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                                 SeoTagItemRow(
                                     index = index,
                                     item = item,
-                                    onDeleteClick = { viewModel.deleteTag(item.id) }
+                                    onDeleteClick = { item.id?.let { viewModel.deleteTag(it) } }
                                 )
                             }
                         }

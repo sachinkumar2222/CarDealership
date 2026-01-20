@@ -8,8 +8,10 @@ data class DomainResponse(
 )
 
 data class Pagination(
-    @SerializedName("page") val page: Int,
-    @SerializedName("total") val total: Int
+    @SerializedName("total") val total: Int,
+    @SerializedName("per_page") val perPage: Int? = null,
+    @SerializedName("current_page") val currentPage: Int? = null,
+    @SerializedName("last_page") val lastPage: Int? = null
 )
 
 data class DomainItem(
@@ -23,6 +25,10 @@ data class DomainItem(
     @SerializedName("is_sub_domain") val isSubDomain: Boolean,
     @SerializedName("is_active") val isActive: Boolean,
     @SerializedName("is_deleted") val isDeleted: Boolean,
+    @SerializedName("dealer_id") val dealerId: Int?,
+    @SerializedName("group_id") val groupId: Int?,
+    @SerializedName("automall_id") val automallId: Int?,
+    @SerializedName("domain_category_id") val domainCategoryId: Int?,
     @SerializedName("in_business_listing") val inBusinessListing: Boolean,
     @SerializedName("created_by") val createdBy: String,
     @SerializedName("updated_by") val updatedBy: String,
@@ -166,3 +172,19 @@ data class DomainSliderDetails(
 data class DomainSliderCreateResponse(
     @SerializedName("id") val id: String
 )
+
+data class DomainMenuRequest(
+    @SerializedName("sql_domain_id") val sqlDomainId: Int,
+    @SerializedName("menu_name") val menuName: String,
+    @SerializedName("is_top_primary_menu") val isTopPrimaryMenu: Boolean,
+    @SerializedName("is_footer_menu") val isFooterMenu: Boolean,
+    @SerializedName("is_footer_bottom_menu") val isFooterBottomMenu: Boolean,
+    @SerializedName("menu_items") val menuItems: List<DomainMenuItem>
+)
+
+data class DomainPagesResponse(
+    @SerializedName("list") val list: List<DomainPage>,
+    @SerializedName("pagination") val pagination: Pagination
+)
+
+

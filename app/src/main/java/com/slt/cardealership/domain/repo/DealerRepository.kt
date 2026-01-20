@@ -6,6 +6,7 @@ import com.slt.cardealership.domain.model.AdvertisementGoal
 import com.slt.cardealership.domain.model.AdvertisementGoalType
 import com.slt.cardealership.domain.model.AdvertisementImage
 import com.slt.cardealership.domain.model.Banner
+import com.slt.cardealership.domain.model.BannerListResponse
 import com.slt.cardealership.domain.model.ChangePasswordRequest
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.domain.model.DealerMetasResponse
@@ -41,9 +42,25 @@ import java.io.File
 
 interface DealerRepository {
 
-
     suspend fun getCombinedDealerInfo(dealerId: Long): Result<DealerInfo>
     suspend fun getPosts(dealerId: Long): Result<List<Post>>
+
+    suspend fun getClassifiedPosts(
+        dealerId: Long,
+        page: Int,
+        itemsPerPage: Int,
+        orderBy: String?,
+        order: String?,
+        status: String?,
+        name: String?,
+        haveContent: String?,
+        haveLinks: String?,
+        haveImage: String?,
+        domainName: String?
+    ): Result<List<Post>>
+
+    suspend fun getArticleLinks(dealerId: Long): Result<List<com.slt.cardealership.domain.model.ArticleLink>>
+
     suspend fun getDealerMetas(dealerId: Long): DealerMetasResponse
     suspend fun getFullUserProfile(): Result<DetailedUserProfile>
     suspend fun updateUserProfile(userId: Long, request: UserProfileUpdateRequest): Result<DetailedUserProfile>
@@ -90,24 +107,34 @@ interface DealerRepository {
 
     suspend fun getDesignations(departmentId: Int): Result<List<Designation>>
 
-    // Banner Functions
-    suspend fun getBanners(dealerId: Long): Result<List<Banner>>
+    suspend fun getBanners(
+        dealerId: Long,
+        page: Int = 1,
+        itemsPerPage: Int = 10,
+        domainId: Int? = null
+    ): Result<BannerListResponse>
     suspend fun getBannerDetails(dealerId: Long, bannerId: String): Result<Banner>
     suspend fun addBanner(
         dealerId: Long,
+        domainId: Int,
         title: String,
         url: String,
-        startDate: String,
+        startDate: Long,
+        endDate: Long?,
         imageFile: File
     ): Result<Unit>
 
     suspend fun updateBanner(
         dealerId: Long,
         bannerId: String,
+        domainId: Int,
         title: String,
         url: String,
-        startDate: String,
-        imageFile: File?
+        startDate: Long,
+        endDate: Long?,
+        imageFile: File?,
+        imageUrl: String?,
+        createdBy: String?
     ): Result<Unit>
 
     suspend fun deleteBanner(dealerId: Long, bannerId: String): Result<Unit> // <-- ADD THIS LINE
@@ -183,7 +210,7 @@ interface DealerRepository {
     suspend fun getAdvertisementGoalTypes(goalId: Int): Result<List<AdvertisementGoalType>>
     suspend fun addAdvertisement(dealerId: Long, advertisement: Advertisement): Result<String>
     suspend fun updateAdvertisement(dealerId: Long, advertisementId: String, advertisement: Advertisement): Result<Advertisement>
-   // suspend fun getAdvertisementDomains(dealerId: Long, advertisementId: String): Result<List<AdvertisementDomain>>
+    // suspend fun getAdvertisementDomains(dealerId: Long, advertisementId: String): Result<List<AdvertisementDomain>>
     suspend fun updateAdvertisementDomains(dealerId: Long, advertisementId: String, domainIds: List<String>): Result<Unit>
     suspend fun getAdvertisementGallery(dealerId: Long, advertisementId: String): Result<List<AdvertisementImage>>
     suspend fun updateAdvertisementGallery(dealerId: Long, advertisementId: String, imageFiles: List<File>): Result<Unit>
@@ -231,14 +258,16 @@ interface DealerRepository {
         dealerId: Long
     ): Result<com.slt.cardealership.domain.model.DomainResponse>
 
-    suspend fun getDomainDetails(domainId: Int): Result<com.slt.cardealership.domain.model.DomainItem>
-
-    // Domain Pages
-    suspend fun getDomainPages(
+    suspend fun getClassifiedSites(
         page: Int,
         itemsPerPage: Int,
-        domainId: Int
-    ): Result<com.slt.cardealership.domain.model.DomainPageResponse>
+        productTypeId: Int
+    ): Result<com.slt.cardealership.domain.model.DomainResponse>
+
+    suspend fun getPostCounts(dealerId: Long): Result<List<com.slt.cardealership.domain.model.PostCountItem>>
+    suspend fun getDealerDetailPageSlug(domainId: Int): Result<String>
+
+    suspend fun getDomainDetails(domainId: Int): Result<com.slt.cardealership.domain.model.DomainItem>
 
     suspend fun deleteDomainPage(pageId: String): Result<Unit>
 
@@ -343,8 +372,6 @@ interface DealerRepository {
         menuName: String
     ): Result<List<com.slt.cardealership.domain.model.DomainMenu>>
 
-    suspend fun getDomainMenuDetails(menuId: String): Result<com.slt.cardealership.domain.model.DomainMenuDetail>
-
     suspend fun getResearchCompareInterlinks(
         page: Int,
         itemsPerPage: Int,
@@ -373,8 +400,6 @@ interface DealerRepository {
     suspend fun saveDomainThemeSetting(domainId: Int, settings: com.slt.cardealership.domain.model.DomainThemeSetting): Result<com.slt.cardealership.domain.model.DomainThemeSetting>
     suspend fun uploadDomainImage(domainId: Int, file: File): Result<String>
 
-
-    // Inventory Settings
     // Inventory Settings
     suspend fun getDomainViSetting(domainId: Int): Result<com.slt.cardealership.domain.model.DomainInventorySetting>
     suspend fun getDomainResearchSetting(domainId: Int): Result<com.slt.cardealership.domain.model.DomainResearchSetting>
@@ -405,5 +430,17 @@ interface DealerRepository {
     suspend fun getDomainSocialMedia(domainId: Int): Result<com.slt.cardealership.domain.model.SocialMediaListResponse>
     suspend fun saveDomainSocialMedia(domainId: Int, url: String, mediaType: String): Result<Unit>
     suspend fun getDomainSocialMediaDetails(id: Int): Result<com.slt.cardealership.domain.model.SocialMediaItem>
+    suspend fun updateDomainSocialMedia(id: Int, domainId: Int, url: String, mediaType: String): Result<Unit>
 
+    // General Settings
+    suspend fun getDomainAppSetting(domainId: Int): Result<com.slt.cardealership.domain.model.GeneralSettingsResponse>
+    suspend fun updateDomainAppSetting(request: com.slt.cardealership.domain.model.UpdateGeneralSettingsRequest): Result<Unit>
+
+    // Menus
+    suspend fun getDomainMenus(domainId: Int): Result<List<com.slt.cardealership.domain.model.DomainMenu>>
+    suspend fun getDomainMenuDetails(menuId: String): Result<com.slt.cardealership.domain.model.DomainMenuDetail>
+    suspend fun createDomainMenu(request: com.slt.cardealership.domain.model.DomainMenuRequest): Result<Unit>
+    suspend fun updateDomainMenu(id: String, request: com.slt.cardealership.domain.model.DomainMenuRequest): Result<Unit>
+    suspend fun deleteDomainMenu(id: String): Result<Unit>
+    suspend fun getDomainPages(page: Int, itemsPerPage: Int, domainId: Int): Result<com.slt.cardealership.domain.model.DomainPagesResponse>
 }

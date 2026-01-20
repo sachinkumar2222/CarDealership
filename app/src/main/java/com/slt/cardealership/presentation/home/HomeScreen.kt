@@ -50,7 +50,7 @@ import androidx.compose.material.icons.outlined.AdsClick
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Campaign
-import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Inventory
@@ -270,7 +270,10 @@ sealed class HomeRoutes {
     data class WebsiteMenus(val domainId: Int) : HomeRoutes()
 
     @Serializable
-    data class AddEditMenuScreen(val domainId: Int, val menuId: String? = null) : HomeRoutes()
+    data class AddMenusScreen(val domainId: Int) : HomeRoutes()
+
+    @Serializable
+    data class EditMenusScreen(val domainId: Int, val menuId: String) : HomeRoutes()
 
     @Serializable
     data class VehicleGalleryScreen(val vehicleId: String, val vin: String) : HomeRoutes()
@@ -299,6 +302,27 @@ sealed class HomeRoutes {
 
     @Serializable
     data class SocialInfo(val domainId: Int) : HomeRoutes()
+
+    @Serializable
+    object ManageClassifiedTabs : HomeRoutes()
+
+    @Serializable
+    data class ManageClassifiedDashboard(val id: String, val title: String) : HomeRoutes()
+
+    @Serializable
+    data class ClassifiedArticles(val siteId: String) : HomeRoutes()
+
+    @Serializable
+    data class AddEditClassifiedArticle(val siteId: String, val articleId: String? = null) : HomeRoutes()
+
+    @Serializable
+    data class ClassifiedBanners(val siteId: String) : HomeRoutes()
+
+    @Serializable
+    data class AddEditClassifiedBanner(val siteId: String, val bannerId: String? = null) : HomeRoutes()
+
+    @Serializable
+    object ClassifiedFaqs : HomeRoutes()
 }
 
 // --- NEW Data class for the stats grid ---
@@ -761,15 +785,75 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                     )
                 }
 
-//                composable<HomeRoutes.AddEditMenuScreen> { backStackEntry ->
-//                    val args = backStackEntry.toRoute<HomeRoutes.AddEditMenuScreen>()
-//                    com.slt.cardealership.presentation.websitedashboard.menus.AddEditMenuScreen(
-//                        navController = homeNavController,
-//                        domainId = args.domainId,
-//                        menuId = args.menuId
-//                    )
-//                }
+                composable<HomeRoutes.AddMenusScreen> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.AddMenusScreen>()
+                    com.slt.cardealership.presentation.websitedashboard.menus.AddMenusScreen(
+                        navController = homeNavController,
+                        domainId = args.domainId
+                    )
+                }
 
+                composable<HomeRoutes.EditMenusScreen> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.EditMenusScreen>()
+                    com.slt.cardealership.presentation.websitedashboard.menus.EditMenusScreen(
+                        navController = homeNavController,
+                        domainId = args.domainId,
+                        menuId = args.menuId
+                    )
+                }
+
+                composable<HomeRoutes.ManageClassifiedTabs> {
+                    com.slt.cardealership.presentation.ManageClassified.ManageClassifiedTabsScreen(
+                        navController = homeNavController
+                    )
+                }
+
+                composable<HomeRoutes.ManageClassifiedDashboard> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.ManageClassifiedDashboard>()
+                    com.slt.cardealership.presentation.ManageClassified.ManageClassifiedDashboardScreen(
+                        navController = homeNavController,
+                        siteId = args.id,
+                        siteTitle = args.title
+                    )
+                }
+
+                composable<HomeRoutes.ClassifiedArticles> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.ClassifiedArticles>()
+                    com.slt.cardealership.presentation.ManageClassified.articles.ClassifiedArticlesScreen(
+                        siteId = args.siteId,
+                        navController = homeNavController
+                    )
+                }
+
+                composable<HomeRoutes.AddEditClassifiedArticle> {
+                    com.slt.cardealership.presentation.ManageClassified.articles.AddEditClassifiedArticleScreen(
+                        navController = homeNavController,
+                        onNavigateBack = { homeNavController.popBackStack() }
+                    )
+                }
+
+                composable<HomeRoutes.ClassifiedBanners> { backStackEntry ->
+                    val route: HomeRoutes.ClassifiedBanners = backStackEntry.toRoute()
+                    com.slt.cardealership.presentation.ManageClassified.banners.ClassifiedBannersScreen(
+                        siteId = route.siteId,
+                        navController = homeNavController
+                    )
+                }
+
+                composable<HomeRoutes.AddEditClassifiedBanner> { backStackEntry ->
+                    val route: HomeRoutes.AddEditClassifiedBanner = backStackEntry.toRoute()
+                    com.slt.cardealership.presentation.ManageClassified.banners.AddEditClassifiedBannerScreen(
+                        siteId = route.siteId,
+                        bannerId = route.bannerId,
+                        navController = homeNavController
+                    )
+                }
+
+                composable<HomeRoutes.ClassifiedFaqs> {
+                    com.slt.cardealership.presentation.ManageClassified.faqs.ClassifiedFaqsScreen(
+                        navController = homeNavController
+                    )
+                }
             }
         }
     }
@@ -955,6 +1039,7 @@ fun NavigationDrawerContent(
         DrawerItem("SEO Menu", Icons.Outlined.Warehouse, HomeRoutes.SeoMenuScreen),
         DrawerItem("FAQ", Icons.Outlined.Quiz, HomeRoutes.FaqScreen),
         DrawerItem("Users", Icons.Outlined.Person, HomeRoutes.UserScreen),
+        DrawerItem("Manage Classifieds", Icons.Outlined.Public, HomeRoutes.ManageClassifiedTabs),
         DrawerItem("Profile", Icons.Outlined.Person, HomeRoutes.Profile),
         DrawerItem("My Websites", Icons.Default.Language, HomeRoutes.MyWebsites)
     )

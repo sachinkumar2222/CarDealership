@@ -145,8 +145,8 @@ fun AddEditSocialLinkSheetContent(
     isSaving: Boolean,
     onSave: (String, String) -> Unit
 ) {
-    val mediaTypes = listOf("facebook", "twitter", "instagram", "linkedin", "pinterest", "youtube", "indeed", "pinterest")
-    var selectedMediaType by remember { mutableStateOf(link?.mediaType ?: mediaTypes.first()) }
+    val mediaTypes = listOf("facebook", "twitter", "instagram", "linkedin", "pinterest", "youtube", "indeed")
+    var selectedMediaType by remember { mutableStateOf(link?.mediaType ?: "") }
     var url by remember { mutableStateOf(link?.url ?: "") }
     var expanded by remember { mutableStateOf(false) }
 
@@ -171,9 +171,10 @@ fun AddEditSocialLinkSheetContent(
             onExpandedChange = { expanded = !expanded }
         ) {
             OutlinedTextField(
-                value = selectedMediaType.replaceFirstChar { it.uppercase() },
+                value = if (selectedMediaType.isNotEmpty()) selectedMediaType.replaceFirstChar { it.uppercase() } else "",
                 onValueChange = {},
                 readOnly = true,
+                placeholder = { Text("Select Media Type") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier.menuAnchor().fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -226,7 +227,7 @@ fun AddEditSocialLinkSheetContent(
             onClick = { onSave(url, selectedMediaType) },
             modifier = Modifier.fillMaxWidth().height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
-            enabled = !isSaving
+            enabled = !isSaving && selectedMediaType.isNotEmpty() && url.isNotEmpty()
         ) {
             if (isSaving) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))

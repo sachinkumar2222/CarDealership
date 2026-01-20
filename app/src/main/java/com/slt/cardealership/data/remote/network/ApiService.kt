@@ -149,6 +149,27 @@ interface ApiService {
         @Path("dealerId") dealerId: Long
     ): PostListResponse
 
+    @GET("dealer-api/dealers/{dealerId}/posts")
+    suspend fun getClassifiedPosts(
+        @Path("dealerId") dealerId: Long,
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("order_by") orderBy: String?,
+        @Query("order") order: String?,
+        @Query("status") status: String?,
+        @Query("name") name: String?,
+        @Query("have_content") haveContent: String?,
+        @Query("have_links") haveLinks: String?,
+        @Query("have_image") haveImage: String?,
+        @Query("domain_name") domainName: String?
+    ): PostListResponse
+
+    @GET("dealer-api/dealers/{dealerId}/ArticleLinks/getAll")
+    suspend fun getArticleLinks(
+        @Path("dealerId") dealerId: Long
+    ): List<com.slt.cardealership.domain.model.ArticleLink>
+
+
     @GET("dealer-api/dealers/{dealerId}/posts/{postId}")
     suspend fun getPostById(
         @Path("dealerId") dealerId: Long,
@@ -161,12 +182,14 @@ interface ApiService {
         @Path("dealerId") dealerId: Long,
         @Part("title") title: RequestBody,
         @Part("url") url: RequestBody,
+        @Part("domain_id") domainId: RequestBody,
         @Part("start_date") startDate: RequestBody,
+        @Part("end_date") endDate: RequestBody?,
         @Part image: MultipartBody.Part,
-        // The API requires these fields, we can send default/current values
         @Part("created_by") createdBy: RequestBody,
         @Part("updated_by") updatedBy: RequestBody,
-        @Part("domain_id") domainId: RequestBody = "".toRequestBody("text/plain".toMediaTypeOrNull())
+        @Part("created_on") createdOn: RequestBody,
+        @Part("updated_on") updatedOn: RequestBody
     ): Response<Unit>
 
     @Multipart // <-- 1. Must be Multipart
@@ -200,20 +223,31 @@ interface ApiService {
     ): String
 
     @GET("dealer-api/dealers/{dealerId}/banners")
-    suspend fun getBanners(@Path("dealerId") dealerId: Long): BannerListResponse
+    suspend fun getBanners(
+        @Path("dealerId") dealerId: Long,
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("domain_id") domainId: Int?
+    ): BannerListResponse
 
     @Multipart
     @PUT("dealer-api/dealers/{dealerId}/banners/{bannerId}")
     suspend fun updateBanner(
         @Path("dealerId") dealerId: Long,
         @Path("bannerId") bannerId: String,
+        @Part("id") id: RequestBody,
         @Part("title") title: RequestBody,
         @Part("url") url: RequestBody,
+        @Part("domain_id") domainId: RequestBody,
         @Part("start_date") startDate: RequestBody,
-        @Part image: MultipartBody.Part?, // Image is optional on update
+        @Part("end_date") endDate: RequestBody?,
+        @Part image: MultipartBody.Part?,
+        @Part("image_url") imageUrl: RequestBody?,
+        @Part("created_by") createdBy: RequestBody,
         @Part("updated_by") updatedBy: RequestBody,
-        @Part("domain_id") domainId: RequestBody = "".toRequestBody("text/plain".toMediaTypeOrNull())
+        @Part("updated_on") updatedOn: RequestBody
     ): Response<Unit>
+
 
     @GET("dealer-api/dealers/{dealerId}/banners/{bannerId}")
     suspend fun getBannerDetails(
@@ -615,7 +649,11 @@ interface ApiService {
     suspend fun getDomains(
         @Query("page") page: Int,
         @Query("item_per_page") itemsPerPage: Int,
-        @Query("dealer_id") dealerId: Long
+        @Query("dealer_id") dealerId: Long? = null,
+        @Query("product_type_id") productTypeId: Int? = null,
+        @Query("domain_name") domainName: String? = null,
+        @Query("in_production") inProduction: Boolean? = null,
+        @Query("in_business_listing") inBusinessListing: Boolean? = null
     ): com.slt.cardealership.domain.model.DomainResponse
 
     @GET("application-api/domains/{id}")
@@ -623,11 +661,17 @@ interface ApiService {
         @Path("id") domainId: Int
     ): com.slt.cardealership.domain.model.DomainItem
 
+    @GET("application-api/page-types")
+    suspend fun getPageTypes(
+        @Query("page_type_slug") slug: String
+    ): List<com.slt.cardealership.domain.model.PageType>
+
     @GET("application-api/domain-pages")
     suspend fun getDomainPages(
         @Query("page") page: Int,
         @Query("item_per_page") itemsPerPage: Int,
-        @Query("domain_id") domainId: Int
+        @Query("domain_id") domainId: Int,
+        @Query("page_type_id") pageTypeId: String? = null
     ): com.slt.cardealership.domain.model.DomainPageResponse
 
     @DELETE("application-api/domain-pages/{id}")
@@ -797,6 +841,11 @@ interface ApiService {
         @Path("id") id: String
     ): com.slt.cardealership.domain.model.ResearchCompareDetailsResponse
 
+    @GET("dealer-api/dealers/{dealerId}/posts/GetPostCountByDomain")
+    suspend fun getPostCountByDomain(
+        @Path("dealerId") dealerId: Long
+    ): List<com.slt.cardealership.domain.model.PostCountItem>
+
     @PUT("application-api/domain-research-compare-interlinks/{id}")
     suspend fun updateResearchCompare(
         @Path("id") id: String,
@@ -893,6 +942,7 @@ interface ApiService {
     suspend fun saveDomainSettingBodyTypes(
         @Body request: com.slt.cardealership.domain.model.SaveDomainBodyTypesRequest
     ): List<com.slt.cardealership.domain.model.DomainBodyTypeSetting>
+
     // Contact Info APIs
     @GET("application-api/domain-contacts")
     suspend fun getDomainContacts(
@@ -939,4 +989,51 @@ interface ApiService {
     suspend fun getDomainSocialMediaDetails(
         @Path("id") id: Int
     ): com.slt.cardealership.domain.model.SocialMediaItem
+
+    @PUT("application-api/domain-social-media/{id}")
+    suspend fun updateDomainSocialMedia(
+        @Path("id") id: Int,
+        @Body request: com.slt.cardealership.domain.model.SaveSocialMediaRequest
+    ): Response<Unit>
+
+    // General Settings API
+    @GET("application-api/domain-app-setting/{domainId}")
+    suspend fun getDomainAppSetting(
+        @Path("domainId") domainId: Int
+    ): com.slt.cardealership.domain.model.GeneralSettingsResponse
+
+    @PUT("application-api/domain-app-setting/{domainId}")
+    suspend fun updateDomainAppSetting(
+        @Path("domainId") domainId: Int,
+        @Body request: com.slt.cardealership.domain.model.UpdateGeneralSettingsRequest
+    ): Response<Unit>
+
+    // Menus
+    @GET("application-api/domain-menus")
+    suspend fun getDomainMenus(
+        @Query("domain_id") domainId: Int
+    ): List<com.slt.cardealership.domain.model.DomainMenu>
+
+    @POST("application-api/domain-menus")
+    suspend fun createDomainMenu(
+        @Body request: com.slt.cardealership.domain.model.DomainMenuRequest
+    ): Response<Unit>
+
+    @PUT("application-api/domain-menus/{id}")
+    suspend fun updateDomainMenu(
+        @Path("id") id: String,
+        @Body request: com.slt.cardealership.domain.model.DomainMenuRequest
+    ): Response<Unit>
+
+    @DELETE("application-api/domain-menus/{id}")
+    suspend fun deleteDomainMenu(
+        @Path("id") id: String
+    ): Response<Unit>
+
+    @GET("application-api/domain-pages")
+    suspend fun getDomainPages(
+        @Query("page") page: Int,
+        @Query("items_per_page") itemsPerPage: Int,
+        @Query("domain_id") domainId: Int
+    ): com.slt.cardealership.domain.model.DomainPagesResponse
 }

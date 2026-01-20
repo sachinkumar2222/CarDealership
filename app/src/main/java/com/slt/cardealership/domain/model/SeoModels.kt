@@ -20,8 +20,8 @@ data class SeoPagination(
  * Note: id is a String (UUID), not an Int
  */
 data class SeoTag(
-    val id: String,
-    val dealer_id: Int,
+    val id: String? = null,
+    val dealer_id: Int? = null,
     @SerializedName("tag_name")
     val tagName: String,
     @SerializedName("tag_url")

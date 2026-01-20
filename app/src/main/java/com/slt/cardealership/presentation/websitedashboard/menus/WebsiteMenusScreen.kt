@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.shadow
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,6 +42,7 @@ fun WebsiteMenusScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Menus") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -48,7 +50,7 @@ fun WebsiteMenusScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = Color.White,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                     navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
@@ -56,8 +58,8 @@ fun WebsiteMenusScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(HomeRoutes.AddEditMenuScreen(domainId = domainId)) },
-                containerColor = MaterialTheme.colorScheme.primary,
+                onClick = { navController.navigate(HomeRoutes.AddMenusScreen(domainId = domainId)) },
+                containerColor = Color(0xFF2196F3),
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Menu")
@@ -94,17 +96,17 @@ fun WebsiteMenusScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp),
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(state.menus) { menu ->
                         MenuCard(
                             menu = menu,
                             onEditClick = {
-                                navController.navigate(HomeRoutes.AddEditMenuScreen(domainId = menu.sqlDomainId, menuId = menu.id))
+                                navController.navigate(HomeRoutes.EditMenusScreen(domainId = menu.sqlDomainId, menuId = menu.id))
                             },
-                            onDeleteClick = { /* TODO: Delete */ }
+                            onDeleteClick = { viewModel.deleteMenu(domainId, menu.id) }
                         )
                     }
                 }

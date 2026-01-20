@@ -44,7 +44,12 @@ class SocialInfoViewModel @Inject constructor(
     fun saveSocialLink(domainId: Int, url: String, mediaType: String) {
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
-            val result = repository.saveDomainSocialMedia(domainId, url, mediaType)
+            val result = if (_uiState.value.editingLink != null) {
+                repository.updateDomainSocialMedia(_uiState.value.editingLink!!.id, domainId, url, mediaType)
+            } else {
+                repository.saveDomainSocialMedia(domainId, url, mediaType)
+            }
+
             result.onSuccess {
                 _uiState.update { it.copy(isSaving = false, showAddEditSheet = false, editingLink = null) }
                 fetchSocialLinks(domainId)

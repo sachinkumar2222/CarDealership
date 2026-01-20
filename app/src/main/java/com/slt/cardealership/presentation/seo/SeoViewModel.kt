@@ -92,7 +92,7 @@ class SeoViewModel @Inject constructor(
                 val mappedTags = mappedTagsResult.getOrThrow()
 
                 Log.d(TAG, "Success. All tags count: ${allTags.size}, Mapped tags count: ${mappedTags.size}")
-                val selectedIds = mappedTags.map { tag -> tag.id }.toSet() // id is now a String
+                val selectedIds = mappedTags.mapNotNull { tag -> tag.id }.toSet()
                 Log.d(TAG, "Setting selected IDs: $selectedIds")
 
                 _uiState.update {

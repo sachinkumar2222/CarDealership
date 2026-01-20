@@ -8,6 +8,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -76,7 +77,7 @@ fun SettingsScreen(
     domainId: Int,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val selectedTabIndex by viewModel.selectedTabIndex.collectAsState()
     val tabs = listOf(
         "Theme Settings",
         "Vehicle Inventory",
@@ -131,7 +132,7 @@ fun SettingsScreen(
                     SettingsTabButton(
                         text = title,
                         isSelected = isSelected,
-                        onClick = { selectedTabIndex = index }
+                        onClick = { viewModel.onTabSelected(index) }
                     )
                 }
             }

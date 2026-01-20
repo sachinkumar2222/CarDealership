@@ -12,59 +12,36 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-sealed class AddEditMenuUiState {
-    object Loading : AddEditMenuUiState()
+sealed class AddMenuUiState {
+    object Loading : AddMenuUiState()
     data class Success(
-        val menu: DomainMenuDetail? = null,
-        val pages: List<DomainPage> = emptyList()
-    ) : AddEditMenuUiState()
-    data class Error(val message: String) : AddEditMenuUiState()
+        val pages: List<DomainPage> = emptyList(),
+        val isSaved: Boolean = false
+    ) : AddMenuUiState()
+    data class Error(val message: String) : AddMenuUiState()
 }
 
 @HiltViewModel
-class AddEditMenuViewModel @Inject constructor(
+class AddMenusViewModel @Inject constructor(
     private val repository: DealerRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<AddEditMenuUiState>(AddEditMenuUiState.Loading)
-    val uiState: StateFlow<AddEditMenuUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<AddMenuUiState>(AddMenuUiState.Loading)
+    val uiState: StateFlow<AddMenuUiState> = _uiState.asStateFlow()
 
-    private val _formState = MutableStateFlow(MenuFormState())
-    val formState: StateFlow<MenuFormState> = _formState.asStateFlow()
+    private val _formState = MutableStateFlow(AddMenuFormState())
+    val formState: StateFlow<AddMenuFormState> = _formState.asStateFlow()
 
-    fun fetchData(domainId: Int, menuId: String?) {
+    fun fetchData(domainId: Int) {
         viewModelScope.launch {
-            _uiState.value = AddEditMenuUiState.Loading
+            _uiState.value = AddMenuUiState.Loading
             try {
                 // Fetch Pages
                 val pagesResult = repository.getDomainPages(page = 1, itemsPerPage = 100, domainId = domainId)
                 val pages = pagesResult.getOrNull()?.list ?: emptyList()
-
-                // Fetch Menu Details if editing
-                var menuDetail: DomainMenuDetail? = null
-                if (menuId != null) {
-                    val menuResult = repository.getDomainMenuDetails(menuId)
-                    if (menuResult.isSuccess) {
-                        menuDetail = menuResult.getOrNull()
-                        menuDetail?.let {
-                            _formState.value = MenuFormState(
-                                menuName = it.menuName,
-                                isTopPrimary = it.isTopPrimaryMenu,
-                                isFooter = it.isFooterMenu,
-                                isFooterBottom = it.isFooterBottomMenu,
-                                menuItems = it.menuItems
-                            )
-                        }
-                    } else {
-                        _uiState.value = AddEditMenuUiState.Error("Failed to fetch menu details")
-                        return@launch
-                    }
-                }
-
-                _uiState.value = AddEditMenuUiState.Success(menu = menuDetail, pages = pages)
-
+                _uiState.value = AddMenuUiState.Success(pages = pages)
             } catch (e: Exception) {
-                _uiState.value = AddEditMenuUiState.Error(e.message ?: "Unknown error")
+                _uiState.value = AddMenuUiState.Error(e.message ?: "Unknown error")
             }
         }
     }
@@ -79,6 +56,10 @@ class AddEditMenuViewModel @Inject constructor(
 
     fun onFooterChange(isChecked: Boolean) {
         _formState.value = _formState.value.copy(isFooter = isChecked)
+    }
+
+    fun onFooterBottomChange(isChecked: Boolean) {
+        _formState.value = _formState.value.copy(isFooterBottom = isChecked)
     }
 
     fun onAddMenuItemClick() {
@@ -103,9 +84,9 @@ class AddEditMenuViewModel @Inject constructor(
         val selectedPages = pages.filter { _formState.value.selectedPageIds.contains(it.id) }
         val newItems = selectedPages.map { page ->
             com.slt.cardealership.domain.model.DomainMenuItem(
-                menuLabel = "page.title",
+                menuLabel = page.pageName,
                 customUrl = null,
-                pageSlug = "page.slug",
+                pageSlug = page.pageSlug,
                 target = "_self",
                 prms = null,
                 childItems = emptyList()
@@ -136,9 +117,39 @@ class AddEditMenuViewModel @Inject constructor(
             isAddDialogVisible = false
         )
     }
+
+    fun saveMenu(domainId: Int) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            _uiState.value = AddMenuUiState.Loading
+
+            val form = _formState.value
+            val request = com.slt.cardealership.domain.model.DomainMenuRequest(
+                sqlDomainId = domainId,
+                menuName = form.menuName,
+                isTopPrimaryMenu = form.isTopPrimary,
+                isFooterMenu = form.isFooter,
+                isFooterBottomMenu = form.isFooterBottom,
+                menuItems = form.menuItems
+            )
+
+            try {
+                val result = repository.createDomainMenu(request)
+
+                if (result.isSuccess) {
+                    val pages = (currentState as? AddMenuUiState.Success)?.pages ?: emptyList()
+                    _uiState.value = AddMenuUiState.Success(pages = pages, isSaved = true)
+                } else {
+                    _uiState.value = AddMenuUiState.Error(result.exceptionOrNull()?.message ?: "Unknown error")
+                }
+            } catch (e: Exception) {
+                _uiState.value = AddMenuUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
 }
 
-data class MenuFormState(
+data class AddMenuFormState(
     val menuName: String = "",
     val isTopPrimary: Boolean = false,
     val isFooter: Boolean = false,

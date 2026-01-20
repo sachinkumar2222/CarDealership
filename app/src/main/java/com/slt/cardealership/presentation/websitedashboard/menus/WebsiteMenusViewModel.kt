@@ -49,4 +49,22 @@ class WebsiteMenusViewModel @Inject constructor(
             }
         }
     }
+
+    fun deleteMenu(domainId: Int, menuId: String) {
+        viewModelScope.launch {
+            try {
+                val result = repository.deleteDomainMenu(menuId)
+                result.fold(
+                    onSuccess = {
+                        fetchMenus(domainId)
+                    },
+                    onFailure = { error ->
+                        _uiState.value = WebsiteMenusUiState.Error(error.message ?: "Failed to delete menu")
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.value = WebsiteMenusUiState.Error(e.message ?: "Unknown error occurred")
+            }
+        }
+    }
 }

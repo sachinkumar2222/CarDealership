@@ -61,8 +61,8 @@ class PhotosViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isBannersLoading = true) }
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
-            dealerRepository.getBanners(dealerId)
-                .onSuccess { banners -> _uiState.update { it.copy(isBannersLoading = false, banners = banners) } }
+            dealerRepository.getBanners(dealerId, 1, 100, null)
+                .onSuccess { response -> _uiState.update { it.copy(isBannersLoading = false, banners = response.list) } }
                 .onFailure { error -> _uiState.update { it.copy(isBannersLoading = false, error = error.message) } }
         }
     }
@@ -141,9 +141,17 @@ class PhotosViewModel @Inject constructor(
                 _uiState.update { it.copy(isBannersLoading = false, error = "Title and Image are required.") }
                 return@launch
             }
-            val startDate = (System.currentTimeMillis() / 1000).toString()
+            val startDate = System.currentTimeMillis() / 1000
 
-            dealerRepository.addBanner(dealerId, currentState.bannerTitle, currentState.bannerUrl, startDate, imageFile)
+            dealerRepository.addBanner(
+                dealerId = dealerId,
+                domainId = 0, // Default/Placeholder domain ID
+                title = currentState.bannerTitle,
+                url = currentState.bannerUrl,
+                startDate = startDate,
+                endDate = null,
+                imageFile = imageFile
+            )
                 .onSuccess {
                     onDismissManageBannerDialog()
                     fetchBanners()
@@ -165,9 +173,20 @@ class PhotosViewModel @Inject constructor(
                 return@launch
             }
             val imageFile = currentState.bannerImageUri?.let { uriToFile(context, it) }
-            val startDate = (System.currentTimeMillis() / 1000).toString()
+            val startDate = System.currentTimeMillis() / 1000
 
-            dealerRepository.updateBanner(dealerId, bannerId, currentState.bannerTitle, currentState.bannerUrl, startDate, imageFile)
+            dealerRepository.updateBanner(
+                dealerId = dealerId,
+                bannerId = bannerId,
+                domainId = 0, // Default/Placeholder domain ID
+                title = currentState.bannerTitle,
+                url = currentState.bannerUrl,
+                startDate = startDate,
+                endDate = null,
+                imageFile = imageFile,
+                imageUrl = currentState.bannerExistingImageUrl,
+                createdBy = null
+            )
                 .onSuccess {
                     onDismissManageBannerDialog()
                     fetchBanners()

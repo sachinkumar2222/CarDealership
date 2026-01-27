@@ -109,6 +109,10 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun reload() {
+        fetchFullUserProfile()
+    }
+
     private fun String.toTextRequestBody(): RequestBody {
         return this.toRequestBody("text/plain".toMediaTypeOrNull())
     }

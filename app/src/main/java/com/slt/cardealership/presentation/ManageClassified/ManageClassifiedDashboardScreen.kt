@@ -137,7 +137,7 @@ fun ManageClassifiedDashboardScreen(
                             title = "FAQs",
                             icon = Icons.Outlined.Quiz, // Quiz/FAQ icon
                             color = Color(0xFFE6E6FA), // Lavender/Purple
-                            onClick = { navController.navigate(HomeRoutes.ClassifiedFaqs) }
+                            onClick = { navController.navigate(HomeRoutes.ClassifiedFaqs(siteId = siteId)) }
                         )
                     }
                 }

@@ -1,5 +1,8 @@
 package com.slt.cardealership.presentation.profile
 
+import com.slt.cardealership.presentation.common.LoadingAnimation
+import com.slt.cardealership.presentation.common.FullScreenError
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -54,8 +57,6 @@ import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage // For loading profile images from URL
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.DetailedUserProfile // Import the DetailedUserProfile
-import com.slt.cardealership.presentation.info.FullScreenError // Re-use
-import com.slt.cardealership.presentation.info.LoadingAnimation // Re-use
 import android.net.Uri
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -152,8 +153,8 @@ fun ProfileScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     FullScreenError(
-                        errorMessage = state.message,
-                        onTryAgain = { viewModel.fetchFullUserProfile() }
+                        message = state.message,
+                        onRetry = { viewModel.reload() }
                     )
                 }
             }

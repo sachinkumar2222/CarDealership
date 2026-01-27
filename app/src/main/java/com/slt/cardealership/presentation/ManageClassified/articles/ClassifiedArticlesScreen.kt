@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -40,6 +41,19 @@ fun ClassifiedArticlesScreen(
     viewModel: ClassifiedArticlesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // --- Automatic Refresh Logic ---
+    val currentBackStackEntry = navController.currentBackStackEntry
+    val savedStateHandle = currentBackStackEntry?.savedStateHandle
+    val shouldRefresh by savedStateHandle?.getLiveData<Boolean>("should_refresh")?.observeAsState() ?: mutableStateOf(false)
+
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh == true) {
+            viewModel.fetchData() // Refresh data
+            savedStateHandle?.remove<Boolean>("should_refresh") // Reset flag
+        }
+    }
+
     var showSortMenu by remember { mutableStateOf(false) }
     var currentSortLabel by remember { mutableStateOf("Created On (desc)") }
     var showDeleteDialog by remember { mutableStateOf(false) }

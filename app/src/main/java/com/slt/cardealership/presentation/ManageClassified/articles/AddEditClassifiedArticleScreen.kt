@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -83,26 +82,34 @@ fun AddEditClassifiedArticleScreen(
                 .background(Color(0xFFF0F2F5)),
             contentAlignment = Alignment.Center
         ) {
+            val contentState = when {
+                state.isLoading -> "Loading"
+                state.error != null -> "Error"
+                else -> "Content"
+            }
+
             AnimatedContent(
-                targetState = state,
+                targetState = contentState,
                 transitionSpec = {
                     fadeIn(animationSpec = tween(500)) togetherWith fadeOut(animationSpec = tween(500))
                 },
                 label = "Content Transition"
-            ) { targetState ->
-                when {
-                    targetState.isLoading -> {
+            ) { targetLabel ->
+                when (targetLabel) {
+                    "Loading" -> {
                         CircularProgressIndicator()
                     }
-                    targetState.error != null -> {
+                    "Error" -> {
                         Text(
-                            targetState.error,
+                            state.error ?: "Unknown Error",
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(16.dp)
                         )
                     }
-                    targetState.post != null -> {
-                        AddEditClassifiedArticleForm(post = targetState.post, viewModel = viewModel)
+                    "Content" -> {
+                        state.post?.let { post ->
+                            AddEditClassifiedArticleForm(post = post, viewModel = viewModel)
+                        }
                     }
                 }
             }
@@ -157,10 +164,7 @@ fun AddEditClassifiedArticleForm(post: Post, viewModel: AddEditClassifiedArticle
                         value = currentStatusDisplay,
                         onValueChange = {},
                         readOnly = true,
-                        // If selected is "Select Status", use it as placeholder behavior or just value
-                        // User wanted "Select Status" visible.
-                        // Removing label to match "clean box" look if desired, or keeping it but making sure value is clear
-                        // Image 1 shows "Select Status" inside the box.
+
                         placeholder = { Text("Select Status") },
                         trailingIcon = {
                             IconButton(onClick = { statusExpanded = true }) {

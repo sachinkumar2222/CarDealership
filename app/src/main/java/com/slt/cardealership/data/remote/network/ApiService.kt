@@ -21,8 +21,8 @@ import com.slt.cardealership.domain.model.Designation
 import com.slt.cardealership.domain.model.FaqDetails
 import com.slt.cardealership.domain.model.FaqListResponse
 import com.slt.cardealership.domain.model.FaqRequest
-
-import com.slt.cardealership.domain.model.GalleryListResponse
+import com.slt.cardealership.domain.model.SocialProfileItem
+import com.slt.cardealership.domain.model.SocialProfileRequest
 import com.slt.cardealership.domain.model.GalleryResponseObject
 import com.slt.cardealership.domain.model.InternetLeadsResponse
 import com.slt.cardealership.domain.model.ManageUsersResponse
@@ -272,6 +272,13 @@ interface ApiService {
         @Part gallery: MultipartBody.Part
     ): Response<Unit>
 
+    @Multipart
+    @POST("dealer-api/dealers/{dealerId}/Gallery")
+    suspend fun updateGalleryImages(
+        @Path("dealerId") dealerId: Long,
+        @Part("image_urls") imageUrls: RequestBody
+    ): Response<Unit>
+
     @DELETE("dealer-api/dealers/{dealerId}/Gallery/{imageId}")
     suspend fun deleteGalleryImage(
         @Path("dealerId") dealerId: Long,
@@ -468,12 +475,6 @@ interface ApiService {
         @Part images: List<MultipartBody.Part>
     ): Response<Unit>
 
-    // --- SEO Tags ---
-
-    /**
-     * Get the master list of all available SEO tags
-     * GET {base_url}/dealer-api/dealer-seo-tags
-     */
     @GET("dealer-api/dealer-seo-tags")
     suspend fun getSeoTags(
         @Query("dealer_id") dealerId: Long, // <-- FIX: Add parameters
@@ -532,7 +533,16 @@ interface ApiService {
         @Query("domain_id") domainId: Int = 0,
         @Query("page") page: Int = 1,
         @Query("item_per_page") itemsPerPage: Int = 20
-    ): FaqListResponse // Returns the paginated wrapper
+    ): FaqListResponse
+
+    @GET("dealer-api/dealer-faqs")
+    suspend fun getFaqsWithDomain(
+        @Query("dealer_id") dealerId: Long,
+        @Query("domain_id") domainId: Int = 0,
+        @Query("domain_name") domainName: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("item_per_page") itemsPerPage: Int = 20
+    ): FaqListResponse
 
     /**
      * Get a specific FAQ by ID
@@ -790,6 +800,16 @@ interface ApiService {
     suspend fun getDomainBlogDetails(
         @Path("id") blogId: String
     ): com.slt.cardealership.domain.model.DomainBlogDetails
+
+    @GET("dealer-api/dealer-social-profiles/{dealerId}")
+    suspend fun getSocialProfiles(
+        @Path("dealerId") dealerId: Long
+    ): List<SocialProfileItem>
+
+    @POST("dealer-api/dealer-social-profiles")
+    suspend fun saveSocialProfiles(
+        @Body request: SocialProfileRequest
+    ): Response<Unit>
 
     // --- Update Blog ---
 

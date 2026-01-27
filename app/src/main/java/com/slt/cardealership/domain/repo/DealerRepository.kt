@@ -37,6 +37,7 @@ import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.VehicleModel
 import com.slt.cardealership.domain.model.VehicleOptionsResponse
+import com.slt.cardealership.domain.model.SocialProfileItem
 import okhttp3.RequestBody
 import java.io.File
 
@@ -116,7 +117,7 @@ interface DealerRepository {
     suspend fun getBannerDetails(dealerId: Long, bannerId: String): Result<Banner>
     suspend fun addBanner(
         dealerId: Long,
-        domainId: Int,
+        domainId: Int?,
         title: String,
         url: String,
         startDate: Long,
@@ -127,7 +128,7 @@ interface DealerRepository {
     suspend fun updateBanner(
         dealerId: Long,
         bannerId: String,
-        domainId: Int,
+        domainId: Int?,
         title: String,
         url: String,
         startDate: Long,
@@ -150,7 +151,12 @@ interface DealerRepository {
     suspend fun deleteGalleryImage(
         dealerId: Long,
         imageId: String
-    ): Result<Unit> // <-- ADD THIS LINE
+    ): Result<Unit>
+
+    suspend fun updateGalleryImages(
+        dealerId: Long,
+        imageUrls: List<String>
+    ): Result<Unit>
 
     suspend fun getVehicles(dealerId: Long): Result<List<Vehicle>>
     suspend fun getVehicleDetails(dealerId: Long, vehicleId: String): Result<Vehicle>
@@ -224,11 +230,15 @@ interface DealerRepository {
     suspend fun mapSeoTagsToDomain(dealerId: Long, domainId: Int, tagIds: List<String>): Result<Unit>
 
     // --- FAQ ---
-    suspend fun getFaqs(dealerId: Long, domainId: Int): Result<List<FaqItem>>
+    suspend fun getFaqs(dealerId: Long, domainId: Int, domainName: String? = null): Result<List<FaqItem>>
     suspend fun getFaqDetails(faqId: Int): Result<FaqDetails>
     suspend fun addFaq(faqRequest: FaqRequest): Result<Unit>
     suspend fun updateFaq(faqId: Int, faqRequest: FaqRequest): Result<Unit>
     suspend fun deleteFaq(faqId: Int, type: String): Result<Unit>
+
+    // --- Social Profiles ---
+    suspend fun getSocialProfiles(dealerId: Long): Result<List<SocialProfileItem>>
+    suspend fun saveSocialProfiles(dealerId: Long, items: List<SocialProfileItem>): Result<Unit>
 
     //seo menues
     suspend fun getSeoMenus(dealerId: Long): Result<List<SeoMenu>>

@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,9 +23,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -43,7 +47,7 @@ fun AddEditClassifiedBannerScreen(
     // Success/Navigation Effect
     LaunchedEffect(uiState) {
         if (uiState is AddEditBannerUiState.Content && (uiState as AddEditBannerUiState.Content).isSuccess) {
-            navController.previousBackStackEntry?.savedStateHandle?.set("refresh", true)
+            navController.previousBackStackEntry?.savedStateHandle?.set("should_refresh", true)
             navController.popBackStack()
         }
     }
@@ -60,7 +64,7 @@ fun AddEditClassifiedBannerScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Close")
+                        Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -167,6 +171,8 @@ fun AddEditBannerContent(
         }
     }
 
+    // Formatting Dates for Display
+    // Using UTC or default timezone as appropriate - typically UI uses local time for selection
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val startDisplay = state.startDate?.let { dateFormat.format(Date(it)) } ?: ""
     val endDisplay = state.endDate?.let { dateFormat.format(Date(it)) } ?: ""
@@ -342,7 +348,7 @@ fun AddEditBannerContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .clickable { launcher.launch("image/*") }
             ) {
                 // Dashed Border Background
@@ -373,7 +379,7 @@ fun AddEditBannerContent(
                     ) {
                         Surface(
                             color = Color(0xFF2196F3),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -420,7 +426,7 @@ fun AddEditBannerContent(
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF2196F3)
             ),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(4.dp),
             enabled = !state.isLoading,
             modifier = Modifier
                 .fillMaxWidth()

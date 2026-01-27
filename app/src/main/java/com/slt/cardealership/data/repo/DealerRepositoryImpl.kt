@@ -16,10 +16,6 @@ import com.slt.cardealership.domain.model.Department
 import com.slt.cardealership.domain.model.DealerService
 import android.content.Context
 import com.slt.cardealership.domain.model.BannerListResponse
-import android.graphics.Bitmap
-import android.graphics.ImageDecoder
-import android.os.Build
-import android.provider.OpenableColumns
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.DetailedUserProfile
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
@@ -69,7 +65,8 @@ import com.slt.cardealership.domain.model.TrimListResponse
 import com.slt.cardealership.domain.model.HomeDelivery
 import com.slt.cardealership.domain.model.HomeTestDrive
 import com.slt.cardealership.domain.model.Post
-import com.slt.cardealership.domain.model.PostListResponse
+import com.slt.cardealership.domain.model.SocialProfileItem
+import com.slt.cardealership.domain.model.SocialProfileRequest
 import com.slt.cardealership.domain.model.Vehicle
 import com.slt.cardealership.domain.model.VehicleListResponse
 import com.slt.cardealership.domain.model.ProductType
@@ -399,6 +396,35 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getSocialProfiles(dealerId: Long): Result<List<SocialProfileItem>> {
+        return try {
+            val response = apiService.getSocialProfiles(dealerId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveSocialProfiles(dealerId: Long, items: List<SocialProfileItem>): Result<Unit> {
+        return try {
+            val userId = sessionManager.getDealerId()?.toLong() ?: 630L
+            val request = SocialProfileRequest(
+                id = dealerId,
+                social = items,
+                createdBy = userId,
+                createdOn = System.currentTimeMillis()
+            )
+            val response = apiService.saveSocialProfiles(request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to save social profiles. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun updateBusinessHours(dealerId: Long, request: UpdateHoursRequest): Result<Unit> {
         return try {
             val response = apiService.updateBusinessHours(dealerId, request)
@@ -530,7 +556,7 @@ class DealerRepositoryImpl @Inject constructor(
 
     override suspend fun addBanner(
         dealerId: Long,
-        domainId: Int,
+        domainId: Int?,
         title: String,
         url: String,
         startDate: Long,
@@ -540,7 +566,9 @@ class DealerRepositoryImpl @Inject constructor(
         return try {
             val titlePart = title.toRequestBody("text/plain".toMediaTypeOrNull())
             val urlPart = url.toRequestBody("text/plain".toMediaTypeOrNull())
-            val domainIdPart = domainId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+            // Fix: Send empty string for null domainId
+            val domainIdVal = domainId?.toString() ?: ""
+            val domainIdPart = domainIdVal.toRequestBody("text/plain".toMediaTypeOrNull())
             val startDatePart = startDate.toString().toRequestBody("text/plain".toMediaTypeOrNull())
             val endDatePart = endDate?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -598,7 +626,7 @@ class DealerRepositoryImpl @Inject constructor(
     override suspend fun updateBanner(
         dealerId: Long,
         bannerId: String,
-        domainId: Int,
+        domainId: Int?,
         title: String,
         url: String,
         startDate: Long,
@@ -610,7 +638,9 @@ class DealerRepositoryImpl @Inject constructor(
         return try {
             val titlePart = title.toRequestBody("text/plain".toMediaTypeOrNull())
             val urlPart = url.toRequestBody("text/plain".toMediaTypeOrNull())
-            val domainIdPart = domainId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+            // Fix: Send empty string for null domainId
+            val domainIdVal = domainId?.toString() ?: ""
+            val domainIdPart = domainIdVal.toRequestBody("text/plain".toMediaTypeOrNull())
             val startDatePart = startDate.toString().toRequestBody("text/plain".toMediaTypeOrNull())
             val endDatePart = endDate?.toString()?.toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -695,6 +725,20 @@ class DealerRepositoryImpl @Inject constructor(
                 Result.success(Unit)
             } else {
                 Result.failure(Exception("Failed to delete banner. Code: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateGalleryImages(dealerId: Long, imageUrls: List<String>): Result<Unit> {
+        return try {
+            val urlsRequestBody = imageUrls.joinToString(",").toRequestBody("text/plain".toMediaTypeOrNull())
+            val response = apiService.updateGalleryImages(dealerId, urlsRequestBody)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update gallery images. Code: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -1483,10 +1527,10 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getFaqs(dealerId: Long, domainId: Int): Result<List<FaqItem>> {
+    override suspend fun getFaqs(dealerId: Long, domainId: Int, domainName: String?): Result<List<FaqItem>> {
         return try {
-            // We pass the domainId and dealerId as required by the API
-            val response = apiService.getFaqs(dealerId = dealerId, domainId = domainId)
+            // We pass the domainId, dealerId and optional domainName
+            val response = apiService.getFaqsWithDomain(dealerId = dealerId, domainId = domainId, domainName = domainName)
             Result.success(response.list) // Extract the list from the wrapper
         } catch (e: Exception) {
             Result.failure(Exception(getErrorMessage(e)))

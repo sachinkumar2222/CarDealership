@@ -7,9 +7,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -34,13 +36,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+// import androidx.compose.ui.res.stringResource // Not strictly needed unless using string resources
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -48,13 +55,14 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.GalleryImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoScreen(
-    navController: NavController, // <-- 1. Add NavController as a parameter
+    navController: NavController,
     viewModel: PhotosViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -98,7 +106,7 @@ fun PhotoScreen(
                 val isGalleryTab = uiState.selectedTab == 2
 
                 if ((isBannerTab || isGalleryTab) && !uiState.isManageBannerDialogVisible) {
-                    ExtendedFloatingActionButton(
+                    FloatingActionButton(
                         onClick = {
                             if (isBannerTab) {
                                 viewModel.onAddBannerClicked()
@@ -109,15 +117,9 @@ fun PhotoScreen(
                         },
                         containerColor = Color(0xFF2196F3),
                         contentColor = Color.White,
-                        shape = CircleShape
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.Add, "Add")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isBannerTab) "Add New Banner" else "Add Images",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
                     }
                 }
             }
@@ -179,21 +181,28 @@ fun PhotoScreen(
             }
         }
 
-        // Full Screen Overlay for Manage Banner
-        AnimatedVisibility(
-            visible = uiState.isManageBannerDialogVisible,
-            enter = slideInVertically(initialOffsetY = { it }),
-            exit = slideOutVertically(targetOffsetY = { it }),
-            modifier = Modifier.zIndex(2f) // Ensure it sits on top
-        ) {
-            ManageBannerScreen(
-                uiState = uiState,
-                onDismiss = viewModel::onDismissManageBannerDialog,
-                onTitleChange = viewModel::onBannerTitleChanged,
-                onUrlChange = viewModel::onBannerUrlChanged,
-                onImageSelected = viewModel::onBannerImageSelected,
-                onSave = { viewModel.onSaveBanner(context) }
-            )
+        // Bottom Sheet for Manage Banner
+        if (uiState.isManageBannerDialogVisible) {
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+            ModalBottomSheet(
+                onDismissRequest = { viewModel.onDismissManageBannerDialog() },
+                sheetState = sheetState,
+                containerColor = Color.White
+            ) {
+                AddEditBannerScreen(
+                    uiState = uiState,
+                    onDismiss = {
+                        viewModel.onDismissManageBannerDialog()
+                    },
+                    onTitleChange = viewModel::onBannerTitleChanged,
+                    onUrlChange = viewModel::onBannerUrlChanged,
+                    onImageSelected = viewModel::onBannerImageSelected,
+                    onSave = { viewModel.onSaveBanner(context) },
+                    onStartDateChange = viewModel::onBannerStartDateChanged,
+                    onEndDateChange = viewModel::onBannerEndDateChanged
+                )
+            }
         }
     }
 }
@@ -222,7 +231,7 @@ fun PhotoTabCard(
     val borderColor = if (isSelected) primaryColor else Color(0xFFE0E0E0)
 
     Card(
-        modifier = modifier.height(72.dp),
+        modifier = modifier.height(52.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor),
@@ -272,23 +281,24 @@ fun BannerContent(
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Old Button Removed
-
-
         if (isLoading) {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 100.dp)
             ) {
-                items(3) { // Show 3 shimmer placeholders while loading
+                items(6) { // Show 6 shimmer placeholders
                     BannerItemShimmerCard()
                 }
             }
         } else if (banners.isEmpty()) {
             EmptyContent(title = "No banner added yet", message = "Manage your banner here")
         } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 items(banners) { banner ->
@@ -327,259 +337,155 @@ fun Modifier.shimmer(): Modifier = composed {
     background(brush)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ManageBannerScreen(
-    uiState: PhotosUiState,
-    onDismiss: () -> Unit,
-    onTitleChange: (String) -> Unit,
-    onUrlChange: (String) -> Unit,
-    onImageSelected: (Uri) -> Unit,
-    onSave: () -> Unit
-) {
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-        onResult = { uri: Uri? ->
-            uri?.let { onImageSelected(it) }
-        }
-    )
-
-    BackHandler {
-        onDismiss()
-    }
-
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        if (uiState.isEditingBanner) "Edit Banner" else "Add New Banner",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                },
-                actions = {
-                    TextButton(onClick = onSave, enabled = !uiState.isBannersLoading) {
-                        Text(
-                            "Save",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = MaterialTheme.typography.titleMedium.fontSize
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
-                )
-            )
-        },
-        containerColor = Color.White
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // Image Upload Section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFF5F5F5)) // Light Gray Background
-                    .border(
-                        1.dp,
-                        Color(0xFFE0E0E0), // Light Border
-                        RoundedCornerShape(16.dp)
-                    )
-                    .clickable { imagePickerLauncher.launch("image/*") },
-                contentAlignment = Alignment.Center
-            ) {
-                val imageToShow = uiState.bannerImageUri ?: uiState.bannerExistingImageUrl
-
-                if (imageToShow == null) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .background(Color.White, CircleShape)
-                                .shadow(2.dp, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Outlined.Image,
-                                contentDescription = "Upload",
-                                modifier = Modifier.size(32.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Text(
-                            "Tap to upload banner image",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
-                        )
-                    }
-                } else {
-                    AsyncImage(
-                        model = imageToShow,
-                        contentDescription = "Selected Banner",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    // Overlay to indicate changeability
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.3f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Filled.Edit, // Use Filled since Outlined might not be available or imported
-                            contentDescription = "Change Image",
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
-                }
-            }
-
-            // Form Fields
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = uiState.bannerTitle,
-                    onValueChange = onTitleChange,
-                    label = { Text("Banner Title") },
-                    placeholder = { Text("e.g. Summer Sale 2024") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color(0xFFE0E0E0)
-                    ),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
-                        imeAction = ImeAction.Next
-                    )
-                )
-
-                OutlinedTextField(
-                    value = uiState.bannerUrl,
-                    onValueChange = onUrlChange,
-                    label = { Text("Destination URL") },
-                    placeholder = { Text("https://example.com/promo") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color(0xFFE0E0E0)
-                    ),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    )
-                )
-            }
-
-            if (uiState.isBannersLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-
-            if (uiState.error != null) {
-                Text(
-                    text = uiState.error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-        }
-    }
-}
-
 @Composable
 fun GalleryContent(
     isLoading: Boolean,
     images: List<GalleryImage>,
     onAddImages: (List<Uri>) -> Unit,
-    onDeleteImage: (String) -> Unit
+    onDeleteImage: (GalleryImage) -> Unit
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(120.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 100.dp),
-        modifier = Modifier.fillMaxSize() // Fill all available space
+    Column(
+        modifier = Modifier.fillMaxSize()
     ) {
-
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Dealership Gallery",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                // Old button removed
-            }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Dealership Gallery",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
         }
 
-
         if (isLoading) {
-            items(6) {
-                GalleryItemShimmer()
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(120.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 100.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(6) {
+                    GalleryItemShimmer()
+                }
             }
         } else if (images.isEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
                 EmptyContent(title = "No gallery images yet", message = "Add your first photo")
             }
         } else {
-            // Show the actual image grid when loading is complete
-            items(images) { image ->
-                Box(contentAlignment = Alignment.TopEnd) {
-                    AsyncImage(
-                        model = image.imageUrl,
-                        contentDescription = null,
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(120.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 100.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(images) { image ->
+                    Box(
                         modifier = Modifier
                             .aspectRatio(1f)
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                    IconButton(
-                        onClick = { image.id?.let { onDeleteImage(it) } }, // <-- Use the handler
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                            .clip(RoundedCornerShape(12.dp))
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete Image",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                        AsyncImage(
+                            model = image.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
+
+                        // Delete button with wavy border positioned at top-right corner
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(0.dp)
+                        ) {
+                            // Wavy decorative background
+                            Canvas(
+                                modifier = Modifier
+                                    .size(44.dp)
+                            ) {
+                                val wavePath = Path().apply {
+                                    // Start from top-right corner
+                                    moveTo(size.width, 0f)
+
+                                    // Top edge (straight to match corner)
+                                    lineTo(size.width * 0.3f, 0f)
+
+                                    // Left wavy edge
+                                    val waveHeight = 4.dp.toPx()
+                                    val waveCount = 3
+                                    val segmentHeight = size.height / waveCount
+
+                                    for (i in 0 until waveCount) {
+                                        val y1 = i * segmentHeight
+                                        val y2 = (i + 0.5f) * segmentHeight
+                                        val y3 = (i + 1) * segmentHeight
+
+                                        cubicTo(
+                                            0f, y1,
+                                            -waveHeight, y2,
+                                            0f, y3
+                                        )
+                                    }
+
+                                    // Bottom wavy edge
+                                    val bottomWaveWidth = 4.dp.toPx()
+                                    val bottomWaveCount = 3
+                                    val segmentWidth = size.width / bottomWaveCount
+
+                                    for (i in 0 until bottomWaveCount) {
+                                        val x1 = i * segmentWidth
+                                        val x2 = (i + 0.5f) * segmentWidth
+                                        val x3 = (i + 1) * segmentWidth
+
+                                        cubicTo(
+                                            x1, size.height,
+                                            x2, size.height + bottomWaveWidth,
+                                            x3, size.height
+                                        )
+                                    }
+
+                                    // Right edge (straight)
+                                    lineTo(size.width, size.height)
+                                    lineTo(size.width, 0f)
+                                    close()
+                                }
+
+                                drawPath(
+                                    path = wavePath,
+                                    color = Color.White,
+                                    style = Fill
+                                )
+                            }
+
+                            // Delete icon centered in the wavy shape
+                            IconButton(
+                                onClick = { onDeleteImage(image) },
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .align(Alignment.Center)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Image",
+                                    tint = Color(0xFFE53935),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
-        }
 
+        }
     }
 }
 
@@ -588,53 +494,147 @@ fun BannerItemCard(
     banner: Banner, onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { /* Optional: Navigate to detail? */ },
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // Subtle shadow
     ) {
         Column {
-            // Banner Image
-            AsyncImage(
-                // IMPORTANT: This assumes 'imagePath' is a full URL.
-                // If it's a partial path, you must add your base URL:
-                // model = "https://backend-api-stg.sba.net${banner.imagePath}",
-                model = banner.imageUrl,
-                contentDescription = banner.title,
+            // Image Container with Menu Overlay
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f), // A common aspect ratio for banners
-                contentScale = ContentScale.Fit
-            )
-
-            // Banner Details and Actions
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .aspectRatio(1.2f) // Landscape Aspect Ratio for shorter cards
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                AsyncImage(
+                    model = banner.imageUrl,
+                    contentDescription = banner.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Gradient Overlay for Menu Visibility
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp) // Gradient height
+                        .align(Alignment.TopCenter)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.6f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                // Menu Button Overlay
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp) // Reduced padding slightly to push it closer to edge if needed
+                ) {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(32.dp)
+                        // Background removed for professional look
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Edit") },
+                            onClick = {
+                                showMenu = false
+                                onEditClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF2196F3))
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                showMenu = false
+                                onDeleteClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Info Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp), // Reduced padding
+                verticalArrangement = Arrangement.spacedBy(2.dp) // Reduced spacing
+            ) {
+                // Title
+                Text(
+                    text = banner.title ?: "Untitled",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // URL
+                if (!banner.url.isNullOrBlank()) {
                     Text(
-                        text = banner.title ?: "No Title",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = banner.url ?: "No URL",
+                        text = banner.url,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
+                        color = Color(0xFF757575), // Grey 600
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                // Action Buttons
-                IconButton(onClick = onEditClick) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+
+                // Date
+                val dateText = remember(banner.createdOn) {
+                    val millis = (banner.createdOn ?: 0L) * 1000L
+                    if (millis > 0) {
+                        "Created On: " + java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date(millis))
+                    } else {
+                        "No Date"
+                    }
                 }
-                IconButton(onClick = onDeleteClick) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = dateText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
                 }
             }
         }
@@ -643,61 +643,28 @@ fun BannerItemCard(
 
 @Composable
 fun BannerItemShimmerCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column {
-            // Image Placeholder
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .shimmer() // Apply shimmer
-            )
-
-            // Details Placeholder
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.7f)
-                            .height(20.dp)
-                            .shimmer()
-                    ) // Title
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.4f)
-                            .height(16.dp)
-                            .shimmer()
-                    ) // URL
-                }
-                // Action Icon Placeholders
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .shimmer()
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .shimmer()
-                )
-            }
-        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.7f)
+                .clip(RoundedCornerShape(12.dp))
+                .shimmer()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(16.dp)
+                .shimmer()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .height(12.dp)
+                .shimmer()
+        )
     }
 }
 
@@ -709,11 +676,10 @@ fun EmptyContent(title: String, message: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            Icons.Default.Folder,
-            contentDescription = "",
-            modifier = Modifier.size(80.dp),
-            tint = Color.LightGray
+        Image(
+            painter = painterResource(id = R.drawable.file_searching_rafiki),
+            contentDescription = null,
+            modifier = Modifier.size(200.dp)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)

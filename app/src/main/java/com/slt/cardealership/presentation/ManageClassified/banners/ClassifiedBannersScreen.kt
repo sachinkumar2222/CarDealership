@@ -10,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -43,12 +46,12 @@ fun ClassifiedBannersScreen(
     // Auto-refresh logic when returning from Add/Edit screen
     val currentBackStackEntry = navController.currentBackStackEntry
     val savedStateHandle = currentBackStackEntry?.savedStateHandle
-    val refresh by savedStateHandle?.getStateFlow("refresh", false)?.collectAsState() ?: mutableStateOf(false)
+    val shouldRefresh by savedStateHandle?.getLiveData<Boolean>("should_refresh")?.observeAsState() ?: mutableStateOf(false)
 
-    LaunchedEffect(refresh) {
-        if (refresh) {
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh == true) {
             viewModel.fetchData()
-            savedStateHandle?.remove<Boolean>("refresh")
+            savedStateHandle?.remove<Boolean>("should_refresh")
         }
     }
 

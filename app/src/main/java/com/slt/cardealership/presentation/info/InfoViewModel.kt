@@ -12,6 +12,9 @@ import com.slt.cardealership.domain.model.UpdateHoursRequest
 import com.slt.cardealership.domain.model.UserPayload
 import com.slt.cardealership.domain.model.UserProfile
 import com.slt.cardealership.domain.repo.DealerRepository
+import com.slt.cardealership.domain.model.Make
+import com.slt.cardealership.domain.model.DomainMakeSetting
+import com.slt.cardealership.domain.model.SocialProfileItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -34,6 +37,10 @@ sealed class InfoUiState {
     data class Success(
         val dealerInfo: DealerInfo,
         val userProfile: UserProfile? = null,
+        val socialProfiles: List<SocialProfileItem> = emptyList(),
+        val allMakes: List<Make> = emptyList(),
+        val selectedMakes: List<DomainMakeSetting> = emptyList(),
+        val domainId: Int? = null,
         val isSaving: Boolean = false // Shows loading on the save button
     ) : InfoUiState()
     data class Error(val message: String) : InfoUiState()
@@ -73,18 +80,23 @@ class InfoViewModel @Inject constructor(
             }
             currentDealerId = dealerId
 
-            // Fetch both DealerInfo and UserProfile
+            // Fetch both DealerInfo, UserProfile, and Social Profiles
             val dealerInfoResult = async { dealerRepository.getCombinedDealerInfo(dealerId) }
             val userProfileResult = async { dealerRepository.getUserAuthorization() }
+            val socialProfilesResult = async { dealerRepository.getSocialProfiles(dealerId) }
 
             val dealerInfo = dealerInfoResult.await()
             val userProfile = userProfileResult.await()
+            val socialProfiles = socialProfilesResult.await()
 
             if (dealerInfo.isSuccess) {
                 _uiState.value = InfoUiState.Success(
                     dealerInfo = dealerInfo.getOrThrow(),
-                    userProfile = userProfile.getOrNull()
+                    userProfile = userProfile.getOrNull(),
+                    socialProfiles = socialProfiles.getOrDefault(emptyList())
                 )
+                // Now fetch makes (needs dealerId, but happens after initial load to avoid blocking basic info)
+                fetchMakesData()
             } else {
                 val error = dealerInfo.exceptionOrNull()
                 Log.e(TAG, "Failed to fetch dealer info", error)
@@ -147,11 +159,13 @@ class InfoViewModel @Inject constructor(
 
                 result.onSuccess { updatedDealerInfo ->
                     // Success! Update the UI with the new, complete info from the server
-                    // Preserve the userProfile when updating dealer info
+                    // Preserve the userProfile and socialProfiles when updating dealer info
                     val currentUserProfile = (currentState as? InfoUiState.Success)?.userProfile
+                    val currentSocialProfiles = (currentState as? InfoUiState.Success)?.socialProfiles ?: emptyList()
                     _uiState.value = InfoUiState.Success(
                         dealerInfo = updatedDealerInfo,
-                        userProfile = currentUserProfile
+                        userProfile = currentUserProfile,
+                        socialProfiles = currentSocialProfiles
                     )
                     _events.send(InfoEvent.ShowSuccess(successMessage))
                     _selectedImageUri.value = null // Clear temporary URI
@@ -183,23 +197,38 @@ class InfoViewModel @Inject constructor(
                 return@launch
             }
 
-            // 1. Create a *new* dealerInfo object with the updates applied
-            val newDealerInfo = currentState.dealerInfo.copy(
-                name = (updateMap["name"] as? String) ?: currentState.dealerInfo.name,
-                phone = (updateMap["phone"] as? String) ?: currentState.dealerInfo.phone,
-                websiteUrl = (updateMap["website_url"] as? String) ?: currentState.dealerInfo.websiteUrl,
-                address = (updateMap["address"] as? String) ?: currentState.dealerInfo.address,
-                description = (updateMap["description"] as? String) ?: currentState.dealerInfo.description,
-                isVirtual = (updateMap["is_virtual"] as? Boolean) ?: currentState.dealerInfo.isVirtual
-                // Add any other fields from your MultiFieldEditDialog here
-            )
+            _uiState.value = currentState.copy(isSaving = true)
 
-            // 2. Call the master save function
-            saveFullDealerInfo(
-                dealerInfo = newDealerInfo,
-                newImageUri = null, // No new image for this update
-                successMessage = successMessage
-            )
+            // Convert Map<String, Any> to Map<String, String> for FormUrlEncoded
+            val stringMap = updateMap.mapValues { entry ->
+                entry.value.toString()
+            }
+
+            Log.d(TAG, "Patching Dealer Info: $stringMap")
+
+            dealerRepository.updateDealerInfo(dealerId, stringMap)
+                .onSuccess {
+                    Log.d(TAG, "Update successful")
+                    _events.send(InfoEvent.ShowSuccess(successMessage))
+
+                    // Optimistic Update: Update the local state immediately
+                    if (updateMap.containsKey("is_virtual")) {
+                        val newIsVirtual = updateMap["is_virtual"] as? Boolean
+                        _uiState.value = currentState.copy(
+                            isSaving = false,
+                            dealerInfo = currentState.dealerInfo.copy(isVirtual = newIsVirtual)
+                        )
+                    } else {
+                        _uiState.value = currentState.copy(isSaving = false)
+                    }
+
+                    fetchDealerInfo() // Refresh after save
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Update failed", error)
+                    _uiState.value = currentState.copy(isSaving = false)
+                    _events.send(InfoEvent.ShowError(error.message ?: "Update failed"))
+                }
         }
     }
 
@@ -247,6 +276,15 @@ class InfoViewModel @Inject constructor(
         }
     }
 
+    fun saveOpeningDate(month: String, year: String) {
+        val updateMap = mapOf(
+            "business_established_month" to month,
+            "business_established_year" to year
+        )
+        Log.d(TAG, "Updating Opening Date: $updateMap")
+        saveMetasUpdates(updateMap, "Opening Date updated")
+    }
+
 
     fun updateHomeDelivery(isAvailable: Boolean, isNationWide: Boolean, radius: String) {
         val updateMap = mutableMapOf<String, Any?>()
@@ -282,18 +320,9 @@ class InfoViewModel @Inject constructor(
     }
 
     fun updateIsVirtual(newValue: Boolean) {
-        val successState = _uiState.value as? InfoUiState.Success
         val updateMap = mapOf("is_virtual" to newValue)
         Log.d(TAG, "Updating Virtual Dealership: $updateMap")
-
-        val updatedInfo = successState!!.dealerInfo.copy(isVirtual = newValue)
-
-        // Call saveDealerUpdates because is_virtual is part of the main DealerDetails, not metas
-        saveFullDealerInfo(
-            dealerInfo = updatedInfo,
-            newImageUri = null, // No new image
-            successMessage = "Virtual Dealership updated"
-        )
+        saveDealerUpdates(updateMap, "Virtual Dealership updated")
     }
 
     fun updateVirtualAppointment(isAvailable: Boolean, link: String) {
@@ -316,7 +345,7 @@ class InfoViewModel @Inject constructor(
                         isEntrance: Boolean,  // <-- ADDED
                         isSeating: Boolean, // <-- ADDED
                         isRestroom: Boolean // <-- ADDED
-        ) {
+    ) {
         val updateMap: Map<String, Any> = mapOf(
             "wifi" to wifi,
             "parking" to parking,
@@ -424,6 +453,105 @@ class InfoViewModel @Inject constructor(
                 }
                 .onFailure { error ->
                     Log.e(TAG, "Update request failed", error)
+                    _uiState.value = currentState.copy(isSaving = false)
+                }
+        }
+    }
+
+
+    // --- Makes Logic ---
+
+    fun fetchMakesData() {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            val dealerId = currentDealerId ?: return@launch
+
+            // Avoid reloading if already loaded? No, let's refresh.
+            // But we need to keep current state if it's Success
+            if (currentState is InfoUiState.Success) {
+                // You might want to show a small loading indicator for makes specifically,
+                // but for now we'll just update silently or use isSaving if appropriate.
+            }
+
+            // 1. Fetch All Makes
+            val allMakesResult = dealerRepository.getAllMakes()
+            val allMakes = allMakesResult.getOrDefault(emptyList())
+
+            // 2. Fetch Domain ID & Selected Makes
+            // We need domainId first.
+            val domainsResult = dealerRepository.getDomains(1, 1, dealerId)
+            val domainId = domainsResult.getOrNull()?.list?.firstOrNull()?.id
+
+            val selectedMakes = if (domainId != null) {
+                // Fetch settings for "inventory", "default"
+                dealerRepository.getDomainSettingMakes(domainId, "inventory", "default")
+                    .getOrDefault(emptyList())
+            } else {
+                emptyList()
+            }
+
+            // Update State
+            if (currentState is InfoUiState.Success) {
+                _uiState.value = currentState.copy(
+                    allMakes = allMakes,
+                    selectedMakes = selectedMakes,
+                    domainId = domainId
+                )
+            }
+        }
+    }
+
+    fun saveMakes(selectedMakeIds: List<Int>) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState !is InfoUiState.Success) return@launch
+            val domainId = currentState.domainId
+
+            if (domainId == null) {
+                _events.send(InfoEvent.ShowError("Domain ID not found. Cannot save makes."))
+                return@launch
+            }
+
+            _uiState.value = currentState.copy(isSaving = true)
+            Log.d(TAG, "Saving makes for domain $domainId: $selectedMakeIds")
+
+            dealerRepository.saveDomainSettingMakes(domainId, "inventory", "default", selectedMakeIds)
+                .onSuccess { updatedMakes ->
+                    Log.d(TAG, "Makes updated successfully")
+                    _events.send(InfoEvent.ShowSuccess("Makes updated"))
+                    // Update UI with new selected makes
+                    _uiState.value = currentState.copy(
+                        isSaving = false,
+                        selectedMakes = updatedMakes
+                    )
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Failed to update makes", error)
+                    _uiState.value = currentState.copy(isSaving = false)
+                    _events.send(InfoEvent.ShowError(error.message ?: "Failed to update makes"))
+                }
+        }
+    }
+
+    fun saveSocialProfiles(updatedProfiles: List<SocialProfileItem>) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState !is InfoUiState.Success) return@launch
+            val dealerId = currentDealerId ?: return@launch
+
+            _uiState.value = currentState.copy(isSaving = true)
+
+            dealerRepository.saveSocialProfiles(dealerId, updatedProfiles)
+                .onSuccess {
+                    _events.send(InfoEvent.ShowSuccess("Social profiles updated"))
+                    // Optimistically update UI or fetch again. Let's update UI directly.
+                    _uiState.value = currentState.copy(
+                        isSaving = false,
+                        socialProfiles = updatedProfiles
+                    )
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Failed to save social profiles", error)
                     _uiState.value = currentState.copy(isSaving = false)
                     _events.send(InfoEvent.ShowError(error.message ?: "Update failed"))
                 }

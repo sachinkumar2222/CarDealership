@@ -1,88 +1,61 @@
 package com.slt.cardealership.presentation.info
 
-import android.os.Build.VERSION.SDK_INT
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.border
-import coil3.request.ImageRequest
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.rounded.SignalWifiOff // <-- IMPORT FOR ERROR ICON
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush // <-- IMPORT ADDED
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign // <-- IMPORT ADDED
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import coil3.request.error
-import coil3.request.placeholder
-import com.slt.cardealership.domain.model.Amenities
-import com.slt.cardealership.domain.model.DealerHours
-import com.slt.cardealership.domain.model.DealerInfo
-import com.slt.cardealership.domain.model.HomeDelivery
-import com.slt.cardealership.domain.model.HomeTestDrive
-import com.slt.cardealership.domain.model.HourDetails
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
-import com.slt.cardealership.utils.HtmlText
+import coil3.request.ImageRequest
+import coil3.request.placeholder // Explicitly import placeholder
+import coil3.request.error       // Explicitly import error
 import com.slt.cardealership.R
+import com.slt.cardealership.domain.model.*
+import com.slt.cardealership.utils.HtmlText
+import com.slt.cardealership.ui.theme.BrandBlue
 import java.util.Locale
+// Explicit imports to help compiler
+import com.slt.cardealership.presentation.info.AddressEditSheet
+import com.slt.cardealership.presentation.info.PhoneEditSheet
+import com.slt.cardealership.presentation.info.MakesEditSheet
 
-// --- ADDED: Gradient for the new error button ---
-private val blueGradient = Brush.horizontalGradient(
-    colors = listOf(
-        Color(0xFF2196F3),
-        Color(0xFF1565C0)
-    )
-)
-// ----------------------------------------------
-
-class EditFieldState(val label: String, initialValue: String) {
-    var value by mutableStateOf(initialValue)
-}
-
-data class VirtualAppointmentState(
-    val isAvailable: Boolean,
-    val link: String
-)
+// Custom Colors
+val GreenVerified = Color(0xFF2E7D32)
+val LightGreenBackground = Color(0xFFE8F5E9)
+// val BlueLink = Color(0xFF2196F3) // Use BrandBlue
+val TextGray = Color(0xFF757575)
+val BackgroundGray = Color(0xFFF5F7F8)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,32 +63,21 @@ fun InfoScreen(
     navController: NavController,
     viewModel: InfoViewModel = hiltViewModel()
 ) {
-
     val selectedImageUri by viewModel.selectedImageUri.collectAsState()
-
     val uiState by viewModel.uiState.collectAsState()
-
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri: Uri? ->
-            // Pass the selected Uri to the ViewModel
-            uri?.let { viewModel.onHeaderImageSelected(it) }
-        }
+        onResult = { uri: Uri? -> uri?.let { viewModel.onHeaderImageSelected(it) } }
     )
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is InfoEvent.ShowSuccess -> {
-                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                }
-
-                is InfoEvent.ShowError -> {
-                    snackbarHostState.showSnackbar(event.message)
-                }
+                is InfoEvent.ShowSuccess -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                is InfoEvent.ShowError -> snackbarHostState.showSnackbar(event.message)
             }
         }
     }
@@ -130,32 +92,30 @@ fun InfoScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF0F8FF))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
-        }
+        },
+        containerColor = BackgroundGray
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF0F8FF)),
+                .background(BackgroundGray),
             contentAlignment = Alignment.Center
         ) {
             when (val state = uiState) {
-                is InfoUiState.Loading -> LoadingAnimation()
-                // --- THIS IS THE FIX ---
+                is InfoUiState.Loading -> CircularProgressIndicator()
                 is InfoUiState.Error -> {
-                    FullScreenError(
-                        errorMessage = state.message,
-                        onTryAgain = {
-                            viewModel.fetchDealerInfo() // Call the retry function
-                        }
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(state.message, color = Color.Red)
+                        Button(onClick = { viewModel.fetchDealerInfo() }) { Text("Retry") }
+                    }
                 }
-                // --- END FIX ---
                 is InfoUiState.Success -> {
                     DealerInfoContent(
                         dealerInfo = state.dealerInfo,
+                        socialProfiles = state.socialProfiles,
                         viewModel = viewModel,
                         isSaving = state.isSaving,
                         onHeaderImageClick = {
@@ -174,24 +134,136 @@ fun InfoScreen(
 @Composable
 fun DealerInfoContent(
     dealerInfo: DealerInfo,
-    viewModel: InfoViewModel = hiltViewModel(),
-    isSaving: Boolean = false,
+    socialProfiles: List<SocialProfileItem>,
+    viewModel: InfoViewModel,
+    isSaving: Boolean,
     onHeaderImageClick: () -> Unit,
     selectedImageUri: Uri?
 ) {
-    val businessHours = dealerInfo.dealerHours?.find { it.hoursType == "general" }
-    val partsHours = dealerInfo.dealerHours?.find { it.hoursType == "parts" }
-    val serviceHours = dealerInfo.dealerHours?.find { it.hoursType == "service" }
-
+    // Dialog States
     var showDeliveryDialog by remember { mutableStateOf(false) }
     var showTestDriveDialog by remember { mutableStateOf(false) }
     var showAmenitiesDialog by remember { mutableStateOf(false) }
     var showHoursDialog by remember { mutableStateOf(false) }
     var showDealerTypeDialog by remember { mutableStateOf(false) }
     var showVirtualAppointmentDialog by remember { mutableStateOf(false) }
+    var showSocialLinksDialog by remember { mutableStateOf(false) }
+    var showBusinessDateDialog by remember { mutableStateOf(false) }
+    var showMakesDialog by remember { mutableStateOf(false) }
+    var showVirtualDealershipDialog by remember { mutableStateOf(false) }
+
+
+    // Address & Phone Edit State
+    var showAddressDialog by remember { mutableStateOf(false) }
+    var showPhoneDialog by remember { mutableStateOf(false) }
+
+    // Details Edit State
+    var showDetailsEditDialog by remember { mutableStateOf(false) }
+    var detailsFieldsToEdit by remember { mutableStateOf<List<EditFieldState>>(emptyList()) }
+
+    // About Edit State
+    var showAboutEditDialog by remember { mutableStateOf(false) }
+    var aboutFieldsToEdit by remember { mutableStateOf<List<EditFieldState>>(emptyList()) }
+
+    // --- Dialogs Implementations --- (Same as before, just reused)
+
+    if (showSocialLinksDialog) {
+        SocialLinksEditSheet(
+            existingLinks = socialProfiles,
+            isSaving = isSaving,
+            onDismiss = { showSocialLinksDialog = false },
+            onSave = { updatedLinks ->
+                viewModel.saveSocialProfiles(updatedLinks)
+                showSocialLinksDialog = false
+            }
+        )
+    }
+
+    if (showAddressDialog) {
+        AddressEditSheet(
+            initialAddress = dealerInfo.address,
+            initialCity = dealerInfo.city,
+            initialZip = dealerInfo.zipCode,
+            isSaving = isSaving,
+            onDismiss = { showAddressDialog = false },
+            onSave = { country, state, city, address, zip ->
+                viewModel.saveDealerUpdates(
+                    mapOf(
+                        "address" to address,
+                        "city_name" to city,
+                        "zip_code" to zip,
+                        // Assuming backend can handle state/country updates if needed, or mapped elsewhere.
+                        // based on current generic map, state might not be there or might be differently named.
+                        // Using typical keys. If backend doesn't support them, they might be ignored or need adjustment.
+                        // "state" to state,
+                        // "country" to country
+                    ),
+                    "Address updated"
+                )
+                showAddressDialog = false
+            }
+        )
+    }
+
+    if (showPhoneDialog) {
+        PhoneEditSheet(
+            initialPhone = dealerInfo.phone,
+            isSaving = isSaving,
+            onDismiss = { showPhoneDialog = false },
+            onSave = { newPhone ->
+                viewModel.saveDealerUpdates(
+                    mapOf("phone" to newPhone),
+                    "Phone number updated"
+                )
+                showPhoneDialog = false
+            }
+        )
+    }
+
+    if (showDetailsEditDialog) {
+        MultiFieldEditSheet(
+            title = "Edit Details",
+            fields = detailsFieldsToEdit,
+            isSaving = isSaving,
+            onDismiss = { showDetailsEditDialog = false },
+            onSave = { updatedFields ->
+                val updateMap = updatedFields.associate {
+                    val apiKey = when (it.label) {
+                        "Name" -> "name"
+                        "Website" -> "website_url"
+                        "Phone Number" -> "phone"
+                        "Address" -> "address"
+                        "City" -> "city_name"
+                        "Zip Code" -> "zip_code"
+                        else -> ""
+                    }
+                    apiKey to it.value
+                }.filter { it.key.isNotBlank() }
+                viewModel.saveDealerUpdates(updateMap, "Details updated")
+                showDetailsEditDialog = false
+            }
+        )
+    }
+
+    if (showAboutEditDialog) {
+        MultiFieldEditSheet(
+            title = "Edit About",
+            fields = aboutFieldsToEdit,
+            isSaving = isSaving,
+            onDismiss = { showAboutEditDialog = false },
+            onSave = { updatedFields ->
+                val aboutText = updatedFields.firstOrNull()?.value ?: ""
+                viewModel.saveDealerUpdates(
+                    mapOf("description" to aboutText),
+                    "About section updated"
+                )
+                showAboutEditDialog = false
+            }
+        )
+    }
 
     if (showDealerTypeDialog) {
-        DealerTypeEditDialog(
+        DealerTypeEditSheet(
             initialType = dealerInfo.dealerType ?: "Independent",
             isSaving = isSaving,
             onDismiss = { showDealerTypeDialog = false },
@@ -202,8 +274,33 @@ fun DealerInfoContent(
         )
     }
 
+    // --- Makes Dialog ---
+    // We need access to allMakes and selectedMakes from the state.
+    // Ensure we are in Success state before showing (which we are, inside DealerInfoContent)
+    val successState = viewModel.uiState.collectAsState().value as? InfoUiState.Success
+    // Safely cast or assume passed params?
+    // DealerInfoContent is called only on Success, but let's be safe or pass these as params to DealerInfoContent?
+    // Passing as params would be cleaner but requires changing signature heavily.
+    // Let's use the ViewModel state since we are already coupled.
+
+    if (showMakesDialog && successState != null) {
+        val currentSelectedIds = successState.selectedMakes.map { it.makeId }
+        MakesEditSheet(
+            allMakes = successState.allMakes,
+            selectedMakeIds = currentSelectedIds,
+            isSaving = isSaving,
+            onDismiss = { showMakesDialog = false },
+            onSave = { newIds ->
+                viewModel.saveMakes(newIds)
+                showMakesDialog = false
+            }
+        )
+    }
+
+
     if (showDeliveryDialog && dealerInfo.homeDelivery != null) {
-        HomeDeliveryDialog(
+
+        HomeDeliverySheet(
             initialState = dealerInfo.homeDelivery,
             isSaving = isSaving,
             onDismiss = { showDeliveryDialog = false },
@@ -215,7 +312,7 @@ fun DealerInfoContent(
     }
 
     if (showTestDriveDialog && dealerInfo.homeTestDrive != null) {
-        HomeTestDriveDialog(
+        HomeTestDriveSheet(
             initialState = dealerInfo.homeTestDrive,
             isSaving = isSaving,
             onDismiss = { showTestDriveDialog = false },
@@ -227,51 +324,41 @@ fun DealerInfoContent(
     }
 
     if (showAmenitiesDialog && dealerInfo.amenities != null) {
-        AmenitiesEditDialog(
+        AmenitiesEditSheet(
             initialState = dealerInfo.amenities,
             isSaving = isSaving,
             onDismiss = { showAmenitiesDialog = false },
-            // --- FIX: Pass all 6 values to the ViewModel ---
             onSave = { wifi, parking, kidsArea, isEntrance, isSeating, isRestroom ->
-                viewModel.updateAmenities(
-                    wifi = wifi,
-                    parking = parking,
-                    kidsArea = kidsArea,
-                    isEntrance = isEntrance,
-                    isSeating = isSeating,
-                    isRestroom = isRestroom
-                )
+                viewModel.updateAmenities(wifi, parking, kidsArea, isEntrance, isSeating, isRestroom)
                 showAmenitiesDialog = false
             }
         )
     }
 
     if (showHoursDialog) {
-        BusinessHoursEditDialog(
+        BusinessHoursEditSheet(
             isSaving = isSaving,
-            initialGeneral = businessHours,
-            initialParts = partsHours,
-            initialService = serviceHours,
+            initialGeneral = dealerInfo.dealerHours?.find { it.hoursType == "general" },
+            initialParts = dealerInfo.dealerHours?.find { it.hoursType == "parts" },
+            initialService = dealerInfo.dealerHours?.find { it.hoursType == "service" },
             onDismiss = { showHoursDialog = false },
             onSave = { general, parts, service ->
                 viewModel.updateBusinessHours(general, parts, service)
-                Log.d("InfoScreen", "Save Hours clicked")
                 showHoursDialog = false
             }
         )
     }
 
     if (showVirtualAppointmentDialog) {
-        // Use the 'dealerInfo' and 'isSaving' parameters passed into DealerInfoContent
         val currentVirtualAppointmentState = dealerInfo.let {
             VirtualAppointmentState(
                 isAvailable = it.isVirtualAppointment == true,
                 link = it.virtualAppointmentLink ?: ""
             )
         }
-        VirtualAppointmentDialog(
+        VirtualAppointmentSheet(
             initialState = currentVirtualAppointmentState,
-            isSaving = isSaving, // <-- Use the 'isSaving' parameter
+            isSaving = isSaving,
             onDismiss = { showVirtualAppointmentDialog = false },
             onSave = { isAvailable, link ->
                 viewModel.updateVirtualAppointment(isAvailable, link)
@@ -280,1720 +367,602 @@ fun DealerInfoContent(
         )
     }
 
+    if (showBusinessDateDialog) {
+        BusinessOpeningDateSheet(
+            isSaving = isSaving,
+            onDismiss = { showBusinessDateDialog = false },
+            onSave = { month, year ->
+                viewModel.saveOpeningDate(month, year)
+                showBusinessDateDialog = false
+            }
+        )
+    }
+
+    if (showVirtualDealershipDialog) {
+        VirtualDealershipEditSheet(
+            isVirtual = dealerInfo.isVirtual ?: false,
+            isSaving = isSaving,
+            onDismiss = { showVirtualDealershipDialog = false },
+            onSave = { isVirtual ->
+                viewModel.updateIsVirtual(isVirtual)
+                showVirtualDealershipDialog = false
+            }
+        )
+    }
+
+
+
+    // --- Content ---
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                color = Color(0xFFF0F8FF)
-            ),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // 1. Header & Basic Info
         item {
-            HeaderImage(
-                dealerInfo,
+            HeaderAndBasicInfoCard(
+                dealerInfo = dealerInfo,
                 selectedImageUri = selectedImageUri,
-                onClick = onHeaderImageClick
+                onHeaderImageClick = onHeaderImageClick,
+                onEditDetails = {
+                    detailsFieldsToEdit = listOf(
+                        EditFieldState("Name", dealerInfo.name ?: ""),
+                        EditFieldState("Website", dealerInfo.websiteUrl ?: "")
+                    )
+                    showDetailsEditDialog = true
+                },
+                onEditAddress = { showAddressDialog = true },
+                onEditPhone = { showPhoneDialog = true },
+                onEditVirtualDealership = {
+                    showVirtualDealershipDialog = true
+                },
+                onEditBusinessDate = { showBusinessDateDialog = true }
             )
         }
+
+        // 2. Virtual Appointment, Delivery, Test Drive
         item {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                DealerDetailsCard(dealerInfo, viewModel, isSaving)
-                DeliveryAndTestDriveCard(
-                    dealerInfo = dealerInfo,
-                    onEditDelivery = { showDeliveryDialog = true },
-                    onEditTestDrive = { showTestDriveDialog = true }
-                )
-                AdditionalFeaturesCard(
-                    dealerInfo = dealerInfo, // <-- THIS IS THE CHANGE
-                    onVirtualToggled = { viewModel.updateIsVirtual(it) },
-                    onEditVirtualAppointmentClick = { showVirtualAppointmentDialog = true }
-                )
-                BusinessTypeCard(
-                    dealerInfo = dealerInfo,
-                    onEditDealerType = { showDealerTypeDialog = true } // <-- Pass the lambda
-                )
-                AccessibilityAndAmenitiesCard(
-                    amenities = dealerInfo.amenities,
-                    onEditClick = { showAmenitiesDialog = true }
-                )
-                BusinessHoursCard(
-                    businessHours,
-                    partsHours,
-                    serviceHours,
-                    onEditClick = { showHoursDialog = true } // <-- Connect edit click
-                )
-                AboutCard(dealerInfo, viewModel, isSaving)
-            }
-        }
-    }
-}
-
-@Composable
-fun HeaderImage(
-    dealerInfo: DealerInfo,
-    selectedImageUri: Uri?, // <-- 8. ADD
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(255.dp)
-            .padding(12.dp)
-            .shadow(4.dp, shape = RoundedCornerShape(24.dp))
-            .clickable { onClick()}
-    ) {
-        AsyncImage(
-            // --- 10. THE CACHE-BUSTING FIX ---
-            model = ImageRequest.Builder(LocalContext.current)
-                // Show the temporary picked image, or the server URL
-                .data(selectedImageUri ?: dealerInfo.headerImageUrl)
-                // Use the 'updatedOn' timestamp as a unique key
-                .memoryCacheKey(dealerInfo.updatedOn.toString())
-                .diskCacheKey(dealerInfo.updatedOn.toString())
-                .placeholder(R.drawable.toyota) // Use placeholder from original
-                .error(R.drawable.toyota) // Fallback to placeholder
-                .build(),
-            contentDescription = "Dealership exterior",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.7f))
-                .border(1.dp, Color.White, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = "Edit Image",
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
+            ServicesCard(
+                dealerInfo = dealerInfo,
+                onEditVirtualAppointment = { showVirtualAppointmentDialog = true },
+                onEditHomeDelivery = { showDeliveryDialog = true },
+                onEditHomeTestDrive = { showTestDriveDialog = true }
             )
         }
 
-        // Content on top of the image
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Bottom
-        ) {
-            Text(
-                text = dealerInfo.name ?: "Dealership Name",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+        // 3. Accessibility & Amenities
+        item {
+            AmenitiesCard(
+                amenities = dealerInfo.amenities,
+                onEdit = { showAmenitiesDialog = true }
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${dealerInfo.city}, ${dealerInfo.state}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                if (dealerInfo.isClaimed == true) {
-                    Card(
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Image(
-                                painterResource(R.drawable.verified),
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "Claimed & Verified",
-                                color = Color.Black,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
+        }
+
+        // 4. Social Links
+        item {
+            SocialLinksCard(
+                socialProfiles = socialProfiles,
+                onEdit = { showSocialLinksDialog = true }
+            )
+        }
+
+        // 5. Business Details
+        item {
+            // Prepare Makes String
+            val successState = viewModel.uiState.collectAsState().value as? InfoUiState.Success
+            val makesText = if (successState != null && successState.selectedMakes.isNotEmpty()) {
+                // Use makeName from setting if available, else look up in allMakes
+                successState.selectedMakes.joinToString(", ") { setting ->
+                    setting.makeName ?: successState.allMakes.find { it.id == setting.makeId }?.name ?: "Unknown"
                 }
+            } else {
+                "Select makes"
             }
 
-        }
-    }
-}
-
-
-@Composable
-fun BusinessTypeCard(
-    dealerInfo: DealerInfo,
-    onEditDealerType: () -> Unit // <-- Changed parameter
-) {
-    InfoCard(
-        title = "Business Type",
-        icon = Icons.Default.Business,
-        onEditClick = null
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            // These two rows are not editable
-            DetailInfoRow(
-                label = "Business Segment",
-                value = dealerInfo.dealerCategory?.businessSegment ?: "N/A"
+            BusinessDetailsCard(
+                dealerInfo = dealerInfo,
+                makesText = makesText,
+                onEditType = { showDealerTypeDialog = true },
+                onEditMakes = { showMakesDialog = true }
             )
-            DetailInfoRow(
-                label = "Business Category",
-                value = dealerInfo.dealerCategory?.name ?: "N/A"
+        }
+
+        // 6. About
+        item {
+            AboutCard(
+                description = dealerInfo.description,
+                dealerName = dealerInfo.name,
+                onEdit = {
+                    aboutFieldsToEdit = listOf(EditFieldState("About", dealerInfo.description ?: ""))
+                    showAboutEditDialog = true
+                }
             )
-
-            // --- THIS IS THE FIX ---
-            // A special row for Dealership Type that has the edit button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Use a Column to hold the label/value, weighted to take up space
-                Column(modifier = Modifier.weight(1f)) {
-                    DetailInfoRow(
-                        label = "Dealership Type",
-                        value = dealerInfo.dealerType ?: "N/A"
-                    )
-                }
-                // The edit button
-                SmallIconButton(
-                    icon = Icons.Default.Edit,
-                    onClick = onEditDealerType // <-- Connected
-                )
-            }
-            // --- END FIX ---
         }
-    }
-}
 
-@Composable
-fun BusinessHoursCard(
-    general: DealerHours?, parts: DealerHours?, service: DealerHours?,
-    onEditClick: () -> Unit // <-- ADD THIS
-) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Business", "Parts", "Service")
-
-    InfoCard(
-        title = "Business Hours",
-        icon = Icons.Default.Schedule,
-        onEditClick = onEditClick // <-- CONNECT THIS
-    ) {
-        Column(modifier = Modifier.padding(top = 8.dp)) {
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.primary
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(text = title) }
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            when (selectedTabIndex) {
-                0 -> HoursColumn(hoursData = general)
-                1 -> HoursColumn(hoursData = parts)
-                2 -> HoursColumn(hoursData = service)
-            }
-        }
-    }
-}
-
-@Composable
-fun HoursColumn(hoursData: DealerHours?) {
-    Column(
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        val hourDetails = hoursData?.hourDetails
-
-        if (hourDetails.isNullOrEmpty()) {
-            Text(text = "Not available", color = Color.Gray, fontSize = 14.sp)
-        } else {
-            hourDetails.forEach { day ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = day.day?.replaceFirstChar {
-                            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
-                        } ?: "N/A",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    if (day.isClose == "yes") {
-                        Text(
-                            text = "Closed",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Medium
-                        )
-
-                    } else {
-                        Text(
-                            text = "${day.openTime ?: "--"} - ${day.closeTime ?: "--"}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AccessibilityAndAmenitiesCard(
-    amenities: Amenities?,
-    onEditClick: () -> Unit
-) {
-    InfoCard(
-        title = "Amenities",
-        icon = Icons.Default.Deck,
-        onEditClick = onEditClick
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            CheckmarkRow("Wi-Fi", amenities?.isWifi)
-            CheckmarkRow("Parking", amenities?.isParking)
-            CheckmarkRow("Kids Play Area", amenities?.isKidsPlayArea)
-            CheckmarkRow("Wheelchair Accessible Entrance", amenities?.isEntrance)
-            CheckmarkRow("Wheelchair Accessible Seating", amenities?.isSeating)
-            CheckmarkRow("Wheelchair Accessible Restroom", amenities?.isRestroom)
-        }
-    }
-}
-
-@Composable
-fun AboutCard(
-    dealerInfo: DealerInfo,
-    viewModel: InfoViewModel,
-    isSaving: Boolean
-) {
-    var showEditDialog by remember { mutableStateOf(false) }
-    var fieldsToEdit by remember { mutableStateOf<List<EditFieldState>>(emptyList()) }
-
-    if (showEditDialog) {
-        MultiFieldEditDialog(
-            title = "Edit About",
-            fields = fieldsToEdit,
-            isSaving = isSaving,
-            onDismiss = { showEditDialog = false },
-            onSave = { updatedFields ->
-                val aboutText = updatedFields.firstOrNull()?.value ?: ""
-                viewModel.saveDealerUpdates(
-                    mapOf("description" to aboutText),
-                    "About section updated"
-                )
-                showEditDialog = false
-            }
-        )
-    }
-
-    InfoCard(
-        title = "About",
-        icon = Icons.Default.Info,
-        onEditClick = {
-            fieldsToEdit = listOf(EditFieldState("About", dealerInfo.aboutText ?: ""))
-            showEditDialog = true
-        }
-    ) {
-        Text(
-            text = "Description:",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        if (!dealerInfo.description.isNullOrEmpty()) {
-            HtmlText(
-                htmlString = dealerInfo.description,
-                modifier = Modifier.fillMaxWidth()
-            )
-        } else {
-            Text(
-                text = "No description available.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        // 7. Hours
+        item {
+            HoursCard(
+                hours = dealerInfo.dealerHours,
+                onEdit = { showHoursDialog = true }
             )
         }
     }
 }
 
-@Composable
-fun DetailInfoRow(label: String, value: String) {
-    Column {
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MultiFieldEditDialog(
-    title: String,
-    fields: List<EditFieldState>,
-    isSaving: Boolean,
-    onDismiss: () -> Unit,
-    onSave: (List<EditFieldState>) -> Unit
-) {
-    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 200.dp, max = 500.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(
-                        painterResource(R.drawable.surmi),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .padding(end = 8.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = onDismiss, enabled = !isSaving) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                }
-
-                Divider(modifier = Modifier.padding(vertical = 12.dp))
-
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    items(fields) { field ->
-                        OutlinedTextField(
-                            value = field.value,
-                            onValueChange = { field.value = it },
-                            label = { Text(field.label) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(20.dp),
-                            enabled = !isSaving
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss, enabled = !isSaving) {
-                        Text("Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { onSave(fields) },
-                        enabled = !isSaving,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFC0657FA))
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Save")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+// --- Cards ---
 
 @Composable
-fun SmallIconButton(icon: ImageVector, onClick: () -> Unit) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .size(32.dp)
-            .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.05f))
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            tint = Color.Gray
-        )
-    }
-}
-
-@Composable
-fun DealerDetailsCard(
-    dealerInfo: DealerInfo,
-    viewModel: InfoViewModel,
-    isSaving: Boolean
-) {
-    var showEditDialog by remember { mutableStateOf(false) }
-    var fieldsToEdit by remember { mutableStateOf<List<EditFieldState>>(emptyList()) }
-
-    if (showEditDialog) {
-        MultiFieldEditDialog(
-            title = "Edit Details",
-            fields = fieldsToEdit,
-            isSaving = isSaving,
-            onDismiss = { showEditDialog = false },
-            onSave = { updatedFields ->
-                val updateMap = updatedFields.associate {
-                    val apiKey = when (it.label) {
-                        "Name" -> "name"
-                        "Website" -> "website_url" // TODO: Verify API key
-                        "Phone Number" -> "phone"
-                        "Address" -> "address"
-                        "City" -> "city_name" // TODO: Verify API key
-                        else -> ""
-                    }
-                    apiKey to it.value
-                }.filter { it.key.isNotBlank() }
-
-                Log.d("InfoScreen", "Saving Details: $updateMap")
-                viewModel.saveDealerUpdates(updateMap, "Details updated")
-                showEditDialog = false
-            }
-        )
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFBFBFF)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.05f))
-    ) {
-        Column(modifier = Modifier.padding(vertical = 16.dp, horizontal = 20.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Dealer Details",
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Dealer Details",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.weight(1f))
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = Color.Black.copy(alpha = 0.1f))
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                DetailInfoRow(
-                    icon = painterResource(R.drawable.personn),
-                    label = "Name",
-                    value = dealerInfo.name ?: "N/A",
-                    onEditClick = {
-                        fieldsToEdit = listOf(EditFieldState("Name", dealerInfo.name ?: ""))
-                        showEditDialog = true
-                    }
-                )
-                DetailInfoRow(
-                    icon = painterResource(R.drawable.linkk),
-                    label = "Website",
-                    value = dealerInfo.websiteUrl ?: "Not Available",
-                    onEditClick = {
-                        fieldsToEdit =
-                            listOf(EditFieldState("Website", dealerInfo.websiteUrl ?: ""))
-                        showEditDialog = true
-                    }
-                )
-                DetailInfoRow(
-                    icon = painterResource(R.drawable.calll),
-                    label = "Phone Number",
-                    value = dealerInfo.phone ?: "N/A",
-                    onEditClick = {
-                        fieldsToEdit =
-                            listOf(EditFieldState("Phone Number", dealerInfo.phone ?: ""))
-                        showEditDialog = true
-                    }
-                )
-                DetailInfoRow(
-                    icon = painterResource(R.drawable.loca),
-                    label = "Address",
-                    value = "${dealerInfo.address}, ${dealerInfo.city}",
-                    onEditClick = {
-                        fieldsToEdit = listOf(
-                            EditFieldState("Address", dealerInfo.address ?: ""),
-                            EditFieldState("City", dealerInfo.city ?: "")
-                        )
-                        showEditDialog = true
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun DetailInfoRow(
-    icon: Painter,
-    label: String,
-    value: String,
-    onEditClick: (() -> Unit)? = null
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.05f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = Color.Gray
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        if (onEditClick != null) {
-            SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
-        }
-    }
-}
-
-@Composable
-fun CheckmarkRow(text: String, isAvailable: Boolean?) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        val icon = if (isAvailable == true) Icons.Default.CheckCircle else Icons.Default.Cancel
-        val tint = if (isAvailable == true) Color(0xFF34A853) else Color.Red.copy(alpha = 0.7f)
-        Icon(imageVector = icon, contentDescription = null, tint = tint)
-    }
-}
-
-@Composable
-fun InfoCard(
-    title: String,
-    icon: ImageVector,
-    onEditClick: (() -> Unit)? = null,
+fun InfoSectionCard(
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    onEdit: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFBFBFF)),
-        border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.05f))
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, Color(0xFFEEEEEE)), // Very light border
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Column(modifier = Modifier.padding(vertical = 16.dp, horizontal = 20.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                if (onEditClick != null) {
-                    SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
+        Column(modifier = Modifier.padding(16.dp)) {
+            if (title != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    if (onEdit != null) {
+                        // Use a real button or just an icon? Screenshot shows icon button separate or inline.
+                        // For section headers, usually an Update button or Icon.
+                        if (title == "Social Links") {
+                            Button(
+                                onClick = onEdit,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text("Add / Update", fontSize = 12.sp)
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = BrandBlue,
+                                modifier = Modifier.size(20.dp).clickable { onEdit() }
+                            )
+                        }
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = Color.Black.copy(alpha = 0.1f))
-            Spacer(modifier = Modifier.height(8.dp))
-
             content()
         }
     }
 }
 
 @Composable
-fun AdditionalFeaturesCard(
-    dealerInfo: DealerInfo, // <-- CHANGE: Pass the whole dealerInfo object
-    onVirtualToggled: (Boolean) -> Unit,
-    onEditVirtualAppointmentClick: () -> Unit
-) {
-    InfoCard(
-        title = "Additional Features",
-        icon = Icons.Default.AutoAwesome,
-        onEditClick = null
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            // This ToggleRow for Virtual Dealership is correct
-            ToggleRow(
-                label = "Virtual Dealership",
-                description = "Toggle if you are / are not a virtual dealership",
-                isChecked = dealerInfo.isVirtual == true, // <-- Read from dealerInfo
-                onCheckedChange = onVirtualToggled
-            )
-
-            HorizontalDivider(color = Color.Black.copy(alpha = 0.05f))
-
-            // --- THIS IS THE FIX ---
-            // Use a FeatureRow to display status and an edit button
-            FeatureRow(
-                icon = Icons.Default.Videocam, // Use a relevant icon
-                title = "Virtual Appointment",
-                // Read the status from dealerInfo
-                status = if (dealerInfo.isVirtualAppointment == true) "Available" else "Not Available",
-                // Call the function when clicked
-                onEditClick = onEditVirtualAppointmentClick
-            )
-        }
-    }
-}
-
-@Composable
-fun ToggleRow(
-    label: String,
-    description: String,
-    isChecked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        Switch(
-            checked = isChecked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled
-        )
-    }
-}
-
-@Composable
-fun DeliveryAndTestDriveCard(
+fun HeaderAndBasicInfoCard(
     dealerInfo: DealerInfo,
-    onEditDelivery: () -> Unit,
-    onEditTestDrive: () -> Unit
+    selectedImageUri: Uri?,
+    onHeaderImageClick: () -> Unit,
+    onEditDetails: () -> Unit,
+    onEditVirtualDealership: () -> Unit,
+    onEditBusinessDate: () -> Unit,
+    onEditAddress: () -> Unit,
+    onEditPhone: () -> Unit
 ) {
-    InfoCard(
-        title = "At-Home Services",
-        icon = Icons.Default.HomeWork,
-        onEditClick = null
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(top = 8.dp)
+    InfoSectionCard(onEdit = onEditDetails) { // Edit applies to the text fields primarily
+        // Image
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .background(Color(0xFFF0F0F0), RoundedCornerShape(8.dp))
+                .clickable { onHeaderImageClick() },
+            contentAlignment = Alignment.Center
         ) {
-            FeatureRow(
-                icon = Icons.Default.LocalShipping,
-                title = "Home Delivery",
-                status = if (dealerInfo.homeDelivery?.isAvailable == true) "Available" else "Not Available",
-                onEditClick = onEditDelivery
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(selectedImageUri ?: dealerInfo.headerImageUrl)
+                    .memoryCacheKey(dealerInfo.updatedOn.toString())
+                    .diskCacheKey(dealerInfo.updatedOn.toString())
+                    .placeholder(R.drawable.toyota)
+                    .error(R.drawable.toyota)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
             )
-
-            HorizontalDivider(color = Color.Black.copy(alpha = 0.05f))
-
-            FeatureRow(
-                icon = Icons.Default.DriveEta,
-                title = "Home Test Drive",
-                status = if (dealerInfo.homeTestDrive?.isAvailable == true) "Available" else "Not Available",
-                onEditClick = onEditTestDrive // <-- CONNECTED
-            )
-        }
-    }
-}
-
-@Composable
-fun FeatureRow(icon: ImageVector, title: String, status: String, onEditClick: (() -> Unit)? = null) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Icon(imageVector = icon, contentDescription = null, tint = Color.Gray)
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, fontWeight = FontWeight.SemiBold)
-            Text(text = status, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        }
-        if (onEditClick != null) {
-            SmallIconButton(icon = Icons.Default.Edit, onClick = onEditClick)
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeDeliveryDialog(
-    initialState: HomeDelivery,
-    isSaving: Boolean,
-    onDismiss: () -> Unit,
-    onSave: (isAvailable: Boolean, isNationWide: Boolean, radius: String) -> Unit
-) {
-    var isAvailable by remember { mutableStateOf(initialState.isAvailable) }
-    var isNationWide by remember { mutableStateOf(initialState.isNationWide ?: false) }
-    var radius by remember { mutableStateOf(initialState.radius.toString()) }
-
-    LaunchedEffect(initialState) {
-        isAvailable = initialState.isAvailable
-        isNationWide = initialState.isNationWide ?: false
-        radius = initialState.radius.toString()
-    }
-
-    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Home Delivery",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onDismiss, enabled = !isSaving) {
-                        Icon(
-                            Icons.Default.Close,
-                            null
-                        )
-                    }
-                }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-                ToggleRow(
-                    label = "Do you have the facility of Home Delivery?",
-                    isChecked = isAvailable,
-                    onCheckedChange = { isAvailable = it },
-                    description = "",
-                    enabled = !isSaving
-                )
-                ToggleRow(
-                    label = "Deliver Nation Wide?",
-                    isChecked = isNationWide,
-                    onCheckedChange = { isNationWide = it },
-                    description = "",
-                    enabled = !isSaving
-                )
-
-                OutlinedTextField(
-                    value = radius,
-                    onValueChange = { radius = it },
-                    label = { Text("Please Enter The Distance (radius)") },
-                    trailingIcon = { Text("Miles", color = Color.Gray) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isSaving
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
-                    ) { Text("Close") }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { onSave(isAvailable, isNationWide, radius) },
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Save")
-                        }
-                    }
-                }
+            // Edit Icon for ImageD
+            Box(
+                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                    .size(28.dp).background(Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Edit, contentDescription=null, modifier=Modifier.size(16.dp), tint=BrandBlue)
             }
         }
-    }
-}
 
-// --- NEW DIALOG FOR HOME TEST DRIVE ---
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeTestDriveDialog(
-    initialState: HomeTestDrive,
-    isSaving: Boolean,
-    onDismiss: () -> Unit,
-    onSave: (isAvailable: Boolean, radius: String) -> Unit
-) {
-    var isAvailable by remember { mutableStateOf(initialState.isAvailable) }
-    var radius by remember { mutableStateOf(initialState.radius.toString()) }
+        Spacer(modifier = Modifier.height(16.dp))
 
-    LaunchedEffect(initialState) {
-        isAvailable = initialState.isAvailable
-        radius = initialState.radius.toString()
-    }
-
-    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Home Test Drive",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onDismiss, enabled = !isSaving) {
-                        Icon(
-                            Icons.Default.Close,
-                            null
-                        )
-                    }
-                }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-                ToggleRow(
-                    label = "Do you have the facility of Home Test Drive?",
-                    isChecked = isAvailable,
-                    onCheckedChange = { isAvailable = it },
-                    description = "",
-                    enabled = !isSaving
-                )
-
-                OutlinedTextField(
-                    value = radius,
-                    onValueChange = { radius = it },
-                    label = { Text("Please Enter The Distance (radius)") },
-                    trailingIcon = { Text("Miles", color = Color.Gray) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isSaving
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
-                    ) { Text("Close") }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { onSave(isAvailable, radius) },
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Save")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// --- NEW DIALOG FOR AMENITIES ---
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AmenitiesEditDialog(
-    initialState: Amenities,
-    isSaving: Boolean,
-    onDismiss: () -> Unit,
-    // --- FIX: Update onSave to include all 6 values ---
-    onSave: (
-        wifi: Boolean,
-        parking: Boolean,
-        kidsArea: Boolean,
-        isEntrance: Boolean,
-        isSeating: Boolean,
-        isRestroom: Boolean
-    ) -> Unit
-) {
-    // --- FIX: Add state for all 6 toggles ---
-    var isWifi by remember { mutableStateOf(initialState.isWifi ?: false) }
-    var isParking by remember { mutableStateOf(initialState.isParking ?: false) }
-    var isKidsPlayArea by remember { mutableStateOf(initialState.isKidsPlayArea ?: false) }
-    var isEntrance by remember { mutableStateOf(initialState.isEntrance ?: false) }
-    var isSeating by remember { mutableStateOf(initialState.isSeating ?: false) }
-    var isRestroom by remember { mutableStateOf(initialState.isRestroom ?: false) }
-    // ----------------------------------------
-
-    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            modifier = Modifier.heightIn(max = 600.dp) // Make dialog scrollable
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Edit Amenities",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onDismiss, enabled = !isSaving) {
-                        Icon(
-                            Icons.Default.Close,
-                            null
-                        )
-                    }
-                }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-                // --- FIX: Use a LazyColumn for scrolling ---
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    item {
-                        ToggleRow(
-                            label = "Wi-Fi",
-                            description = "Is Wi-Fi available?",
-                            isChecked = isWifi,
-                            onCheckedChange = { isWifi = it },
-                            enabled = !isSaving
-                        )
-                    }
-                    item {
-                        ToggleRow(
-                            label = "Parking",
-                            description = "Is parking available?",
-                            isChecked = isParking,
-                            onCheckedChange = { isParking = it },
-                            enabled = !isSaving
-                        )
-                    }
-                    item {
-                        ToggleRow(
-                            label = "Kids Play Area",
-                            description = "Is a kids play area available?",
-                            isChecked = isKidsPlayArea,
-                            onCheckedChange = { isKidsPlayArea = it },
-                            enabled = !isSaving
-                        )
-                    }
-                    item {
-                        ToggleRow(
-                            label = "Wheelchair Accessible Entrance",
-                            description = "Is the entrance accessible?",
-                            isChecked = isEntrance,
-                            onCheckedChange = { isEntrance = it },
-                            enabled = !isSaving
-                        )
-                    }
-                    item {
-                        ToggleRow(
-                            label = "Wheelchair Accessible Seating",
-                            description = "Is seating accessible?",
-                            isChecked = isSeating,
-                            onCheckedChange = { isSeating = it },
-                            enabled = !isSaving
-                        )
-                    }
-                    item {
-                        ToggleRow(
-                            label = "Wheelchair Accessible Restroom",
-                            description = "Is the restroom accessible?",
-                            isChecked = isRestroom,
-                            onCheckedChange = { isRestroom = it },
-                            enabled = !isSaving
-                        )
-                    }
-                }
-                // --- END FIX ---
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
-                    ) { Text("Close") }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        // --- FIX: Pass all 6 values back ---
-                        onClick = {
-                            onSave(
-                                isWifi,
-                                isParking,
-                                isKidsPlayArea,
-                                isEntrance,
-                                isSeating,
-                                isRestroom
-                            )
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Save")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-fun LoadingAnimation() {
-    // 1. Load the Lottie animation composition from your assets folder
-    val composition by rememberLottieComposition(LottieCompositionSpec.Asset("lott.json")) // <-- Replace with your JSON file name
-
-    // 2. Display the Lottie animation
-    Box(
-        modifier = Modifier.fillMaxSize(), // Center the animation if desired
-        contentAlignment = Alignment.Center
-    ) {
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever, // Loop the animation indefinitely
-            modifier = Modifier.size(200.dp) // Adjust size as needed
-        )
-    }
-}
-
-@Composable
-fun FullScreenError(
-    errorMessage: String,
-    onTryAgain: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // Define colors
-    val primaryBlue = Color(0xFF1B7DD8)
-    val textGrey = Color(0xFF6A7C93)
-    val backgroundBlue = Color(0xFFF0F8FF)
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(backgroundBlue)
-            .padding(horizontal = 40.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center // <-- Center everything
-    ) {
-
-        // --- Simple Icon ---
-        Icon(
-            imageVector = Icons.Rounded.SignalWifiOff,
-            contentDescription = "Error",
-            modifier = Modifier.size(120.dp),
-            tint = primaryBlue.copy(alpha = 0.8f) // Use the theme color
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // --- "Oops!" Title ---
+        // Name
         Text(
-            text = "Oops!",
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            text = dealerInfo.name ?: "Dealership Name",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // --- Main Message ---
-        Text(
-            text = "Internal Server Error!",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
+        // Verified Badge
+        if (dealerInfo.isClaimed == true) {
+            Container(
+                color = LightGreenBackground,
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(1.dp, GreenVerified.copy(alpha = 0.2f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.Verified, null, tint = GreenVerified, modifier=Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Claimed & Verified", color = Color.Black, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Address
+        InfoRowItem(icon = Icons.Outlined.LocationOn, text = "${dealerInfo.address}, ${dealerInfo.city}, ${dealerInfo.zipCode}", showEdit = true, onEdit = onEditAddress)
+
+        // Phone
+        InfoRowItem(icon = Icons.Outlined.Phone, text = dealerInfo.phone ?: "N/A", showEdit = true, onEdit = onEditPhone)
+
+        // Add Business Opening Date (Placeholder as not in model)
+        InfoRowItem(icon = Icons.Outlined.DateRange, text = "Add business opening date", showEdit = true, onEdit = { onEditBusinessDate() })
+
+        // Website
+        InfoRowItem(icon = Icons.Outlined.Language, text = dealerInfo.websiteUrl ?: "Add website", isLink = true, showEdit = false, onEdit = onEditDetails)
+
+        // Email (Using slug or generic handle for now)
+        InfoRowItem(icon = Icons.Outlined.AlternateEmail, text = dealerInfo.slug ?: "email-handle", showEdit = false)
+
+        // Virtual Dealership
+        // "Are you a Virtual Dealership? No"
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(Icons.Outlined.Link, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Are you a Virtual Dealership?", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                Text(if (dealerInfo.isVirtual == true) "Yes" else "No", color = TextGray, fontSize = 14.sp)
+            }
+            Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(18.dp).clickable { onEditVirtualDealership() })
+        }
+    }
+}
+
+@Composable
+fun ServicesCard(
+    dealerInfo: DealerInfo,
+    onEditVirtualAppointment: () -> Unit,
+    onEditHomeDelivery: () -> Unit,
+    onEditHomeTestDrive: () -> Unit
+) {
+    InfoSectionCard {
+        // Virtual Appointment
+        InfoRowItemWithTitle(
+            icon = Icons.Outlined.Link,
+            title = "Virtual Appointment",
+            onEdit = onEditVirtualAppointment
         )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color=Color(0xFFF0F0F0))
+
+        // Home Delivery
+        InfoRowItemWithTitle(
+            icon = Icons.Outlined.Business, // Icon closest to "Building"
+            title = "Home Delivery",
+            onEdit = onEditHomeDelivery
+        )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color=Color(0xFFF0F0F0))
+
+        // Home Test Drive
+        InfoRowItemWithTitle(
+            icon = Icons.Outlined.Business, // Icon closest to "Building"
+            title = "Home Test Drive",
+            onEdit = onEditHomeTestDrive
+        )
+    }
+}
+
+@Composable
+fun AmenitiesCard(
+    amenities: Amenities?,
+    onEdit: () -> Unit
+) {
+    InfoSectionCard(title = "Accessibility", onEdit = onEdit) { // Screenshot says "Accessibility", but has amenities too.
+        // Grouping logic: in screenshot Accessibility has entrance, restroom, seating.
+        // Amenities has Parking, Kids, Wifi.
+        // For simplicity, I will put them in one list for now or separate sections.
+
+        // 1. Accessibility
+        AmenityRow("Wheelchair accessible entrance", amenities?.isEntrance)
+        AmenityRow("Wheelchair accessible restroom", amenities?.isRestroom)
+        AmenityRow("Wheelchair accessible seating", amenities?.isSeating)
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Amenities", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        AmenityRow("Parking", amenities?.isParking)
+        AmenityRow("Kids play area", amenities?.isKidsPlayArea)
+        AmenityRow("Wifi", amenities?.isWifi)
+    }
+}
+
+
+@Composable
+fun SocialLinksCard(
+    socialProfiles: List<SocialProfileItem>,
+    onEdit: () -> Unit
+) {
+    // Filter out profiles with empty URLs
+    val visibleProfiles = socialProfiles.filter { it.socialLink.isNotBlank() }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, Color(0xFFEEEEEE)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = if (visibleProfiles.isNotEmpty()) 16.dp else 0.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Social Links",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Button(
+                    onClick = onEdit,
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text("Add / Update", fontSize = 12.sp)
+                }
+            }
+
+            if (visibleProfiles.isNotEmpty()) {
+                visibleProfiles.forEachIndexed { index, profile ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = profile.socialType.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = profile.socialLink,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                    if (index < visibleProfiles.lastIndex) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BusinessDetailsCard(
+    dealerInfo: DealerInfo,
+    makesText: String,
+    onEditType: () -> Unit,
+    onEditMakes: () -> Unit
+) {
+    InfoSectionCard {
+        DetailRow("Business Segment", dealerInfo.dealerCategory?.businessSegment ?: "Automobile")
+        DetailRow("Business Category", dealerInfo.dealerCategory?.name ?: "Car Dealership")
+        Divider(color = Color.Transparent, modifier = Modifier.height(8.dp))
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                Text("Dealership Type", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(dealerInfo.dealerType ?: "N/A", color = TextGray, fontSize = 14.sp)
+            }
+            Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(18.dp).clickable { onEditType() })
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // --- Description Text ---
-        Text(
-            text = "Something went wrong. Try refreshing the page or checking your internet connection. We'll see you in a moment!",
-            style = MaterialTheme.typography.bodyMedium,
-            color = textGrey,
-            textAlign = TextAlign.Center // Center the text
-        )
-
-        // --- Technical Error Message ---
-        Text(
-            text = "Error: $errorMessage",
-            style = MaterialTheme.typography.bodySmall,
-            color = textGrey.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(40.dp)) // Space before button
-
-        // --- "Try again" Button ---
-        Button(
-            onClick = onTryAgain,
-            shape = RoundedCornerShape(50), // Fully rounded
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = primaryBlue, // Solid blue background
-                contentColor = Color.White
-            )
-        ) {
-            Text(
-                text = "Try again",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-    }
-}
-
-/**
- * A data class to hold the mutable state for a single day in the dialog.
- */
-class DayHourState(
-    val day: String,
-    initialOpen: String,
-    initialClose: String,
-    initialIsClosed: Boolean
-) {
-    var openTime by mutableStateOf(initialOpen)
-    var closeTime by mutableStateOf(initialClose)
-    var isClosed by mutableStateOf(initialIsClosed)
-
-    // Helper to convert back to the domain model
-    fun toHourDetails(): HourDetails {
-        // --- THIS IS THE FIX ---
-        // Converts the dialog's Boolean state (isClosed) back to the
-        // String ("yes" or "no") that the API and HourDetails model expect.
-        return HourDetails(
-            day = this.day.lowercase(Locale.ROOT), // Send as lowercase
-            openTime = if (isClosed) null else this.openTime,
-            closeTime = if (isClosed) null else this.closeTime,
-            isClose = if (isClosed) "yes" else "no", // Send as "yes" or "no"
-        )
-        // -------------------------------------------------
-    }
-}
-
-/**
- * Creates and remembers a list of mutable DayHourState objects.
- */
-@Composable
-fun rememberHoursState(hours: DealerHours?): List<DayHourState> {
-    val days = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-    return remember(hours) {
-        days.map { dayName ->
-            // --- FIX: Compare with lowercase day from API ---
-            val details = hours?.hourDetails?.find { it.day == dayName.lowercase(Locale.ROOT) }
-            DayHourState(
-                day = dayName, // Keep capitalized for dialog display
-                initialOpen = details?.openTime ?: "09:00 AM",
-                initialClose = details?.closeTime ?: "05:00 PM",
-                // --- FIX: Check for the string "yes" ---
-                initialIsClosed = details?.isClose == "yes"
-                // ---------------------------------------
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun BusinessHoursEditDialog(
-    isSaving: Boolean,
-    initialGeneral: DealerHours?,
-    initialParts: DealerHours?,
-    initialService: DealerHours?,
-    onDismiss: () -> Unit,
-    onSave: (general: List<HourDetails>, parts: List<HourDetails>, service: List<HourDetails>) -> Unit
-) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Business", "Parts", "Service")
-
-    // Create mutable states for all 21 fields (7 days x 3 tabs)
-    val generalHoursState = rememberHoursState(hours = initialGeneral)
-    val partsHoursState = rememberHoursState(hours = initialParts)
-    val serviceHoursState = rememberHoursState(hours = initialService)
-
-    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            modifier = Modifier.heightIn(max = 650.dp)
-        ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                // --- Header ---
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                        .padding(horizontal = 24.dp, vertical = 20.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "Edit Business Hours",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = onDismiss,
-                            enabled = !isSaving,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Close,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-                    // --- Tabs ---
-                    TabRow(
-                        selectedTabIndex = selectedTabIndex,
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.primary,
-                        divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) }
-                    ) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
-                                text = {
-                                    Text(
-                                        text = title,
-                                        fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Medium,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                },
-                                enabled = !isSaving,
-                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // --- Content switches based on tab ---
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(bottom = 8.dp)
-                    ) {
-                        val currentHoursState = when (selectedTabIndex) {
-                            0 -> generalHoursState
-                            1 -> partsHoursState
-                            else -> serviceHoursState
-                        }
-
-                        items(currentHoursState) { dayState ->
-                            HourEditRow(dayState = dayState, enabled = !isSaving)
-                            if (dayState != currentHoursState.last()) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(top = 16.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // --- Save Button ---
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(
-                            onClick = onDismiss,
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isSaving
-                        ) {
-                            Text("Cancel", style = MaterialTheme.typography.labelLarge)
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Button(
-                            onClick = {
-                                onSave(
-                                    generalHoursState.map { it.toHourDetails() },
-                                    partsHoursState.map { it.toHourDetails() },
-                                    serviceHoursState.map { it.toHourDetails() }
-                                )
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isSaving,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            ),
-                            modifier = Modifier.height(48.dp)
-                        ) {
-                            if (isSaving) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text("Save Changes", fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-                }
+                Text("Make(s)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(makesText, color = TextGray, fontSize = 14.sp)
             }
+            Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(18.dp).clickable { onEditMakes() })
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HourEditRow(dayState: DayHourState, enabled: Boolean) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = dayState.day,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "Closed",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Switch(
-                checked = dayState.isClosed,
-                onCheckedChange = { dayState.isClosed = it },
-                enabled = enabled
-            )
-        }
-
-        AnimatedVisibility(visible = !dayState.isClosed) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = dayState.openTime,
-                    onValueChange = { dayState.openTime = it },
-                    label = { Text("Open") },
-                    modifier = Modifier.weight(1f),
-                    enabled = enabled,
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = dayState.closeTime,
-                    onValueChange = { dayState.closeTime = it },
-                    label = { Text("Close") },
-                    modifier = Modifier.weight(1f),
-                    enabled = enabled,
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DealerTypeEditDialog(
-    initialType: String,
-    isSaving: Boolean,
-    onDismiss: () -> Unit,
-    onSave: (newType: String) -> Unit
+fun AboutCard(
+    description: String?,
+    dealerName: String?,
+    onEdit: () -> Unit
 ) {
-    val options = listOf("Independent", "Franchise")
-    var isExpanded by remember { mutableStateOf(false) }
-    // Set the initial selected option, defaulting to "Independent"
-    var selectedOption by remember { mutableStateOf(if (initialType in options) initialType else "Independent") }
-
-    // --- FIX: Use AlertDialog instead of Dialog + Card ---
-    AlertDialog(
-        onDismissRequest = { if (!isSaving) onDismiss() },
-        shape = RoundedCornerShape(16.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-        // --- 1. Title Slot ---
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    "Request for Dealership Type change",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onDismiss, enabled = !isSaving) {
-                    Icon(Icons.Default.Close, null)
-                }
-            }
-        },
-        // --- 2. Text/Content Slot ---
-        text = {
-            Column {
-                HorizontalDivider(modifier = Modifier.padding(bottom = 24.dp)) // Divider after title
-
-                Text(
-                    "Select dealership type",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                // The Dropdown now lives in the 'text' slot
-                ExposedDropdownMenuBox(
-                    expanded = isExpanded,
-                    onExpandedChange = { if (!isSaving) isExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = if (selectedOption == "Franchise") "Franchise (Request for change)" else selectedOption,
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded)
-                        },
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        enabled = !isSaving
-                    )
-                    // This menu will now render in the correct popup window
-                    ExposedDropdownMenu(
-                        expanded = isExpanded,
-                        onDismissRequest = { isExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Independent") },
-                            onClick = {
-                                selectedOption = "Independent"
-                                isExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Franchise (Request for change)") },
-                            onClick = {
-                                selectedOption = "Franchise"
-                                isExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-        },
-        // --- 3. Confirm Button Slot ---
-        confirmButton = {
-            Button(
-                onClick = { onSave(selectedOption) },
-                shape = RoundedCornerShape(8.dp),
-                enabled = !isSaving,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D60FE)) // Match blue
-            ) {
-                if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("Save")
-                }
-            }
-        },
-        // --- 4. Dismiss Button Slot ---
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(8.dp),
-                enabled = !isSaving
-            ) {
-                Text("Cancel")
-            }
+    InfoSectionCard(title = "About", onEdit = onEdit) {
+        Text(dealerName ?: "Dealership", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        if (description.isNullOrEmpty()) {
+            Text("No description available.", style = MaterialTheme.typography.bodyMedium, color = TextGray)
+        } else {
+            // Truncate or Show All? Screenshot shows text.
+            HtmlText(htmlString = description)
         }
-    )
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VirtualAppointmentDialog(
-    initialState: VirtualAppointmentState,
-    isSaving: Boolean,
-    onDismiss: () -> Unit,
-    onSave: (isAvailable: Boolean, link: String) -> Unit
+fun HoursCard(
+    hours: List<DealerHours>?,
+    onEdit: () -> Unit
 ) {
-    var isAvailable by remember { mutableStateOf(initialState.isAvailable) }
-    var link by remember { mutableStateOf(initialState.link) }
+    InfoSectionCard(title = "Business Hours", onEdit = onEdit) {
+        val general = hours?.find { it.hoursType == "general" }
+        HoursList(general)
 
-    // Use LaunchedEffect to update state if initialState changes (e.g., after a refresh)
-    LaunchedEffect(initialState) {
-        isAvailable = initialState.isAvailable
-        link = initialState.link
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Parts Hours", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(18.dp).clickable { onEdit() })
+        }
+        HoursList(hours?.find { it.hoursType == "parts" })
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Service Hours", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(18.dp).clickable { onEdit() })
+        }
+        HoursList(hours?.find { it.hoursType == "service" })
     }
+}
 
-    Dialog(onDismissRequest = { if (!isSaving) onDismiss() }) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+@Composable
+fun HoursList(hours: DealerHours?) {
+    if (hours?.hourDetails.isNullOrEmpty()) {
+        Text("Not available", color = TextGray, fontSize = 12.sp)
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            hours?.hourDetails?.forEach { day ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
-                        "Virtual Appointment",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
+                        text = day.day?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "N/A",
+                        color = TextGray, fontSize = 14.sp
                     )
-                    IconButton(onClick = onDismiss, enabled = !isSaving) {
-                        Icon(Icons.Default.Close, null)
-                    }
-                }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-                ToggleRow(
-                    label = "Do you have the facility of Virtual Appointment?",
-                    isChecked = isAvailable,
-                    onCheckedChange = { isAvailable = it },
-                    description = if (isAvailable) "If \"YES\" enter URL" else "", // Dynamic description
-                    enabled = !isSaving
-                )
-
-                // Only show the URL input if isAvailable is true
-                if (isAvailable) {
-                    OutlinedTextField(
-                        value = link,
-                        onValueChange = { link = it },
-                        label = { Text("Virtual Appointment Link") },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSaving,
-                        singleLine = true // Ensures it doesn't expand
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
-                    ) { Text("Close") }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { onSave(isAvailable, link) },
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isSaving
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Save")
-                        }
+                    if (day.isClose == "yes") {
+                        Text("Closed", color = Color.Red, fontSize = 14.sp)
+                    } else {
+                        Text("${day.openTime ?: "--"} - ${day.closeTime ?: "--"}", color = Color.Black, fontSize = 14.sp)
                     }
                 }
             }
         }
     }
 }
+
+
+// --- Helper Composables ---
+
+@Composable
+fun InfoRowItem(
+    icon: ImageVector,
+    text: String,
+    showEdit: Boolean = false,
+    isLink: Boolean = false,
+    onEdit: () -> Unit = {}
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(icon, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isLink) BrandBlue else Color.Black,
+            modifier = Modifier.weight(1f)
+        )
+        if (showEdit) {
+            Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(18.dp).clickable { onEdit() })
+        }
+    }
+}
+
+@Composable
+fun InfoRowItemWithTitle(
+    icon: ImageVector,
+    title: String,
+    onEdit: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(18.dp).clickable { onEdit() })
+    }
+}
+
+@Composable
+fun AmenityRow(text: String, isAvailable: Boolean?) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (isAvailable == true) {
+            Icon(Icons.Default.CheckCircle, null, tint = GreenVerified, modifier = Modifier.size(20.dp))
+        } else {
+            Icon(Icons.Default.Cancel, null, tint = Color.Red, modifier = Modifier.size(20.dp))
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(text, color = TextGray, fontSize = 14.sp)
+    }
+}
+
+@Composable
+fun DetailRow(label: String, value: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(label, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(value, color = TextGray, fontSize = 14.sp)
+    }
+}
+
+
+@Composable
+fun Container(
+    modifier: Modifier = Modifier,
+    color: Color = Color.Transparent,
+    shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape,
+    border: BorderStroke? = null,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .background(color, shape)
+            .then(if (border != null) Modifier.border(border, shape) else Modifier)
+    ) {
+        content()
+    }
+}
+
+

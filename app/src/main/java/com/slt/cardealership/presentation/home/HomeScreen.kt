@@ -1,6 +1,7 @@
 package com.slt.cardealership.presentation.home
 
-
+import com.slt.cardealership.presentation.common.LoadingAnimation
+import com.slt.cardealership.presentation.common.FullScreenError
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -129,7 +130,6 @@ import com.slt.cardealership.presentation.articles.ArticleScreen
 import com.slt.cardealership.presentation.auth.AuthViewModel
 import com.slt.cardealership.presentation.faq.AddFaqScreen
 import com.slt.cardealership.presentation.faq.FaqScreen
-import com.slt.cardealership.presentation.info.FullScreenError
 import com.slt.cardealership.presentation.info.InfoScreen
 import com.slt.cardealership.presentation.info.InfoUiState
 import com.slt.cardealership.presentation.info.InfoViewModel
@@ -322,7 +322,10 @@ sealed class HomeRoutes {
     data class AddEditClassifiedBanner(val siteId: String, val bannerId: String? = null) : HomeRoutes()
 
     @Serializable
-    object ClassifiedFaqs : HomeRoutes()
+    data class ClassifiedFaqs(val siteId: String) : HomeRoutes()
+
+    @Serializable
+    data class AddEditClassifiedFaq(val siteId: String, val faqId: String? = null) : HomeRoutes()
 }
 
 // --- NEW Data class for the stats grid ---
@@ -403,7 +406,8 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                 navController = homeNavController,
                 drawerState = drawerState,
                 scope = scope,
-                currentRoute = currentRoute
+                currentRoute = currentRoute,
+                dealerInfo = (uiState as? InfoUiState.Success)?.dealerInfo
             )
         },
         gesturesEnabled = drawerState.isOpen
@@ -441,11 +445,10 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
 
                         is InfoUiState.Error -> {
                             FullScreenError(
-                                errorMessage = state.message,
-                                onTryAgain = {
+                                message = state.message,
+                                onRetry = {
                                     infoviewModel.fetchDealerInfo()
-                                },
-                                modifier = Modifier.fillMaxSize()
+                                }
                             )
                         }
 
@@ -849,9 +852,21 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                     )
                 }
 
-                composable<HomeRoutes.ClassifiedFaqs> {
+
+                composable<HomeRoutes.ClassifiedFaqs> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.ClassifiedFaqs>()
                     com.slt.cardealership.presentation.ManageClassified.faqs.ClassifiedFaqsScreen(
-                        navController = homeNavController
+                        navController = homeNavController,
+                        siteId = args.siteId
+                    )
+                }
+
+                composable<HomeRoutes.AddEditClassifiedFaq> { backStackEntry ->
+                    // val args = backStackEntry.toRoute<HomeRoutes.AddEditClassifiedFaq>()
+                    // The ViewModel gets args from SavedStateHandle directly
+                    com.slt.cardealership.presentation.ManageClassified.faqs.AddEditClassifiedFaqScreen(
+                        navController = homeNavController,
+                        onNavigateBack = { homeNavController.popBackStack() }
                     )
                 }
             }
@@ -863,7 +878,7 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
 fun WelcomeHeader(dealerInfo: DealerInfo, userProfile: com.slt.cardealership.domain.model.UserProfile?) {
     Column {
         Text(
-            text = "Hi! " + (userProfile?.firstName ?: dealerInfo.name ?: "Dealer Admin"),
+            text = "Hi! " + (dealerInfo.name ?: "Dealer Admin"),
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = BrandDarkBlue,
@@ -1024,7 +1039,8 @@ fun NavigationDrawerContent(
     navController: NavController,
     drawerState: DrawerState,
     scope: CoroutineScope,
-    currentRoute: String?
+    currentRoute: String?,
+    dealerInfo: DealerInfo? // Added parameter
 ) {
 
     val items = listOf(
@@ -1084,6 +1100,16 @@ fun NavigationDrawerContent(
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
+
+                // Show Dealer Plan
+                dealerInfo?.dealerType?.let { plan ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Plan: $plan",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
 
                 Text(
                     text = "Management Console",

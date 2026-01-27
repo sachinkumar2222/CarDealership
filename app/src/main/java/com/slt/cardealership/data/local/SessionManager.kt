@@ -128,10 +128,21 @@ class SessionManager @Inject constructor( @ApplicationContext private val contex
     suspend fun getLastName(): String? {
         val jwt = getJwt() ?: return null
         return try {
-            // Your JWT log shows "family_name"
             jwt.getClaim("family_name").asString()
         } catch (e: Exception) {
             Log.e("SessionManager", "Error parsing family_name claim", e)
+            null
+        }
+    }
+
+    suspend fun getUserId(): Int? {
+        val jwt = getJwt() ?: return null
+        return try {
+            // Attempt to read extension_UserId (common pattern with extension_DealerId)
+            val userIdString = jwt.getClaim("extension_UserId").asString()
+            userIdString?.toIntOrNull()
+        } catch (e: Exception) {
+            Log.e("SessionManager", "Error parsing User ID claim", e)
             null
         }
     }

@@ -113,7 +113,7 @@ fun AdsScreen(
         topBar = {
             TopAppBar(
                 modifier = Modifier.shadow(8.dp),
-                title = { Text("All Advertisements", fontWeight = FontWeight.Bold) },
+                title = { Text("Advertisement", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -154,8 +154,8 @@ fun AdsScreen(
                 .padding(horizontal = 16.dp),
             listState = listState, // Pass the state
             onEditClick = { ad ->
-                viewModel.loadAdForEdit(ad.id!!) // Load data for editing
-                navController.navigate(HomeRoutes.AddAdsScreen)
+                // viewModel.loadAdForEdit(ad.id!!) // Handled in EditAdsScreen
+                navController.navigate(HomeRoutes.EditAdsScreen(ad.id!!))
             },
             onDeleteClick = { ad ->
                 showDeleteDialog = ad // Show confirmation dialog
@@ -429,8 +429,7 @@ fun DetailRow(label: String, value: String, backgroundColor: Color, isLast: Bool
 @Composable
 fun EmptyState() {
     Column(
-        modifier = Modifier
-            .fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

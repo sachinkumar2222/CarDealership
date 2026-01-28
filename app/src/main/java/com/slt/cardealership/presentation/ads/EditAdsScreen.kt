@@ -57,7 +57,6 @@ private val goalIcons = mapOf(
     "Create a custom goal" to R.drawable.ad_goal5
 )
 
-// Moved makeMap from ViewModel to here to solve privacy error
 private val makeMap = mapOf(
     "acura" to 2, "alfa romeo" to 3, "aston martin" to 5, "audi" to 6, "azbv" to 82,
     "b acura" to 87, "bentley" to 7, "bmw" to 8, "buick" to 10, "cadillac" to 11,
@@ -76,25 +75,32 @@ private val makeMap = mapOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddAdsScreen(
+fun EditAdsScreen(
     navController: NavController,
-    // Scope the ViewModel to the parent graph
+    adId: String, // PASSED AD ID
     parentEntry: androidx.navigation.NavBackStackEntry = remember(navController.currentBackStackEntry) {
         navController.getBackStackEntry(HomeRoutes.Dashboard::class)
     },
     viewModel: AdsViewModel = hiltViewModel(parentEntry),
-    // We also need the VehicleViewModel to get the list of makes
-    // We scope it the same way
     vehicleViewModel: VehicleViewModel = hiltViewModel(parentEntry)
 ) {
     val formState by viewModel.formState.collectAsState()
     val goalState by viewModel.goalState.collectAsState()
     val goalTypeState by viewModel.goalTypeState.collectAsState()
     val modelState by viewModel.modelState.collectAsState()
+    val domainState by viewModel.domainState.collectAsState()
+    val galleryState by viewModel.galleryState.collectAsState()
+
+    var showDomainSheet by remember { mutableStateOf(false) }
+    var showImageSheet by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
 
-    // Handle navigation and error events
+    // LOAD AD DATA ON ENTRY
+    LaunchedEffect(adId) {
+        viewModel.loadAdForEdit(adId)
+    }
+
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
             when (event) {
@@ -103,13 +109,12 @@ fun AddAdsScreen(
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }
                 is AdsEvent.ShowSuccess -> {
-                    // Handled by AdsScreen
+                    // Handled usually by AdsScreen refresh, but here we just pop
                 }
             }
         }
     }
 
-    // --- Event Handlers ---
     val onFormChange = remember<(AdFormState) -> Unit> {
         { newState -> viewModel.onFormStateChange(newState) }
     }
@@ -177,13 +182,12 @@ fun AddAdsScreen(
         }
     }
 
-    // --- UI ---
     Scaffold(
         topBar = {
             TopAppBar(
                 modifier = Modifier.shadow(8.dp),
                 title = { Text(
-                    "Add Advertisement",
+                    "Edit Advertisement",
                     fontWeight = FontWeight.Bold
                 ) },
                 navigationIcon = {
@@ -202,6 +206,46 @@ fun AddAdsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
+            // --- Top Navigation Tabs ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Info (Active)
+                Button(
+                    onClick = { /* Already on Info */ },
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = themeColor),
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text("Info", color = Color.White)
+                }
+                
+                // Domain (Action)
+                OutlinedButton(
+                    onClick = { showDomainSheet = true },
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, themeColor),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = themeColor)
+                ) {
+                    Text("Domain")
+                }
+
+                // Image (Action)
+                OutlinedButton(
+                    onClick = { showImageSheet = true },
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, themeColor),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = themeColor)
+                ) {
+                    Text("Image")
+                }
+            }
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -221,7 +265,7 @@ fun AddAdsScreen(
                     }
 
                     formState.formError?.let {
-                        Log.d("AddAdsScreen", "Form error: $it")
+                        Log.d("EditAdsScreen", "Form error: $it")
                     }
 
                     SectionTitle(title = "Advertisement Details")
@@ -293,7 +337,6 @@ fun AddAdsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // --- Conditional UI ---
                     AnimatedVisibility(visible = formState.adType in listOf("General", "Co-op")) {
                         Column(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -342,7 +385,6 @@ fun AddAdsScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
                     SectionTitle(title = "Advertisement Date")
-                    
                     val datePickerState = rememberDatePickerState(
                         initialSelectedDateMillis = formState.startDateMillis ?: System.currentTimeMillis()
                     )
@@ -370,14 +412,18 @@ fun AddAdsScreen(
                                         }
                                         showDatePicker = false
                                     }
-                                ) { Text("OK") }
+                                ) {
+                                    Text("OK")
+                                }
                             },
                             dismissButton = {
                                 TextButton(onClick = { showDatePicker = false }) {
                                     Text("Cancel", color = themeColor)
                                 }
                             },
-                            colors = DatePickerDefaults.colors(containerColor = Color.White)
+                            colors = DatePickerDefaults.colors(
+                                containerColor = Color.White,
+                            )
                         ) {
                             DatePicker(
                                 state = datePickerState,
@@ -418,7 +464,6 @@ fun AddAdsScreen(
                                 .clickable { showDatePicker = true }
                         )
                     }
-                    
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = formState.noEndDate,
@@ -486,13 +531,39 @@ fun AddAdsScreen(
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                 } else {
                     Text(
-                        "Save Ad",
+                        "Update Ad",
                         fontSize = 16.sp,
                         color = Color.White
                     )
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        if (showDomainSheet) {
+            LaunchedEffect(Unit) { viewModel.loadDomains(adId) }
+            DomainManagementSheet(
+                availableDomains = domainState.availableDomains,
+                selectedDomainIds = domainState.selectedDomainIds,
+                isLoading = domainState.isLoading,
+                onDismiss = { showDomainSheet = false },
+                onSave = { selectedIds ->
+                    viewModel.saveDomains(adId, selectedIds)
+                    showDomainSheet = false
+                }
+            )
+        }
+
+        if (showImageSheet) {
+            LaunchedEffect(Unit) { viewModel.loadGallery(adId) }
+            ImageGallerySheet(
+                images = galleryState.images,
+                isLoading = galleryState.isLoading,
+                onDismiss = { showImageSheet = false },
+                onAddImage = { file -> viewModel.uploadGalleryImage(adId, file) },
+                onDeleteImage = { imageId -> viewModel.deleteGalleryImage(imageId) },
+                onSave = { viewModel.saveGallery(adId) }
+            )
         }
     }
 }

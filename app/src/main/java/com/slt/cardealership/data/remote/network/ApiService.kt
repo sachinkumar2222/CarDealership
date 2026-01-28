@@ -2,8 +2,8 @@ package com.slt.cardealership.data.remote.network
 
 import com.slt.cardealership.domain.model.AddSeoTagRequest
 import com.slt.cardealership.domain.model.Advertisement
-import com.slt.cardealership.domain.model.AdvertisementGalleryResponse
 import com.slt.cardealership.domain.model.AdvertisementGoal
+import com.slt.cardealership.domain.model.AdvertisementImage
 import com.slt.cardealership.domain.model.DetailedUserProfile
 import com.slt.cardealership.domain.model.AdvertisementGoalType
 import com.slt.cardealership.domain.model.AdvertisementListResponse
@@ -39,7 +39,6 @@ import com.slt.cardealership.domain.model.SeoTagListResponse
 import com.slt.cardealership.domain.model.UpdateDomainsRequest
 import com.slt.cardealership.domain.model.UpdateHoursRequest
 import com.slt.cardealership.domain.model.UserProfile
-import com.slt.cardealership.domain.model.UserProfileUpdateRequest
 import com.slt.cardealership.domain.model.Vehicle
 import retrofit2.Response
 import retrofit2.http.GET
@@ -57,8 +56,7 @@ import com.slt.cardealership.domain.model.VehicleListResponse
 import com.slt.cardealership.domain.model.VehicleGalleryResponse
 import com.slt.cardealership.domain.model.GalleryImageUploadResponse
 import com.slt.cardealership.domain.model.ManageUsers
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody.Companion.toRequestBody
+import com.slt.cardealership.domain.model.AdvDomain
 import retrofit2.http.Field
 import retrofit2.http.FieldMap
 import retrofit2.http.FormUrlEncoded
@@ -460,12 +458,23 @@ interface ApiService {
         @Body request: UpdateDomainsRequest
     ): Response<Unit>
 
+    @GET("application-api/domains/getAdvDomains")
+    suspend fun getAvailableDomains(
+        @Query("adv_type") advType: String
+    ): List<AdvDomain>
+
+    @GET("dealer-api/dealers/{dealer_id}/advertisements/{id}/domains")
+    suspend fun getSelectedDomains(
+        @Path("dealer_id") dealerId: Long,
+        @Path("id") advertisementId: String
+    ): List<Int>
+
     // --- Ad Gallery APIs ---
     @GET("dealer-api/dealers/{dealer_id}/advertisements/{id}/gallery")
     suspend fun getAdvertisementGallery(
         @Path("dealer_id") dealerId: Long,
         @Path("id") advertisementId: String
-    ): AdvertisementGalleryResponse
+    ): List<AdvertisementImage>
 
     @Multipart
     @POST("dealer-api/dealers/{dealer_id}/advertisements/{id}/gallery")
@@ -473,6 +482,29 @@ interface ApiService {
         @Path("dealer_id") dealerId: Long,
         @Path("id") advertisementId: String,
         @Part images: List<MultipartBody.Part>
+    ): Response<Unit>
+
+    @Multipart
+    @POST("dealer-api/dealers/{dealer_id}/advertisements/{id}/gallery")
+    suspend fun saveAdvertisementGallery(
+        @Path("dealer_id") dealerId: Long,
+        @Path("id") advertisementId: String,
+        @Part("image_urls") imageUrls: RequestBody
+    ): List<AdvertisementImage>
+
+    @Multipart
+    @POST("dealer-api/dealers/{dealer_id}/advertisements/{id}/gallery")
+    suspend fun uploadAdvertisementGalleryImage(
+        @Path("dealer_id") dealerId: Long,
+        @Path("id") advertisementId: String,
+        @Part gallery: MultipartBody.Part
+    ): List<AdvertisementImage>
+
+    @DELETE("dealer-api/dealers/{dealer_id}/advertisements/{id}/gallery")
+    suspend fun deleteAdvertisementGalleryImage(
+        @Path("dealer_id") dealerId: Long,
+        @Path("id") advertisementId: String,
+        @Query("image_id") imageId: String
     ): Response<Unit>
 
     @GET("dealer-api/dealer-seo-tags")

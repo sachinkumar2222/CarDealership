@@ -217,8 +217,13 @@ interface DealerRepository {
     suspend fun addAdvertisement(dealerId: Long, advertisement: Advertisement): Result<String>
     suspend fun updateAdvertisement(dealerId: Long, advertisementId: String, advertisement: Advertisement): Result<Advertisement>
     // suspend fun getAdvertisementDomains(dealerId: Long, advertisementId: String): Result<List<AdvertisementDomain>>
-    suspend fun updateAdvertisementDomains(dealerId: Long, advertisementId: String, domainIds: List<String>): Result<Unit>
+    suspend fun updateAdvertisementDomains(dealerId: Long, advertisementId: String, domainIds: List<Int>): Result<Unit>
+    suspend fun getAvailableDomains(advType: String = "general"): Result<List<com.slt.cardealership.domain.model.AdvDomain>>
+    suspend fun getSelectedDomains(dealerId: Long, advertisementId: String): Result<List<Int>>
+    suspend fun uploadAdvertisementGalleryImage(dealerId: Long, advertisementId: String, imageFile: File): Result<List<com.slt.cardealership.domain.model.AdvertisementImage>>
     suspend fun getAdvertisementGallery(dealerId: Long, advertisementId: String): Result<List<AdvertisementImage>>
+    suspend fun saveAdvertisementGallery(dealerId: Long, advertisementId: String, images: List<AdvertisementImage>): Result<List<AdvertisementImage>>
+    suspend fun deleteAdvertisementGalleryImage(dealerId: Long, advertisementId: String, imageId: String): Result<Unit>
     suspend fun updateAdvertisementGallery(dealerId: Long, advertisementId: String, imageFiles: List<File>): Result<Unit>
 
     // --- SEO Tags ---

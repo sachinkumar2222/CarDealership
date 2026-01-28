@@ -1393,9 +1393,9 @@ class DealerRepositoryImpl @Inject constructor(
 //        return null
 //    }
 
-    override suspend fun updateAdvertisementDomains(dealerId: Long, advertisementId: String, domainIds: List<String>): Result<Unit> {
+    override suspend fun updateAdvertisementDomains(dealerId: Long, advertisementId: String, domainIds: List<Int>): Result<Unit> {
         return try {
-            val request = UpdateDomainsRequest(domainIds = domainIds)
+            val request = UpdateDomainsRequest(list = domainIds)
             val response = apiService.updateAdvertisementDomains(dealerId, advertisementId, request)
             if (response.isSuccessful) Result.success(Unit)
             else Result.failure(Exception(getErrorMessageFromResponse(response, "Failed to update domains")))
@@ -1407,7 +1407,7 @@ class DealerRepositoryImpl @Inject constructor(
     override suspend fun getAdvertisementGallery(dealerId: Long, advertisementId: String): Result<List<AdvertisementImage>> {
         return try {
             val response = apiService.getAdvertisementGallery(dealerId, advertisementId)
-            Result.success(response.list ?: emptyList())
+            Result.success(response)
         } catch (e: Exception) {
             Result.failure(Exception(getErrorMessage(e)))
         }
@@ -2528,6 +2528,59 @@ class DealerRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getGmbMedia(dealerId)
             Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    override suspend fun getAvailableDomains(advType: String): Result<List<com.slt.cardealership.domain.model.AdvDomain>> {
+        return try {
+            val response = apiService.getAvailableDomains(advType)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getSelectedDomains(dealerId: Long, advertisementId: String): Result<List<Int>> {
+        return try {
+            val response = apiService.getSelectedDomains(dealerId, advertisementId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun uploadAdvertisementGalleryImage(dealerId: Long, advertisementId: String, imageFile: File): Result<List<AdvertisementImage>> {
+        return try {
+            val requestBody = imageFile.asRequestBody("image/*".toMediaTypeOrNull())
+            val imagePart = MultipartBody.Part.createFormData("gallery", imageFile.name, requestBody)
+
+            val response = apiService.uploadAdvertisementGalleryImage(dealerId, advertisementId, imagePart)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveAdvertisementGallery(dealerId: Long, advertisementId: String, images: List<AdvertisementImage>): Result<List<AdvertisementImage>> {
+        return try {
+            val json = com.google.gson.Gson().toJson(images)
+            val requestBody = RequestBody.create("text/plain".toMediaTypeOrNull(), json)
+            val response = apiService.saveAdvertisementGallery(dealerId, advertisementId, requestBody)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteAdvertisementGalleryImage(dealerId: Long, advertisementId: String, imageId: String): Result<Unit> {
+        return try {
+            val response = apiService.deleteAdvertisementGalleryImage(dealerId, advertisementId, imageId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete image. Code: ${response.code()}"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

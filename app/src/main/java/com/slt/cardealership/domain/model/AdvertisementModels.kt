@@ -132,17 +132,23 @@ data class AdvertisementDomain(
  * Represents the request body for updating domains.
  */
 data class UpdateDomainsRequest(
-    @SerializedName("domain_ids")
-    val domainIds: List<String>
+    @SerializedName("list")
+    val list: List<Int>
+)
+
+data class AdvDomain(
+    @SerializedName("id")
+    val id: Int,
+    @SerializedName("domain_name")
+    val domainName: String,
+    @SerializedName("product_type_name")
+    val productTypeName: String?
 )
 
 /**
  * Wraps the list response for Ad Gallery.
  */
-data class AdvertisementGalleryResponse(
-    @SerializedName("list")
-    val list: List<AdvertisementImage>?
-)
+
 
 /**
  * Represents a single Ad Image.

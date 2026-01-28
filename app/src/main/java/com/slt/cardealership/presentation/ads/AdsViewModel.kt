@@ -7,7 +7,9 @@ import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.domain.model.Advertisement
 import com.slt.cardealership.domain.model.AdvertisementGoal
 import com.slt.cardealership.domain.model.AdvertisementGoalType
-import com.slt.cardealership.domain.model.VehicleModel // Assuming you need this for 'Co-op'
+import com.slt.cardealership.domain.model.VehicleModel
+import com.slt.cardealership.domain.model.AdvDomain
+import com.slt.cardealership.domain.model.AdvertisementImage
 import com.slt.cardealership.domain.repo.DealerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import java.io.File
 import javax.inject.Inject
 
@@ -86,6 +89,19 @@ data class AdVehicleModelState(
     val error: String? = null
 )
 
+data class AdvDomainState(
+    val isLoading: Boolean = false,
+    val availableDomains: List<AdvDomain> = emptyList(),
+    val selectedDomainIds: List<Int> = emptyList(),
+    val error: String? = null
+)
+
+data class AdGalleryState(
+    val isLoading: Boolean = false,
+    val images: List<AdvertisementImage> = emptyList(),
+    val error: String? = null
+)
+
 sealed interface AdsEvent {
     object NavigateBack : AdsEvent
     data class ShowError(val message: String) : AdsEvent
@@ -147,6 +163,12 @@ class AdsViewModel @Inject constructor(
 
     private val _modelState = MutableStateFlow(AdVehicleModelState())
     val modelState: StateFlow<AdVehicleModelState> = _modelState.asStateFlow()
+
+    private val _domainState = MutableStateFlow(AdvDomainState())
+    val domainState: StateFlow<AdvDomainState> = _domainState.asStateFlow()
+
+    private val _galleryState = MutableStateFlow(AdGalleryState())
+    val galleryState: StateFlow<AdGalleryState> = _galleryState.asStateFlow()
 
     private val _events = Channel<AdsEvent>()
     val events = _events.receiveAsFlow()
@@ -496,5 +518,111 @@ class AdsViewModel @Inject constructor(
         }
     }
 
+    // --- Domain Management ---
+    fun loadDomains(adId: String) {
+        viewModelScope.launch {
+            _domainState.update { it.copy(isLoading = true, error = null) }
+            val dealerId = sessionManager.getDealerId()?.toLong() ?: return@launch
+            
+            // Get current ad type from form state to fetch relevant domains
+            // Map UI "Co-op" -> "co_op" -> "co-op" for this specific API if needed
+            val currentUiType = _formState.value.adType
+            val apiType = adTypeReverseMap[currentUiType] ?: "general"
+            val fetchType = apiType.replace("_", "-") // "co_op" -> "co-op" matching user request
+
+            val availableResult = async { repository.getAvailableDomains(fetchType) }
+            val selectedResult = async { repository.getSelectedDomains(dealerId, adId) }
+
+            val available = availableResult.await().getOrNull() ?: emptyList()
+            val selectedIds = selectedResult.await().getOrNull() ?: emptyList()
+
+            Log.d("AdsViewModel", "loadDomains: Available Count=${available.size}, Selected IDs=${selectedIds}")
+
+            _domainState.update {
+                it.copy(
+                    isLoading = false,
+                    availableDomains = available,
+                    selectedDomainIds = selectedIds
+                )
+            }
+        }
+    }
+
+    fun saveDomains(adId: String, selectedIds: List<Int>) {
+        viewModelScope.launch {
+            _domainState.update { it.copy(isLoading = true) }
+            val dealerId = sessionManager.getDealerId()?.toLong() ?: return@launch
+
+            repository.updateAdvertisementDomains(dealerId, adId, selectedIds)
+                .onSuccess {
+                    _domainState.update { it.copy(isLoading = false) }
+                    _events.send(AdsEvent.ShowSuccess("Domains updated successfully"))
+                    loadDomains(adId) // Refresh to be sure
+                }
+                .onFailure { e ->
+                    _domainState.update { it.copy(isLoading = false, error = e.message) }
+                    _events.send(AdsEvent.ShowError(e.message ?: "Failed to update domains"))
+                }
+        }
+    }
+
+    // --- Gallery Management ---
+    fun loadGallery(adId: String) {
+        viewModelScope.launch {
+            _galleryState.update { it.copy(isLoading = true, error = null) }
+            val dealerId = sessionManager.getDealerId()?.toLong() ?: return@launch
+
+            repository.getAdvertisementGallery(dealerId, adId)
+                .onSuccess { images ->
+                    _galleryState.update { it.copy(isLoading = false, images = images) }
+                }
+                .onFailure { e ->
+                    _galleryState.update { it.copy(isLoading = false, error = e.message) }
+                }
+
+        }
+    }
+
+    fun deleteGalleryImage(imageId: String) {
+        _galleryState.update { state ->
+            val updatedList = state.images.filter { it.id != imageId }
+            state.copy(images = updatedList)
+        }
+    }
+
+    fun saveGallery(adId: String) {
+        viewModelScope.launch {
+            _galleryState.update { it.copy(isLoading = true) }
+            val dealerId = sessionManager.getDealerId()?.toLong() ?: return@launch
+            val currentImages = _galleryState.value.images
+
+            repository.saveAdvertisementGallery(dealerId, adId, currentImages)
+                .onSuccess { updatedList ->
+                    _galleryState.update { it.copy(isLoading = false, images = updatedList) }
+                    _events.send(AdsEvent.ShowSuccess("Gallery saved successfully"))
+                }
+                .onFailure { e ->
+                    _galleryState.update { it.copy(isLoading = false, error = e.message) }
+                    _events.send(AdsEvent.ShowError(e.message ?: "Failed to save gallery"))
+                }
+        }
+    }
+
+    fun uploadGalleryImage(adId: String, file: File) {
+        viewModelScope.launch {
+            _galleryState.update { it.copy(isLoading = true) }
+            val dealerId = sessionManager.getDealerId()?.toLong() ?: return@launch
+
+            repository.uploadAdvertisementGalleryImage(dealerId, adId, file)
+                .onSuccess { updatedList ->
+                    _galleryState.update { it.copy(isLoading = false, images = updatedList) }
+                    _events.send(AdsEvent.ShowSuccess("Image uploaded successfully"))
+                }
+                .onFailure { e ->
+                    _galleryState.update { it.copy(isLoading = false, error = e.message) }
+                    _events.send(AdsEvent.ShowError(e.message ?: "Failed to upload image"))
+                }
+        }
+    }
 }
 

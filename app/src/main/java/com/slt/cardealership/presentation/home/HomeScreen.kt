@@ -124,6 +124,7 @@ import androidx.navigation.toRoute
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.DealerInfo
 import com.slt.cardealership.presentation.ads.AddAdsScreen
+import com.slt.cardealership.presentation.ads.EditAdsScreen // Import logic
 import com.slt.cardealership.presentation.ads.AdsScreen
 import com.slt.cardealership.presentation.articles.AddEditArticleScreen
 import com.slt.cardealership.presentation.articles.ArticleScreen
@@ -192,6 +193,9 @@ sealed class HomeRoutes {
 
     @Serializable
     object AddAdsScreen : HomeRoutes()
+
+    @Serializable
+    data class EditAdsScreen(val adId: String) : HomeRoutes()
 
     @Serializable
     object AddUserScreen : HomeRoutes()
@@ -539,6 +543,10 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                 composable<HomeRoutes.Ads> { AdsScreen(navController = homeNavController) }
                 composable<HomeRoutes.AddAdsScreen> {
                     AddAdsScreen(navController = homeNavController)
+                }
+                composable<HomeRoutes.EditAdsScreen> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.EditAdsScreen>()
+                    EditAdsScreen(navController = homeNavController, adId = args.adId) 
                 }
                 composable<HomeRoutes.SeoScreen> {
                     SeoScreen(navController = homeNavController)

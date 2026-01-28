@@ -2514,6 +2514,24 @@ class DealerRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override suspend fun getGmbSettings(dealerId: Long): Result<com.slt.cardealership.domain.model.GmbSettingsResponse> {
+        return try {
+            val response = apiService.getGmbSettings(dealerId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getGmbMedia(dealerId: Long): Result<com.slt.cardealership.domain.model.GmbMediaResponse> {
+        return try {
+            val response = apiService.getGmbMedia(dealerId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 

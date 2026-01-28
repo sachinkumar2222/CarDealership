@@ -162,7 +162,11 @@ fun PhotoScreen(
 
                 // Content based on selected tab
                 when (uiState.selectedTab) {
-                    0 -> Text("Google Photos content goes here.")
+                    0 -> GooglePhotosContent(
+                        isLoading = uiState.isGmbLoading,
+                        images = uiState.gmbImages,
+                        error = uiState.gmbError
+                    )
                     1 -> BannerContent(
                         isLoading = uiState.isBannersLoading,
                         banners = uiState.banners,
@@ -556,7 +560,8 @@ fun BannerItemCard(
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
-                        modifier = Modifier.background(Color.White)
+                        modifier = Modifier.background(Color.White),
+                        shape = RoundedCornerShape(16.dp),
                     ) {
                         DropdownMenuItem(
                             text = { Text("Edit") },
@@ -712,4 +717,80 @@ fun DeleteConfirmationDialog(
             }
         }
     )
+}
+
+@Composable
+fun GooglePhotosContent(
+    isLoading: Boolean,
+    images: List<com.slt.cardealership.domain.model.GmbMediaItem>,
+    error: String?
+) {
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Google Photos",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (isLoading) {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(120.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 100.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(6) {
+                    GalleryItemShimmer()
+                }
+            }
+        } else if (!error.isNullOrBlank()) {
+             Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = error, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+            }
+        } else if (images.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                EmptyContent(title = "No Google Photos", message = "Connect GMB to see photos")
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(120.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 100.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(images) { image ->
+                    Box(
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                    ) {
+                        AsyncImage(
+                            model = image.thumbnailUrl ?: image.googleUrl,
+                            contentDescription = image.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

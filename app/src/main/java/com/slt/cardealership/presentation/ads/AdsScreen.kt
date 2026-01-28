@@ -1,5 +1,6 @@
 package com.slt.cardealership.presentation.ads
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,10 +10,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +28,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +45,7 @@ import java.util.Date
 import java.util.Locale
 
 // Local data class is no longer needed
+val BrandBlue = Color(0xFF2196F3)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +112,7 @@ fun AdsScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("All Advertisements", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -121,25 +130,18 @@ fun AdsScreen(
             )
         },
         floatingActionButton = {
-            val blueGradient = Brush.horizontalGradient(
-                colors = listOf(Color(0xFF2196F3), Color(0xFF1565C0))
-            )
-            Box(
-                modifier = Modifier
-                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(16.dp))
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(blueGradient)
-                    .clickable {
-                        viewModel.prepareNewAdForm() // Prepare ViewModel for a new ad
-                        navController.navigate(HomeRoutes.AddAdsScreen)
-                    },
-                contentAlignment = Alignment.Center
+            FloatingActionButton(
+                onClick = {
+                   viewModel.prepareNewAdForm()
+                   navController.navigate(HomeRoutes.AddAdsScreen)
+                },
+                containerColor = BrandBlue,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add Advertisement",
-                    tint = Color.White
+                    contentDescription = "Add Advertisement"
                 )
             }
         },
@@ -243,64 +245,183 @@ fun AdvertisementListItem(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) } // For Menu
+    var isDetailsVisible by remember { mutableStateOf(false) } // For Accordion
+    val isDeleted = advertisement.isDeleted == true
+
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { isDetailsVisible = !isDetailsVisible }, // Toggle expansion
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, Color(0xFFEEEEEE))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // --- Header Row (Always Visible) ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = advertisement.title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.Black,
-                    modifier = Modifier.weight(1f) // Allow text to take space
-                )
-                Row {
-                    IconButton(onClick = onEditClick, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = onDeleteClick, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.8f))
-                    }
+                 // Left Side: Name and Details Summary
+                 Row(
+                     modifier = Modifier.weight(1f),
+                     verticalAlignment = Alignment.CenterVertically
+                 ) {
+                        // Icon
+                        Icon(
+                            imageVector = if (isDetailsVisible) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        // Text Info
+                        Column {
+                            val titleColor = if (isDeleted) Color.Gray else Color.Black
+                            Text(
+                                text = advertisement.title,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = titleColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = if (isDeleted) androidx.compose.ui.text.TextStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough) else androidx.compose.ui.text.TextStyle()
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = if (isDeleted) "Deleted" else (advertisement.type ?: "General"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isDeleted) Color.Red else BrandBlue,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                val dateDisplay = if (isDeleted) {
+                                    val updatedOn = advertisement.updatedOn
+                                    if (updatedOn != null) formatTimestamp(updatedOn) else "N/A"
+                                } else {
+                                    formatTimestamp(advertisement.startDate)
+                                }
+                                
+                                Text(
+                                    text = " • $dateDisplay",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                 }
+                
+                 // Actions Menu (Prevent ripple from card click)
+                 Box(modifier = Modifier.wrapContentSize()) {
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Actions", tint = Color.Gray)
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier
+                                .background(Color.White)
+                                .width(160.dp),
+                            containerColor = Color.White,
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Edit", fontWeight = FontWeight.SemiBold) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = null,
+                                        tint = if (isDeleted) Color.LightGray else BrandBlue
+                                    )
+                                },
+                                onClick = {
+                                    expanded = false
+                                    if (!isDeleted) onEditClick()
+                                },
+                                enabled = !isDeleted,
+                                colors = MenuDefaults.itemColors(
+                                    textColor = Color.Black,
+                                    leadingIconColor = BrandBlue,
+                                    disabledTextColor = Color.LightGray,
+                                    disabledLeadingIconColor = Color.LightGray
+                                )
+                            )
+                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
+                            DropdownMenuItem(
+                                text = { Text("Delete", fontWeight = FontWeight.SemiBold) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = null,
+                                        tint = if (isDeleted) Color.LightGray else Color.Red
+                                    )
+                                },
+                                onClick = {
+                                    expanded = false
+                                    if (!isDeleted) onDeleteClick()
+                                },
+                                enabled = !isDeleted,
+                                colors = MenuDefaults.itemColors(
+                                    textColor = Color.Red,
+                                    leadingIconColor = Color.Red,
+                                    disabledTextColor = Color.LightGray,
+                                    disabledLeadingIconColor = Color.LightGray
+                                )
+                            )
+                        }
+                 }
+            }
+            
+            // --- Expandable Details ---
+            AnimatedVisibility(visible = isDetailsVisible) {
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(bottom = 16.dp))
+                    
+                    val rowColor1 = Color(0xFFF9FAFB)
+                    val rowColor2 = Color.White
+                    
+                    // DetailRow("Adv Type", advertisement.type ?: "N/A", rowColor1) // Already in header
+                    DetailRow("Is Deleted", if (isDeleted) "Yes" else "No", rowColor1)
+                    DetailRow("Make", advertisement.makeNames ?: "N/A", rowColor2)
+                    DetailRow("Model", advertisement.modelName ?: "N/A", rowColor1)
+                    DetailRow("Keywords", advertisement.keywords ?: "N/A", rowColor2)
+                    DetailRow("End Date", if(advertisement.endDate == null) "No End Date" else formatTimestamp(advertisement.endDate), rowColor1)
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), modifier = Modifier.padding(bottom = 8.dp))
-
-            DetailRow("Adv Type:", advertisement.type ?: "N/A")
-            DetailRow("Start Date:", formatTimestamp(advertisement.startDate))
-            DetailRow("End Date:", if(advertisement.endDate == null) "No End Date" else formatTimestamp(advertisement.endDate))
-            DetailRow("Make:", advertisement.makeNames ?: "N/A")
-            DetailRow("Model:", advertisement.modelName ?: "N/A")
-            DetailRow("Keywords:", advertisement.keywords ?: "N/A")
         }
     }
 }
 
 @Composable
-fun DetailRow(label: String, value: String) {
-    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+fun DetailRow(label: String, value: String, backgroundColor: Color, isLast: Boolean = false) {
+    Row(
+        modifier = Modifier
+             .fillMaxWidth()
+             .clip(RoundedCornerShape(8.dp))
+             .background(backgroundColor)
+             .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text(
             text = label,
             fontWeight = FontWeight.Medium,
             color = Color.Gray,
-            modifier = Modifier.width(100.dp),
+            modifier = Modifier.weight(0.4f),
             fontSize = 14.sp
         )
         Text(
             text = value,
             color = Color.DarkGray,
             fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(0.6f),
+            textAlign = TextAlign.End
         )
     }
 }

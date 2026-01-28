@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 import com.slt.cardealership.domain.model.DomainItem
+import com.slt.cardealership.domain.model.GmbMediaItem
 
 // --- CORRECTED STATE CLASS ---
 data class PhotosUiState(
@@ -42,7 +43,12 @@ data class PhotosUiState(
     val showDeleteConfirmDialog: Boolean = false,
     val itemToDeleteId: String? = null,
     val itemToDeleteUrl: String? = null,
-    val isDeletingBanner: Boolean = true // To differentiate which delete dialog is for
+    val isDeletingBanner: Boolean = true, // To differentiate which delete dialog is for
+
+    // GMB State
+    val isGmbLoading: Boolean = false,
+    val gmbImages: List<GmbMediaItem> = emptyList(),
+    val gmbError: String? = null
 )
 
 @HiltViewModel
@@ -57,10 +63,16 @@ class PhotosViewModel @Inject constructor(
     init {
         fetchBanners()
         fetchGalleryImages()
+        // GMB fetched on tab select? Or init? 
+        // Let's lazy load or load on init if we want.
+        // For now, load on init to be safe, or just call from UI when tab changes.
     }
 
     fun onTabSelected(index: Int) {
         _uiState.update { it.copy(selectedTab = index) }
+        if (index == 0 && _uiState.value.gmbImages.isEmpty()) {
+            fetchGmbPhotos()
+        }
     }
 
     fun fetchBanners() {
@@ -95,6 +107,35 @@ class PhotosViewModel @Inject constructor(
                     _uiState.update { it.copy(isGalleryLoading = false, galleryImages = imagesWithCacheBuster) }
                 }
                 .onFailure { error -> _uiState.update { it.copy(isGalleryLoading = false, error = error.message) } }
+        }
+    }
+
+    private fun fetchGmbPhotos() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isGmbLoading = true, gmbError = null) }
+            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
+            
+            // 1. Get Settings
+            dealerRepository.getGmbSettings(dealerId)
+                .onSuccess { settings ->
+                    val isConnected = settings.tokenResponse?.isConnected == true
+                    if (isConnected) {
+                        // 2. Get Media if connected
+                        dealerRepository.getGmbMedia(dealerId)
+                            .onSuccess { mediaResponse ->
+                                val allMediaItems = mediaResponse.galleryItems?.flatMap { it.mediaItems ?: emptyList() } ?: emptyList()
+                                _uiState.update { it.copy(isGmbLoading = false, gmbImages = allMediaItems) }
+                            }
+                            .onFailure { error ->
+                                _uiState.update { it.copy(isGmbLoading = false, gmbError = "Failed to fetch GMB media: ${error.message}") }
+                            }
+                    } else {
+                        _uiState.update { it.copy(isGmbLoading = false, gmbError = "Google My Business not connected.") }
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isGmbLoading = false, gmbError = "Failed to fetch GMB settings: ${error.message}") }
+                }
         }
     }
 

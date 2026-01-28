@@ -1056,4 +1056,13 @@ interface ApiService {
         @Query("items_per_page") itemsPerPage: Int,
         @Query("domain_id") domainId: Int
     ): com.slt.cardealership.domain.model.DomainPagesResponse
+    @GET("dealer-api/dealer-gmb-auth/GetGMBSetting/{dealerId}")
+    suspend fun getGmbSettings(
+        @Path("dealerId") dealerId: Long
+    ): com.slt.cardealership.domain.model.GmbSettingsResponse
+
+    @GET("dealer-api/dealer-gmb/{dealerId}/media")
+    suspend fun getGmbMedia(
+        @Path("dealerId") dealerId: Long
+    ): com.slt.cardealership.domain.model.GmbMediaResponse
 }

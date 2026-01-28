@@ -453,4 +453,8 @@ interface DealerRepository {
     suspend fun updateDomainMenu(id: String, request: com.slt.cardealership.domain.model.DomainMenuRequest): Result<Unit>
     suspend fun deleteDomainMenu(id: String): Result<Unit>
     suspend fun getDomainPages(page: Int, itemsPerPage: Int, domainId: Int): Result<com.slt.cardealership.domain.model.DomainPagesResponse>
+
+    // Google Photos (GMB)
+    suspend fun getGmbSettings(dealerId: Long): Result<com.slt.cardealership.domain.model.GmbSettingsResponse>
+    suspend fun getGmbMedia(dealerId: Long): Result<com.slt.cardealership.domain.model.GmbMediaResponse>
 }

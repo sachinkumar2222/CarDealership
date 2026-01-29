@@ -148,6 +148,28 @@ class VehicleViewModel @Inject constructor(
         _formState.update { it.copy(isSaveSuccess = false) }
     }
 
+    // --- Sort Options ---
+    enum class InventorySortOption(val displayName: String, val orderBy: String?, val order: String?) {
+        MAKE_AZ("Make (A-Z)", "brand_name", "asc"),
+        MODEL_AZ("Model (A-Z)", "model_name", "asc"),
+        YEAR_ASC("Year (ASC)", "year", "asc"),
+        YEAR_DESC("Year (DESC)", "year", "desc"),
+        PRICE_ASC("Price (ASC)", "price", "asc"),
+        PRICE_DESC("Price (DESC)", "price", "desc"),
+        CREATED_ASC("Created On (ASC)", "created_on", "asc"),
+        CREATED_DESC("Created On (DESC)", "created_on", "desc"),
+        UPDATED_ASC("Updated On (ASC)", "updated_on", "asc");
+    }
+
+    private val _sortOption = MutableStateFlow(InventorySortOption.CREATED_DESC)
+    val sortOption: StateFlow<InventorySortOption> = _sortOption.asStateFlow()
+
+    fun updateSortOption(option: InventorySortOption) {
+        _sortOption.value = option
+        _vehicleListState.update { it.copy(canLoadMore = true, currentPage = 1, vehicles = emptyList()) }
+        getResearchVehicles(loadNextPage = false)
+    }
+
     // --- List functions ---
     fun getResearchVehicles(loadNextPage: Boolean = false) {
         viewModelScope.launch {
@@ -167,14 +189,18 @@ class VehicleViewModel @Inject constructor(
 
             _vehicleListState.update { it.copy(isLoading = true, error = null) }
 
+            val currentSort = _sortOption.value
+
             repository.getResearchVehicles(
                 dealerId = currentDealerId,
                 page = currentPage,
-                itemsPerPage = itemsPerPage
+                itemsPerPage = itemsPerPage,
+                orderBy = currentSort.orderBy,
+                order = currentSort.order
             ).onSuccess { newVehicles ->
                 _vehicleListState.update { state ->
                     val updatedList = if (currentPage == 1) newVehicles else state.vehicles + newVehicles
-                    val canLoadMore = newVehicles.size == itemsPerPage
+                    val canLoadMore = newVehicles.size >= itemsPerPage
                     state.copy(
                         isLoading = false,
                         vehicles = updatedList,
@@ -198,12 +224,17 @@ class VehicleViewModel @Inject constructor(
             repository.getResearchVehicleDetails(vehicleId)
                 .onSuccess { vehicle ->
                     Log.d("ViewModel", "Successfully loaded vehicle: ${vehicle.vin}")
+                    // Resolve Make Name priority: Brand Name -> Make ID -> Brand Slug
+                    val resolvedMake = vehicle.brandName
+                        ?: getMakeString(vehicle.makeId).takeIf { it.isNotBlank() }
+                        ?: vehicle.brandSlug?.replaceFirstChar { it.titlecase() }
+                        ?: ""
+
                     _formState.value = AddEditVehicleFormState(
                         isEditing = true,
                         id = vehicle.id,
                         vin = vehicle.vin,
-                        // *** FIX: Handle nulls from Vehicle model ***
-                        make = vehicle.brandName ?: "",
+                        make = resolvedMake,
                         model = vehicle.modelName ?: "",
                         year = vehicle.year.toString(),
                         trim = vehicle.trimName ?: "",
@@ -226,7 +257,6 @@ class VehicleViewModel @Inject constructor(
                         doors = vehicle.doors.toString(),
                         vdpLink = vehicle.vdpLink ?: "",
 
-                        // *** FIX: Use helper properties from Vehicle.kt ***
                         features = vehicle.featureString,
                         comments = vehicle.dealerNotesString,
 
@@ -241,9 +271,9 @@ class VehicleViewModel @Inject constructor(
                             "Ext Warranty" to vehicle.extWarranty
                         )
                     )
-                    // Fetch models *after* setting state
-                    if (!vehicle.brandName.isNullOrBlank()) {
-                        fetchModelsForMake(vehicle.brandName)
+                    // Fetch models *after* setting state using the resolved make
+                    if (resolvedMake.isNotBlank()) {
+                        fetchModelsForMake(resolvedMake)
                     }
                     _formState.update { it.copy(isSaving = false) }
                 }
@@ -566,12 +596,13 @@ class VehicleViewModel @Inject constructor(
     private fun getTransmissionId(name: String): Int = transmissionMap[normalizeKey(name)] ?: 39
     private fun getFuelTypeId(name: String): Int = fuelTypeMap[normalizeKey(name)] ?: 14
     private fun getMakeId(name: String): Int = makeMap[normalizeKey(name)] ?: 0
+    private val makeReverse = makeMap.entries.associate { (k, v) -> v to k.replaceFirstChar { it.titlecase() } }
 
-    // *** FIX: Reverse mappers were looking up by capitalized key, changed to lookup by ID (Int) ***
     private fun getDrivetrainString(id: Int): String = drivetrainReverse[id] ?: ""
     private fun getBodyTypeString(id: Int): String = bodyTypeReverse[id] ?: ""
     private fun getTransmissionString(id: Int): String = transmissionReverse[id] ?: ""
     private fun getFuelTypeString(id: Int): String = fuelTypeReverse[id] ?: ""
+    private fun getMakeString(id: Int): String = makeReverse[id] ?: ""
 
     // --- Options for UI dropdowns ---
     val makeOptions: List<String> = makeMap.keys.filter { it.isNotBlank() }.map { it.replaceFirstChar { char -> char.titlecase() } }.sorted()

@@ -77,7 +77,7 @@ fun SeoMenuScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                modifier = Modifier.shadow(4.dp),
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("SEO Menus", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {

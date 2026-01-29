@@ -318,13 +318,13 @@ interface ApiService {
 
     @GET("research-api/vehicleInventory")
     suspend fun getResearchVehicles(
-        // *** ADDED Query Parameters ***
         @Query("dealer_id") dealerId: Int,
         @Query("page") page: Int,
         @Query("item_per_page") itemsPerPage: Int,
-        @Query("is_active") isActive: String = "yes", // Example filter, add others if needed
-        @Query("is_deleted") isDeleted: String = "no"  // Example filter
-        // Add other query params like sort_by, search_term etc. if your API supports them
+        @Query("is_active") isActive: String = "yes",
+        @Query("is_deleted") isDeleted: String = "no",
+        @Query("order_by") orderBy: String? = null,
+        @Query("order") order: String? = null
     ): VehicleListResponse
 
 
@@ -686,6 +686,12 @@ interface ApiService {
         @Query("is_read") isRead: Boolean? = null,
         @Query("search") search: String? = null
     ): InternetLeadsResponse
+
+    @GET("application-api/domains/getall")
+    suspend fun getSeoDomains(
+        @Query("product_type_id") productTypeId: Int,
+        @Query("domain_name") domainName: String? = null
+    ): List<com.slt.cardealership.domain.model.SeoDomain>
 
     @GET("application-api/domains")
     suspend fun getDomains(
@@ -1097,4 +1103,16 @@ interface ApiService {
     suspend fun getGmbMedia(
         @Path("dealerId") dealerId: Long
     ): com.slt.cardealership.domain.model.GmbMediaResponse
+
+    @GET("dealer-api/dealer-seo-tags/getfordomain/{dealerId}/{domainId}")
+    suspend fun getDomainAcceptedTags(
+        @Path("dealerId") dealerId: Long,
+        @Path("domainId") domainId: Int
+    ): List<String>
+
+    @POST("dealer-api/dealer-seo-tags/addtodomain")
+    suspend fun saveDomainSeoTags(
+        @Body body: com.slt.cardealership.domain.model.SeoDomainMapRequest
+    ): Response<Unit>
+
 }

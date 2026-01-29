@@ -142,7 +142,8 @@ import com.slt.cardealership.presentation.photos.PhotoScreen
 import com.slt.cardealership.presentation.profile.EditProfileScreen
 import com.slt.cardealership.presentation.profile.ProfileScreen
 import com.slt.cardealership.presentation.profile.ProfileViewModel
-import com.slt.cardealership.presentation.seo.AddSeoScreen
+
+
 import com.slt.cardealership.presentation.seo.SeoScreen
 import com.slt.cardealership.presentation.seomenu.AddSeoMenuScreen
 import com.slt.cardealership.presentation.seomenu.SeoMenuScreen
@@ -204,7 +205,7 @@ sealed class HomeRoutes {
     object SeoScreen : HomeRoutes()
 
     @Serializable
-    object AddSeoScreen : HomeRoutes()
+    object SeoMapperScreen : HomeRoutes()
 
     @Serializable
     object FaqScreen : HomeRoutes()
@@ -551,9 +552,10 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                 composable<HomeRoutes.SeoScreen> {
                     SeoScreen(navController = homeNavController)
                 }
-                composable<HomeRoutes.AddSeoScreen> {
-                    AddSeoScreen(navController = homeNavController)
+                composable<HomeRoutes.SeoMapperScreen> {
+                    com.slt.cardealership.presentation.seo.SeoMapperScreen(navController = homeNavController)
                 }
+
                 composable<HomeRoutes.FaqScreen> {
                     FaqScreen(navController = homeNavController)
                 }

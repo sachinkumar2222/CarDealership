@@ -188,3 +188,9 @@ data class DomainPagesResponse(
 )
 
 
+
+data class SeoDomain(
+    @SerializedName("id") val id: Int,
+    @SerializedName("domain_name") val domainName: String,
+    @SerializedName("product_type_name") val productTypeName: String
+)

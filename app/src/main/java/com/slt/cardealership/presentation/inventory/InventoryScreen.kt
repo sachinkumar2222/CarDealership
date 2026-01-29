@@ -43,12 +43,6 @@ import com.slt.cardealership.presentation.vehicle.VehicleViewModel
 import kotlinx.coroutines.flow.collectLatest
 
 // Constants for styling
-private val blueGradient = Brush.horizontalGradient(
-    colors = listOf(
-        Color(0xFF2196F3), // Light Blue
-        Color(0xFF1565C0)  // Dark Blue
-    )
-)
 private val themeColor = Color(0xFF2196F3)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,28 +86,35 @@ fun InventoryScreen(
                         duration = SnackbarDuration.Short
                     )
                 }
-
                 InventoryEvent.NavigateBack -> navController.popBackStack()
+                else->{}
             }
         }
     }
 
 
+    val sortOption by viewModel.sortOption.collectAsState()
+
     if (showAddOptionsDialog) {
-        AddVehicleOptionsDialog(
-            onDismiss = { showAddOptionsDialog = false },
-            onAddManually = {
-                showAddOptionsDialog = false
-                viewModel.prepareNewVehicleForm() // Reset form state before navigating
-                navController.navigate(HomeRoutes.AddVehicleScreen)
-            },
-            onVinDecode = {
-                showAddOptionsDialog = false
-                // TODO: Implement VIN decode logic/navigation
-                viewModel.clearVinDecodeState() // Reset VIN state before navigating
-                // navController.navigate(HomeRoutes.VinDecoderScreen)
-            }
-        )
+        ModalBottomSheet(
+            onDismissRequest = { showAddOptionsDialog = false },
+            containerColor = Color.White,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            AddVehicleOptionsSheetContent(
+                onAddManually = {
+                    showAddOptionsDialog = false
+                    viewModel.prepareNewVehicleForm() // Reset form state before navigating
+                    navController.navigate(HomeRoutes.AddVehicleScreen)
+                },
+                onVinDecode = {
+                    showAddOptionsDialog = false
+                    // TODO: Implement VIN decode logic/navigation
+                    viewModel.clearVinDecodeState() // Reset VIN state before navigating
+                    // navController.navigate(HomeRoutes.VinDecoderScreen)
+                }
+            )
+        }
     }
 
     Scaffold(
@@ -121,7 +122,7 @@ fun InventoryScreen(
         containerColor = Color(0xFFF8F9FA),
         topBar = {
             TopAppBar( // Standard TopAppBar
-                title = { Text("All Inventory", fontWeight = FontWeight.Bold) },
+                title = { Text("Inventory", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     // Show back arrow only if there's a previous screen in the stack
                     if (navController.previousBackStackEntry != null) {
@@ -134,7 +135,7 @@ fun InventoryScreen(
                     containerColor = Color.White,
                     titleContentColor = Color(0xFF0D1B2A) // Dark title color
                 ),
-                modifier = Modifier.shadow(elevation = 2.dp) // Subtle shadow
+                modifier = Modifier.shadow(elevation = 8.dp) // Subtle shadow
             )
         },
         floatingActionButton = {
@@ -144,7 +145,7 @@ fun InventoryScreen(
                     .shadow(elevation = 8.dp, shape = RoundedCornerShape(16.dp))
                     .size(56.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(blueGradient)
+                    .background(themeColor)
                     .clickable { showAddOptionsDialog = true },
                 contentAlignment = Alignment.Center
             ) {
@@ -162,9 +163,9 @@ fun InventoryScreen(
                 .fillMaxSize()
         ) {
             InventoryHeader(
-                vehicleCount = listState.vehicles.size, // Show current loaded count
-                onFiltersClicked = { /* TODO: Implement filter logic */ },
-                onSortClicked = { /* TODO: Implement sort logic */ }
+                vehicleCount = listState.vehicles.size,
+                currentSort = sortOption,
+                onSortChange = { newSort -> viewModel.updateSortOption(newSort) }
             )
 
             // Conditional content based on loading and data state
@@ -235,15 +236,11 @@ fun InventoryList(
             // Key MUST be unique for each item for performance and animations
             key = { index, vehicle -> vehicle.id ?: "${vehicle.vin}-$index" }
         ) { index, vehicle ->
-            VehicleCard(
+            VehicleListItem(
                 vehicle = vehicle,
                 onClick = { onVehicleClick(vehicle.id) }, // Pass VIN back on click
                 onEditClick = { vehicle.id?.let { onEditClick(it) } },
-                onGalleryClick = { vehicle.id?.let { id -> onGalleryClick(id, vehicle.vin) } },
-                modifier = Modifier.animateItem( // Basic fade-in animation
-                    fadeInSpec = tween(300),
-                    fadeOutSpec = tween(300)
-                )
+                onGalleryClick = { vehicle.id?.let { id -> onGalleryClick(id, vehicle.vin) } }
             )
         }
 
@@ -287,198 +284,313 @@ fun InventoryList(
 
 
 @Composable
-fun VehicleCard(
+fun VehicleListItem(
     vehicle: Vehicle,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
-    onGalleryClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onGalleryClick: () -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) } // For Menu
+    var isDetailsVisible by remember { mutableStateOf(false) } // For Accordion
+
     Card(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = Color(0x1A000000),
-                ambientColor = Color(0x0D000000)
-            )
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+            .clickable { isDetailsVisible = !isDetailsVisible }, // Toggle expansion
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, Color(0xFFEEEEEE))
     ) {
-        Column {
-            // Image Section with Gradient Overlay
-            Box(contentAlignment = Alignment.BottomStart) {
-                AsyncImage(
-                    model = (vehicle.thumbnailImage.takeIf { !it.isNullOrBlank() }
-                        ?: "https://placehold.co/600x400/EAEAEA/9E9E9E?text=No+Image") + "?t=${System.currentTimeMillis()}",
-                    contentDescription = "${vehicle.year} ${vehicle.brandName} ${vehicle.modelName}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp) // Slightly taller image
-                )
-
-                // Gradient overlay
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
-                                startY = 300f
-                            )
-                        )
-                )
-
-                // Action Buttons (Edit / Gallery) - Top Right
+        Column(modifier = Modifier.padding(16.dp)) {
+            // --- Header Row (Always Visible) ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left Side: Name and Price Summary
                 Row(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Edit Button
-                    Surface(
-                        color = Color.White.copy(alpha = 0.9f),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.clickable { onEditClick() }
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(8.dp)) {
-                            Icon(
-                                Icons.Outlined.Edit,
-                                contentDescription = "Edit",
-                                modifier = Modifier.size(20.dp),
-                                tint = Color(0xFF64748B)
-                            )
-                        }
-                    }
+                    // Icon
+                    Icon(
+                        imageVector = if (isDetailsVisible) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                    // Gallery Button
-                    Surface(
-                        color = Color.White.copy(alpha = 0.9f),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.clickable { onGalleryClick() }
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(8.dp)) {
-                            Icon(
-                                Icons.Outlined.PhotoLibrary,
-                                contentDescription = "Gallery",
-                                modifier = Modifier.size(20.dp),
-                                tint = Color(0xFF64748B)
+                    // Text Info
+                    Column {
+                        Text(
+                            text = "${vehicle.year} ${vehicle.brandName} ${vehicle.modelName}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "$${String.format("%,.0f", vehicle.dealerPrice ?: 0.0)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = themeColor,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = " • ${vehicle.condition ?: "Used"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
                             )
                         }
                     }
                 }
 
-                // Title Overlay
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "${vehicle.year} ${vehicle.brandName}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = "${vehicle.modelName} ${vehicle.trimName}",
-                        style = MaterialTheme.typography.headlineSmall, // Larger title
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                // Actions Menu (Prevent ripple from card click)
+                Box(modifier = Modifier.wrapContentSize()) {
+                    IconButton(onClick = { expanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Actions", tint = Color.Gray)
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier
+                            .background(Color.White)
+                            .width(160.dp),
+                        containerColor = Color.White,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Edit", fontWeight = FontWeight.SemiBold) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = themeColor
+                                )
+                            },
+                            onClick = {
+                                expanded = false
+                                onEditClick()
+                            }
+                        )
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
+                        DropdownMenuItem(
+                            text = { Text("Gallery", fontWeight = FontWeight.SemiBold) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Outlined.PhotoLibrary,
+                                    contentDescription = null,
+                                    tint = Color(0xFF64748B)
+                                )
+                            },
+                            onClick = {
+                                expanded = false
+                                onGalleryClick()
+                            }
+                        )
+                    }
                 }
             }
 
-            // Info Section
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Price and Condition Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "$${
-                            String.format(
-                                "%,.0f",
-                                vehicle.dealerPrice ?: 0.0
-                            )
-                        }",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = themeColor // Blue price
-                    )
+            // --- Expandable Details ---
+            androidx.compose.animation.AnimatedVisibility(visible = isDetailsVisible) {
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f), modifier = Modifier.padding(bottom = 16.dp))
 
-                    // Condition Chip
-                    vehicle.condition?.let { condition ->
-                        Surface(
-                            color = themeColor.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text(
-                                text = condition.uppercase(),
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = themeColor
-                            )
-                        }
-                    }
-                }
+                    val rowColor1 = Color(0xFFF9FAFB)
+                    val rowColor2 = Color.White
 
-                Divider(color = Color(0xFFF1F5F9))
-
-                // Key Stats Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    VehicleInfoChip(
-                        icon = Icons.Outlined.Speed,
-                        label = "MILEAGE",
-                        value = "${String.format("%,d", vehicle.mileage?.toInt() ?: 0)} mi"
-                    )
-                    VehicleInfoChip(
-                        icon = Icons.Outlined.ConfirmationNumber,
-                        label = "STOCK #",
-                        value = vehicle.stockNo?.takeIf { it.isNotBlank() } ?: "N/A"
-                    )
-                    VehicleInfoChip(
-                        icon = Icons.Outlined.Key,
-                        label = "VIN",
-                        value = vehicle.vin.takeLast(6) ?: "N/A"
-                    )
+                    DetailRow("Trim", vehicle.trimName ?: "N/A", rowColor1)
+                    DetailRow("VIN", vehicle.vin, rowColor2)
+                    DetailRow("Stock #", vehicle.stockNo ?: "N/A", rowColor1)
+                    DetailRow("Mileage", "${String.format("%,d", vehicle.mileage?.toInt() ?: 0)} mi", rowColor2)
+                    DetailRow("Status", vehicle.status ?: "Available", rowColor1)
+                    DetailRow("Start Date", "N/A", rowColor2) // Placeholder as per request "starting data"
                 }
             }
         }
     }
 }
 
+@Composable
+fun DetailRow(label: String, value: String, backgroundColor: Color, isLast: Boolean = false) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontWeight = FontWeight.Medium,
+            color = Color.Gray,
+            modifier = Modifier.weight(0.4f),
+            fontSize = 14.sp
+        )
+        Text(
+            text = value,
+            color = Color.DarkGray,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(0.6f),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
 
 // --- Other Composables (InventoryHeader, Chip, VehicleInfoChip, Dialogs) ---
 @Composable
-fun InventoryHeader(vehicleCount: Int, onFiltersClicked: () -> Unit, onSortClicked: () -> Unit) {
-    // Simplified Header: Only shows count as requested
-    Box(
+fun InventoryHeader(
+    vehicleCount: Int,
+    currentSort: VehicleViewModel.InventorySortOption,
+    onSortChange: (VehicleViewModel.InventorySortOption) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            "Showing $vehicleCount vehicles",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(0xFF64748B), // Slate gray
-            fontWeight = FontWeight.Medium
-        )
+        // Vehicle Count with styled text
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Inventory",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFF1E293B), // Dark Slate
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                color = themeColor.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "$vehicleCount",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = themeColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // Advanced Sort Button
+        Box {
+            Surface(
+                onClick = { expanded = true },
+                shape = RoundedCornerShape(8.dp),
+                color = Color.White,
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                shadowElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Sort,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color(0xFF64748B)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Sort",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color(0xFF64748B),
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color(0xFF94A3B8)
+                    )
+                }
+            }
+
+            // Enhanced Dropdown
+            MaterialTheme(
+                shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))
+            ) {
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier
+                        .background(Color.White)
+                        .width(240.dp)
+                        .heightIn(max = 400.dp),
+                    offset = androidx.compose.ui.unit.DpOffset(x = 0.dp, y = 8.dp)
+                ) {
+                    Text(
+                        text = "Sort Vehicles By",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF94A3B8),
+                        fontWeight = FontWeight.Bold
+                    )
+                    HorizontalDivider(color = Color(0xFFF1F5F9))
+                    
+                    VehicleViewModel.InventorySortOption.values().forEach { option ->
+                        val isSelected = option == currentSort
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(
+                                        text = option.displayName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = if (isSelected) themeColor else Color(0xFF334155)
+                                    )
+                                }
+                            },
+                            onClick = {
+                                onSortChange(option)
+                                expanded = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = when {
+                                        option.name.contains("ASC") -> Icons.Default.ArrowUpward
+                                        option.name.contains("DESC") -> Icons.Default.ArrowDownward
+                                        else -> Icons.Default.SortByAlpha
+                                    },
+                                    contentDescription = null,
+                                    tint = if (isSelected) themeColor else Color(0xFFCBD5E1),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            trailingIcon = {
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = themeColor,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            },
+                            modifier = Modifier.background(
+                                if (isSelected) themeColor.copy(alpha = 0.08f) else Color.Transparent
+                            )
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -500,110 +612,112 @@ fun Chip(text: String) {
     }
 }
 
-@Composable
-fun VehicleInfoChip(icon: ImageVector, label: String, value: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.width(100.dp) // Fixed width for alignment
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = themeColor,
-            modifier = Modifier.size(24.dp)
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF94A3B8) // Muted gray
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF1E293B), // Dark slate
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
+
 
 @Composable
-fun AddVehicleOptionsDialog(
-    onDismiss: () -> Unit,
+fun AddVehicleOptionsSheetContent(
     onAddManually: () -> Unit,
     onVinDecode: () -> Unit
 ) {
-    // Dialog shown when the FAB is clicked
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(24.dp), // More rounded corners for dialog
-            modifier = Modifier.padding(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    "Add a New Vehicle",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                // Option Card for adding manually
-                AddOptionCard(
-                    title = "Add Manually",
-                    subtitle = "Enter all vehicle details by hand.",
-                    icon = Icons.Outlined.DriveFileRenameOutline,
-                    onClick = onAddManually
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                // Option Card for using VIN decoder
-                AddOptionCard(
-                    title = "Use VIN Decoder",
-                    subtitle = "Scan or enter a VIN to auto-fill.",
-                    icon = Icons.Outlined.QrCodeScanner,
-                    onClick = onVinDecode
-                )
-            }
-        }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .padding(bottom = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "Add a New Vehicle",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "Choose how you want to add the vehicle",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFF64748B),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Option Card for adding manually
+        AddOptionCard(
+            title = "Add Manually",
+            subtitle = "Enter all vehicle details by hand.",
+            icon = Icons.Outlined.DriveFileRenameOutline,
+            onClick = onAddManually
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        // Option Card for using VIN decoder
+        AddOptionCard(
+            title = "Use VIN Decoder",
+            subtitle = "Scan or enter a VIN to auto-fill.",
+            icon = Icons.Outlined.QrCodeScanner,
+            onClick = onVinDecode
+        )
     }
 }
 
 @Composable
 fun AddOptionCard(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
-    // Reusable card for options within the AddVehicleOptionsDialog
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick), // Make the card clickable
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, themeColor.copy(alpha = 0.3f)), // Light border
-        colors = CardDefaults.cardColors(containerColor = themeColor.copy(alpha = 0.1f)) // Very light blue background
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9)), // Very subtle border
+        colors = CardDefaults.cardColors(containerColor = Color.White), // White background
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // Subtle shadow
     ) {
         Row(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon( // Icon on the left
-                icon,
-                contentDescription = title,
-                modifier = Modifier.size(40.dp),
-                tint = themeColor
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column { // Title and subtitle text
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+            // Icon Container
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(themeColor.copy(alpha = 0.1f)), // Light blue background for icon
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = themeColor
                 )
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
             }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Text Content
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B) // Slate 800
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF64748B) // Slate 500
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            // Chevron
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = Color(0xFFCBD5E1) // Light gray chevron
+            )
         }
     }
 }

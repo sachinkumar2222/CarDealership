@@ -278,6 +278,45 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getSeoDomains(
+        productTypeId: Int,
+        domainName: String?
+    ): Result<List<com.slt.cardealership.domain.model.SeoDomain>> {
+        return try {
+            val response = apiService.getSeoDomains(productTypeId, domainName)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getDomainAcceptedTags(
+        dealerId: Long,
+        domainId: Int
+    ): Result<List<String>> {
+        return try {
+            val response = apiService.getDomainAcceptedTags(dealerId, domainId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveDomainSeoTags(
+        request: com.slt.cardealership.domain.model.SeoDomainMapRequest
+    ): Result<Unit> {
+        return try {
+            val response = apiService.saveDomainSeoTags(request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to save tags: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getPostCounts(dealerId: Long): Result<List<com.slt.cardealership.domain.model.PostCountItem>> {
         return try {
             val response = apiService.getPostCountByDomain(dealerId)
@@ -840,18 +879,21 @@ class DealerRepositoryImpl @Inject constructor(
     override suspend fun getResearchVehicles(
         dealerId: Int,
         page: Int,
-        itemsPerPage: Int
+        itemsPerPage: Int,
+        orderBy: String?,
+        order: String?
     ): Result<List<Vehicle>> {
         return try {
-            val response: VehicleListResponse = apiService.getResearchVehicles(
+            val response = apiService.getResearchVehicles(
                 dealerId = dealerId,
                 page = page,
-                itemsPerPage = itemsPerPage
+                itemsPerPage = itemsPerPage,
+                orderBy = orderBy,
+                order = order
             )
-
-            Result.success(response.list ?: emptyList())
+            Result.success(response.list)
         } catch (e: Exception) {
-            Result.failure(Exception(getErrorMessage(e))) // Use error message helper
+            Result.failure(e)
         }
     }
 

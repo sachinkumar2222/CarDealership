@@ -170,8 +170,9 @@ interface DealerRepository {
     suspend fun getResearchVehicles(
         dealerId: Int,
         page: Int,
-        itemsPerPage: Int
-        // Add filters/sorting params if needed
+        itemsPerPage: Int,
+        orderBy: String? = null,
+        order: String? = null
     ): Result<List<Vehicle>>
 
     suspend fun getResearchVehicleDetails(vehicleId: String): Result<Vehicle>
@@ -278,6 +279,20 @@ interface DealerRepository {
         itemsPerPage: Int,
         productTypeId: Int
     ): Result<com.slt.cardealership.domain.model.DomainResponse>
+
+    suspend fun getSeoDomains(
+        productTypeId: Int,
+        domainName: String? = null
+    ): Result<List<com.slt.cardealership.domain.model.SeoDomain>>
+
+    suspend fun getDomainAcceptedTags(
+        dealerId: Long,
+        domainId: Int
+    ): Result<List<String>>
+
+    suspend fun saveDomainSeoTags(
+        request: com.slt.cardealership.domain.model.SeoDomainMapRequest
+    ): Result<Unit>
 
     suspend fun getPostCounts(dealerId: Long): Result<List<com.slt.cardealership.domain.model.PostCountItem>>
     suspend fun getDealerDetailPageSlug(domainId: Int): Result<String>

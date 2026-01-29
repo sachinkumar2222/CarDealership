@@ -58,6 +58,7 @@ import coil3.compose.AsyncImage
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Banner
 import com.slt.cardealership.domain.model.GalleryImage
+import okhttp3.internal.wait
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,7 +99,7 @@ fun PhotoScreen(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF0F8FF))
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
                 )
             },
             floatingActionButton = {

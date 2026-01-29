@@ -113,6 +113,30 @@ fun GradientButton(
     }
 }
 
+
+@Composable
+fun PrimaryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = RoundedCornerShape(12.dp),
+    content: @Composable RowScope.() -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        shape = shape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = BrandBlue,
+            disabledContainerColor = Color.Gray.copy(alpha = 0.5f)
+        ),
+        contentPadding = PaddingValues(0.dp) // Reset default padding if handled in modifier or leave standard
+    ) {
+        content()
+    }
+}
+
 @Composable
 fun GoalSelectionCard(
     title: String,

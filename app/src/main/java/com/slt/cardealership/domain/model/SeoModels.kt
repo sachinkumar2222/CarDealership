@@ -49,3 +49,8 @@ data class MapSeoTagsRequest(
     @SerializedName("tag_ids")
     val tagIds: List<String>
 )
+
+data class SeoDomainMapRequest(
+    @SerializedName("domain_id") val domainId: Int,
+    @SerializedName("tags") val tags: List<String>
+)

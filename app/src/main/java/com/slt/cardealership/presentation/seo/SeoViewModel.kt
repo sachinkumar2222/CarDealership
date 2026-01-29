@@ -181,18 +181,23 @@ class SeoViewModel @Inject constructor(
             _addTagState.update { it.copy(isSaving = true, error = null) }
             Log.d(TAG, "Saving new tag: ${state.tagName}")
 
+            // OPTIMISTIC UPDATE: Close the dialog immediately
+            _events.send(SeoEvent.CloseAddTagDialog)
+
             // FIX: Pass dealerId, tagName, and tagUrl
             repository.addSeoTag(dealerId, state.tagName, state.tagUrl)
                 .onSuccess {
                     Log.d(TAG, "Successfully added new tag. Refreshing list...")
                     _addTagState.value = AddTagState() // Clear the dialog form
                     _events.send(SeoEvent.ShowSuccess("Tag created successfully."))
-                    _events.send(SeoEvent.CloseAddTagDialog) // Tell UI to close dialog
+                    // _events.send(SeoEvent.CloseAddTagDialog) // Already closed
                     refreshAllTagsList() // Refresh the master list on the main screen
                 }
                 .onFailure { error ->
                     Log.d(TAG, "Failed to add tag: ${error.message}")
                     _addTagState.update { it.copy(isSaving = false, error = error.message) }
+                    // We also show a snackbar because the dialog might be closed
+                    _events.send(SeoEvent.ShowError(error.message ?: "Failed to add tag"))
                 }
         }
     }

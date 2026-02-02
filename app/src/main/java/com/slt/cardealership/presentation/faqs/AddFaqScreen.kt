@@ -1,13 +1,13 @@
-package com.slt.cardealership.presentation.faq // Your package name
+package com.slt.cardealership.presentation.faqs
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatUnderlined
@@ -16,48 +16,35 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-
-// --- DEFINE THE GRADIENT ---
-// Removed gradient, using solid color now.
+import com.slt.cardealership.presentation.faqs.HtmlConverter
+import com.slt.cardealership.presentation.faqs.toggleSpanStyle
+import com.slt.cardealership.presentation.faqs.applyEditToAnnotatedString
+import com.slt.cardealership.presentation.faq.FaqViewModel
+import com.slt.cardealership.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddFaqScreen(
-    navController: NavController,
-    viewModel: FaqViewModel = hiltViewModel(
-        remember(navController.previousBackStackEntry) {
-            navController.previousBackStackEntry!!
-        }
-    )
+fun AddFaqSheet(
+    viewModel: FaqViewModel,
+    onClose: () -> Unit
 ) {
     val formState by viewModel.formState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
-    val customBlueColor = Color(0xFF2196F3)
+    val scrollState = rememberScrollState()
 
-    // --- FIX: Local state for the rich text editor ---
+    // Local state for the rich text editor
     var answer by remember { mutableStateOf(TextFieldValue("")) }
 
-    // --- Sync ViewModel state (HTML String) to the local editor state (AnnotatedString) ---
+    // Sync ViewModel state (HTML String) to the local editor state (AnnotatedString)
     LaunchedEffect(formState.answer) {
-        // Only update if the text content actually changed significantly (avoid loops)
-        // or if it's the first load.
-        if (answer.text != formState.answer && !formState.isSaving) { // Simple check might fail if HTML tags are removed
-
+        if (answer.text != formState.answer && !formState.isSaving) {
             val newAnnotated = HtmlConverter.fromHtml(formState.answer)
             if (answer.text != newAnnotated.text) {
                 answer = TextFieldValue(newAnnotated)
@@ -65,241 +52,85 @@ fun AddFaqScreen(
         }
     }
 
-    // --- Handle Events (Snackbars & Navigation) ---
-    LaunchedEffect(Unit) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is FaqEvent.ShowSuccess -> {
-                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
-                }
-                is FaqEvent.ShowError -> {
-                    snackbarHostState.showSnackbar(event.message)
-                }
-                FaqEvent.NavigateBack -> {
-                    navController.popBackStack()
-                }
-                else -> {}
-            }
-        }
-    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.9f) // Take up to 90% of screen height
+            .padding(16.dp)
+    ) {
+        // Header
+        Text(
+            text = if (formState.isEditMode) "Edit FAQ" else "Add New FAQ",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1E293B),
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            CenterAlignedTopAppBar(
-                modifier = Modifier.shadow(8.dp),
-                title = {
-                    Text(
-                        if (formState.isEditMode) "Edit FAQ" else "Add FAQ",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Close")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(scrollState)
+        ) {
+            // Question Field
+            Text(
+                text = "Question *",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            OutlinedTextField(
+                value = formState.question,
+                onValueChange = { viewModel.onFormStateChange(formState.copy(question = it)) },
+                placeholder = { Text("Enter your question") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                singleLine = true,
+                isError = formState.formError != null && formState.question.isBlank(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = BrandBlue,
+                    focusedLabelColor = BrandBlue,
+                    cursorColor = BrandBlue,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
                 )
             )
-        },
-        bottomBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 16.dp, vertical = 13.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Button(
-                    onClick = {
-                        // --- CONNECTED ---
-                        // --- CONNECTED ---
-                        // 1. Update the ViewModel's state with the HTML from the editor
-                        val htmlAnswer = HtmlConverter.toHtml(answer.annotatedString)
-                        viewModel.onFormStateChange(formState.copy(answer = htmlAnswer))
-                        // 2. Call save
-                        viewModel.saveFaq()
-                    },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = formState.question.isNotBlank()
-                            && answer.text.isNotBlank() // <-- Use local answer
-                            && !formState.isSaving,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White,
-                        disabledContainerColor = Color.Gray.copy(alpha = 0.5f)
-                    ),
-                    contentPadding = PaddingValues()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                color = customBlueColor, // Solid Blue
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (formState.isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text(if (formState.isEditMode) "Update" else "Save")
-                        }
-                    }
-                }
-            }
-        },
-        containerColor = Color(0xFFF0F2F5)
-    ) { paddingValues ->
 
-        Box(modifier = Modifier.fillMaxSize()) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Answer Field (Rich Text)
+            Text(
+                text = "Answer *",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            val answerBorderColor = if (formState.formError != null && answer.text.isBlank()) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+            }
+
             Column(
                 modifier = Modifier
-                    .padding(paddingValues)
-                    .padding(16.dp)
-                    .fillMaxSize()
-            ) {
-                // --- Question Field (CONNECTED) ---
-                Text(
-                    text = "Question *",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-                OutlinedTextField(
-                    value = formState.question,
-                    onValueChange = { viewModel.onFormStateChange(formState.copy(question = it)) },
-                    placeholder = { Text("Enter your question") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true,
-                    isError = formState.formError != null && formState.question.isBlank(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF2196F3),
-                        focusedLabelColor = Color(0xFF2196F3),
-                        cursorColor = Color(0xFF2196F3)
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = answerBorderColor,
+                        shape = RoundedCornerShape(8.dp)
                     )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // --- Answer Field (Using your BasicTextField) ---
-                Text(
-                    text = "Answer *",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
-                // --- Check for form error to show red border ---
-                val answerBorderColor = if (formState.formError != null && answer.text.isBlank()) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.outline
-                }
-
-                BasicTextField(
-                    value = answer,
-                    onValueChange = { newVal ->
-                        // --- STYLE PRESERVATION LOGIC ---
-                        // 1. If text is identical (just selection change), keep the old AnnotatedString.
-                        if (newVal.text == answer.text) {
-                            answer = newVal.copy(annotatedString = answer.annotatedString)
-                        } else {
-                            // 2. If text changed (typing), we need to carry over styles.
-                            // The system's 'newVal' comes with a plain AnnotatedString (usually).
-                            // We attempt to re-apply old styles to the new text.
-                            // This is a naive implementation: it assumes appended text inherits style of preceding char.
-
-                            val oldText = answer.text
-                            val newText = newVal.text
-                            val oldSpans = answer.annotatedString.spanStyles
-
-                            val builder = AnnotatedString.Builder(newText)
-
-                            // Copy old spans, adjusting for deletion/insertion
-                            // For simplicity in this quick fix: We just re-apply old spans if they still fit.
-                            // Ideally, we'd use a diff algorithm, but for "add at end" or "simple insert":
-
-                            // Strategy: Just rely on 'answer' state for formatting buttons,
-                            // BUT 'onValueChange' wipes it.
-                            // FIX: We manually reconstruct the AnnotatedString.
-
-                            // Let's iterate over old spans and map them to new positions?
-                            // That's hard without knowing exactly what changed.
-
-                            // BETTER APPROACH FOR USER:
-                            // If we typed a character, let's assume we want to keep the style of the cursor position.
-                            // But for now, to stop "all style gone", let's at least keep the old spans that are valid.
-
-                            if (Math.abs(newText.length - oldText.length) <= 1) {
-                                // Re-add all old spans
-                                oldSpans.forEach { span ->
-                                    // Prevent out of bounds
-                                    if (span.end <= newText.length) {
-                                        builder.addStyle(span.item, span.start, span.end)
-                                    }
-                                }
-                                // If we just added a char, and the cursor was inside a style, extend it?
-                                // This is tricky to get perfect without a library.
-                                // BUT, the user's main complaint is "all styled text normal ho jate".
-                                // This usually happens because newVal has NO styles.
-                                // We will try to preserve at least the exisiting structure.
-
-                                // FORCE FIX: If the user types, we keep the old annotated string,
-                                // but we insert/remove the char in it.
-                                // This is safer than relying on newVal's text.
-                                answer = applyEditToAnnotatedString(answer, newVal)
-                            } else {
-                                // Bulk change (paste etc), accept new val
-                                answer = newVal
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surface,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = answerBorderColor, // <-- Use error color
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(16.dp),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    decorationBox = { innerTextField ->
-                        if (answer.text.isEmpty()) {
-                            Text("Enter Text", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        innerTextField()
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // --- Formatting Buttons (Work on local state) ---
+            ) {
+                // Toolbar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            color = MaterialTheme.colorScheme.surface,
-                            shape = RoundedCornerShape(8.dp)
+                            color = Color(0xFFF1F5F9), // Light gray background for toolbar
+                            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
                         )
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val selection = answer.selection
                     val overlappingSpans = answer.annotatedString.spanStyles.filter {
@@ -312,113 +143,109 @@ fun AddFaqScreen(
 
                     IconToggleButton(checked = isBold, onCheckedChange = {
                         answer = answer.toggleSpanStyle(SpanStyle(fontWeight = FontWeight.Bold))
-                    }) {
+                    }, modifier = Modifier.size(32.dp)) {
                         Icon(
                             Icons.Default.FormatBold,
                             contentDescription = "Bold",
-                            tint = if (isBold) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isBold) BrandBlue else Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     IconToggleButton(checked = isItalic, onCheckedChange = {
                         answer = answer.toggleSpanStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                    }) {
+                    }, modifier = Modifier.size(32.dp)) {
                         Icon(
                             Icons.Default.FormatItalic,
                             contentDescription = "Italic",
-                            tint = if (isItalic) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isItalic) BrandBlue else Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     IconToggleButton(checked = isUnderlined, onCheckedChange = {
                         answer = answer.toggleSpanStyle(SpanStyle(textDecoration = TextDecoration.Underline))
-                    }) {
+                    }, modifier = Modifier.size(32.dp)) {
                         Icon(
                             Icons.Default.FormatUnderlined,
                             contentDescription = "Underline",
-                            tint = if (isUnderlined) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconToggleButton(checked = false, onCheckedChange = {
-                        // TODO: Add logic for linking
-                    }) {
-                        Icon(
-                            Icons.Default.Link,
-                            contentDescription = "Link",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isUnderlined) BrandBlue else Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
 
-                // --- ADDED: Form Error Text ---
-                if (formState.formError != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = formState.formError!!,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
+                HorizontalDivider(color = answerBorderColor)
 
-            // --- ADDED: Loading overlay for Edit Mode ---
-            if (formState.isLoading) {
-                Box(
+                // Text Area
+                BasicTextField(
+                    value = answer,
+                    onValueChange = { newVal ->
+                        if (newVal.text == answer.text) {
+                            answer = newVal.copy(annotatedString = answer.annotatedString)
+                        } else {
+                            if (Math.abs(newVal.text.length - answer.text.length) <= 1) {
+                                answer = applyEditToAnnotatedString(answer, newVal)
+                            } else {
+                                answer = newVal
+                            }
+                        }
+                    },
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .padding(12.dp),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = Color(0xFF1E293B)
+                    ),
+                    decorationBox = { innerTextField ->
+                        if (answer.text.isEmpty()) {
+                            Text("Enter answer here...", color = Color.Gray)
+                        }
+                        innerTextField()
+                    }
+                )
+            }
+
+            if (formState.formError != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = formState.formError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
-    }
-}
 
-/**
- * Helper extension function to toggle a SpanStyle on the selected text of a TextFieldValue.
- */
-fun TextFieldValue.toggleSpanStyle(style: SpanStyle): TextFieldValue {
-    val selection = this.selection
-    if (selection.collapsed) return this // No text selected
+        Spacer(modifier = Modifier.height(16.dp))
 
-    val annotatedString = this.annotatedString
-
-    val togglingBold = style.fontWeight == FontWeight.Bold
-    val togglingItalic = style.fontStyle == FontStyle.Italic
-    val togglingUnderline = style.textDecoration == TextDecoration.Underline
-
-    val isCurrentlyActive = annotatedString.spanStyles
-        .filter { maxOf(it.start, selection.min) < minOf(it.end, selection.max) }
-        .any {
-            (togglingBold && it.item.fontWeight == FontWeight.Bold) ||
-                    (togglingItalic && it.item.fontStyle == FontStyle.Italic) ||
-                    (togglingUnderline && it.item.textDecoration == TextDecoration.Underline)
-        }
-
-    val newAnnotatedString = AnnotatedString.Builder(annotatedString).apply {
-        val styleToApply = if (isCurrentlyActive) {
-            when {
-                togglingBold -> SpanStyle(fontWeight = FontWeight.Normal)
-                togglingItalic -> SpanStyle(fontStyle = FontStyle.Normal)
-                togglingUnderline -> SpanStyle(textDecoration = TextDecoration.None)
-                else -> SpanStyle()
+        // Save Button
+        Button(
+            onClick = {
+                val htmlAnswer = HtmlConverter.toHtml(answer.annotatedString)
+                viewModel.onFormStateChange(formState.copy(answer = htmlAnswer))
+                viewModel.saveFaq()
+            },
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            enabled = formState.question.isNotBlank()
+                    && answer.text.isNotBlank()
+                    && !formState.isSaving,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = BrandBlue,
+                contentColor = Color.White,
+                disabledContainerColor = BrandBlue.copy(alpha = 0.5f)
+            )
+        ) {
+            if (formState.isSaving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(if (formState.isEditMode) "Update FAQ" else "Save FAQ", fontWeight = FontWeight.Bold)
             }
-        } else {
-            style
         }
-        addStyle(styleToApply, selection.min, selection.max)
-    }.toAnnotatedString()
-
-    return this.copy(annotatedString = newAnnotatedString)
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun AddFaqScreenPreview() {
-    MaterialTheme {
-        AddFaqScreen(
-            navController = rememberNavController()
-        )
     }
 }

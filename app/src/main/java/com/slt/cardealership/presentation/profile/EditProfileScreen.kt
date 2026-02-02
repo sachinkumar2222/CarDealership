@@ -5,6 +5,8 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import com.slt.cardealership.presentation.common.LabeledTextField
+import com.slt.cardealership.presentation.common.AnimatedDropdown
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -44,7 +46,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -88,19 +89,7 @@ fun EditProfileScreen(
     // --- TextField Style ---
     val brandBlue = Color(0xFF2196F3)
 
-    // --- TextField Style ---
-    val textFieldColors = TextFieldDefaults.colors(
-        focusedContainerColor = Color.White,
-        unfocusedContainerColor = Color.White,
-        disabledContainerColor = Color(0xFFF5F5F5),
-        focusedIndicatorColor = brandBlue,
-        unfocusedIndicatorColor = Color(0xFFE0E0E0),
-        disabledIndicatorColor = Color.Transparent,
-        focusedLabelColor = brandBlue,
-        unfocusedLabelColor = Color.DarkGray,
-        disabledLabelColor = Color.DarkGray,
-        cursorColor = brandBlue
-    )
+    // --- Gradient for the Save Button (Moved to Form) ---
 
     // --- Gradient for the Save Button (Moved to Form) ---
     // val blueGradient = ... // This is now defined in the Form
@@ -122,6 +111,7 @@ fun EditProfileScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Edit Profile", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -129,7 +119,7 @@ fun EditProfileScreen(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = Color.White
                 )
             )
         },
@@ -178,7 +168,7 @@ fun EditProfileScreen(
                         modifier = Modifier.padding(paddingValues), // Pass padding
                         profile = profile,
                         onUpdateProfileField = viewModel::updateProfileField,
-                        textFieldColors = textFieldColors,
+
                         onSaveProfile = { viewModel.onSaveProfile() }, // Pass save action
                         isSaving = uiState is ProfileUiState.Saving // Pass saving state
                     )
@@ -200,23 +190,11 @@ fun EditProfileForm(
     modifier: Modifier = Modifier, // --- NEW: Accept a modifier ---
     profile: DetailedUserProfile,
     onUpdateProfileField: ((DetailedUserProfile) -> DetailedUserProfile) -> Unit,
-    textFieldColors: androidx.compose.material3.TextFieldColors, // Pass colors for consistency
+
     onSaveProfile: () -> Unit, // --- NEW: Callback for save ---
     isSaving: Boolean          // --- NEW: State for save button ---
 ) {
-    var genderExpanded by remember { mutableStateOf(false) }
-    var languageExpanded by remember { mutableStateOf(false) }
-    var statusExpanded by remember { mutableStateOf(false) }
 
-    // --- Read-Only / Clickable Fields Style (Looks active but handles clicks manually) ---
-    val clickableTextFieldColors = TextFieldDefaults.colors(
-        disabledContainerColor = Color.White,
-        disabledIndicatorColor = Color(0xFFE0E0E0),
-        disabledLabelColor = Color.DarkGray,
-        disabledTextColor = Color.Black,
-        disabledTrailingIconColor = Color.Gray,
-        disabledPlaceholderColor = Color.Gray
-    )
 
     val genders = listOf("Male", "Female", "Other")
     val languages = listOf("English", "Spanish", "French", "German") // Example languages
@@ -360,262 +338,169 @@ fun EditProfileForm(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            OutlinedTextField(
+            LabeledTextField(
                 value = profile.firstName,
                 onValueChange = { newValue -> onUpdateProfileField { it.copy(firstName = newValue) } },
-                label = { Text("First Name") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                colors = textFieldColors,
-                singleLine = true
+                label = "First Name",
+                modifier = Modifier.weight(1f)
             )
-            OutlinedTextField(
+            LabeledTextField(
                 value = profile.lastName,
                 onValueChange = { newValue -> onUpdateProfileField { it.copy(lastName = newValue) } },
-                label = { Text("Last Name") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                colors = textFieldColors,
-                singleLine = true
+                label = "Last Name",
+                modifier = Modifier.weight(1f)
             )
         }
 
         // --- Username (email) - Often read-only or with specific update flow
-        OutlinedTextField(
+        LabeledTextField(
             value = profile.username,
             onValueChange = { /* Username/email usually has a separate update process */ },
-            label = { Text("Username (email)") },
+            label = "Username (email)",
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = textFieldColors,
-            singleLine = true,
-            readOnly = true // Making username read-only as it often requires re-authentication
+            enabled = false
         )
 
         // --- Role (Display Only) ---
-        OutlinedTextField(
+        LabeledTextField(
             value = profile.roleName,
             onValueChange = { /* Role is usually not directly editable */ },
-            label = { Text("Role") },
+            label = "Role",
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = textFieldColors,
-            singleLine = true,
-            readOnly = true
+            enabled = false
         )
 
         // --- Organization (Display Only) ---
-        OutlinedTextField(
+        LabeledTextField(
             value = profile.organizationName.orEmpty(),
             onValueChange = { /* Organization is usually not directly editable */ },
-            label = { Text("Organization") },
+            label = "Organization",
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = textFieldColors,
-            singleLine = true,
-            readOnly = true
+            enabled = false
         )
 
-        // --- Department (Editable) ---
-        OutlinedTextField(
+        // --- Department (Editable?) -> User requested Read-only (Grey) ---
+        LabeledTextField(
             value = profile.departmentName.orEmpty(),
-            onValueChange = { newValue -> onUpdateProfileField { it.copy(departmentName = newValue) } },
-            label = { Text("Department") },
+            // onValueChange = { newValue -> onUpdateProfileField { it.copy(departmentName = newValue) } },
+            onValueChange = {}, // Disabled
+            label = "Department",
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = textFieldColors,
-            singleLine = true
+            enabled = false
         )
 
-        // --- Designation (Editable) ---
-        OutlinedTextField(
+        // --- Designation (Editable?) -> User requested Read-only (Grey) ---
+        LabeledTextField(
             value = profile.designationName.orEmpty(),
-            onValueChange = { newValue -> onUpdateProfileField { it.copy(designationName = newValue) } },
-            label = { Text("Designation") },
+            // onValueChange = { newValue -> onUpdateProfileField { it.copy(designationName = newValue) } },
+            onValueChange = {}, // Disabled
+            label = "Designation",
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = textFieldColors,
-            singleLine = true
+            enabled = false
         )
 
         // --- Dealer (Display Only) ---
-        OutlinedTextField(
+        LabeledTextField(
             value = profile.dealerName.orEmpty(),
             onValueChange = { /* Dealer is usually not directly editable */ },
-            label = { Text("Dealer") },
+            label = "Dealer",
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = textFieldColors,
-            singleLine = true,
-            readOnly = true
+            enabled = false
         )
 
-        // --- Status (Dropdown) ---
-        Box {
-            OutlinedTextField(
-                value = if (profile.isActive) "Active" else "Inactive",
-                onValueChange = { /* Read only from here, controlled by dropdown selection */ },
-                label = { Text("Status") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { statusExpanded = true },
-                shape = RoundedCornerShape(12.dp),
-                colors = textFieldColors,
-                readOnly = true,
-                trailingIcon = {
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown for Status")
-                }
-            )
-            DropdownMenu(
-                expanded = statusExpanded,
-                onDismissRequest = { statusExpanded = false },
-                modifier = Modifier.fillMaxWidth(0.9f) // Adjust width to match TextField
-            ) {
-                statuses.forEach { statusOption ->
-                    DropdownMenuItem(
-                        text = { Text(statusOption) },
-                        onClick = {
-                            onUpdateProfileField { it.copy(isActive = statusOption == "Active") }
-                            statusExpanded = false
-                        }
-                    )
-                }
-            }
-        }
-
-        // --- Row: Gender / Language (Half Width) ---
-        Row(
+        // --- Status (Read Only) ---
+        LabeledTextField(
+            value = if (profile.isActive) "Active" else "Inactive",
+            onValueChange = {},
+            label = "Status",
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Gender Dropdown
-            Box(modifier = Modifier.weight(1f)) {
-                OutlinedTextField(
-                    value = profile.gender.orEmpty(),
-                    onValueChange = { /* Read-only from here */ },
-                    label = { Text("Gender") },
-                    placeholder = { Text("Select Gender") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { genderExpanded = true },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = clickableTextFieldColors,
-                    enabled = false,
-                    trailingIcon = {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown for Gender")
-                    }
-                )
-                DropdownMenu(
-                    expanded = genderExpanded,
-                    onDismissRequest = { genderExpanded = false },
-                    modifier = Modifier.fillMaxWidth(0.45f) // Adjust width
-                ) {
-                    genders.forEach { genderOption ->
-                        DropdownMenuItem(
-                            text = { Text(genderOption) },
-                            onClick = {
-                                onUpdateProfileField { it.copy(gender = genderOption) }
-                                genderExpanded = false
-                            }
-                        )
-                    }
-                }
+            enabled = false,
+            trailingIcon = {
+                Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown for Status", tint = Color.Gray)
             }
+        )
 
-            // Language Dropdown
-            Box(modifier = Modifier.weight(1f)) {
-                OutlinedTextField(
-                    value = profile.language.orEmpty(),
-                    onValueChange = { /* Read-only from here */ },
-                    label = { Text("Language") },
-                    placeholder = { Text("Select Language") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { languageExpanded = true },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = clickableTextFieldColors,
-                    enabled = false,
-                    trailingIcon = {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown for Language")
-                    }
-                )
-                DropdownMenu(
-                    expanded = languageExpanded,
-                    onDismissRequest = { languageExpanded = false },
-                    modifier = Modifier.fillMaxWidth(0.45f) // Adjust width
-                ) {
-                    languages.forEach { languageOption ->
-                        DropdownMenuItem(
-                            text = { Text(languageOption) },
-                            onClick = {
-                                onUpdateProfileField { it.copy(language = languageOption) }
-                                languageExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
+        AnimatedDropdown(
+            label = "Gender",
+            options = genders,
+            selectedOption = profile.gender.orEmpty(),
+            onOptionSelected = { option -> onUpdateProfileField { it.copy(gender = option) } },
+            modifier =Modifier.fillMaxWidth(),
+            enabled = true
+        )
 
-        // --- Row: DOB / DOJ (Half Width with Date Pickers) ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
+        // Language Dropdown
+        AnimatedDropdown(
+            label = "Language",
+            options = languages,
+            selectedOption = profile.language.orEmpty(),
+            onOptionSelected = { option -> onUpdateProfileField { it.copy(language = option) } },
+            modifier =Modifier.fillMaxWidth(),
+            enabled = true
+        )
+
+        // DOB Picker
+        Box(modifier = Modifier.fillMaxWidth()) {
+            LabeledTextField(
                 value = profile.dob.orEmpty(),
-                onValueChange = { /* Controlled by date picker */ },
-                label = { Text("Date of Birth") },
-                placeholder = { Text("Select date") },
-                // --- MODIFIED: Show M3 picker on click ---
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { showDobDialog = true },
-                shape = RoundedCornerShape(12.dp),
-                colors = clickableTextFieldColors,
-                enabled = false, // Make it read-only as picker handles input
+                onValueChange = { },
+                label = "Date of Birth",
+                placeholder = "Select date",
+                modifier = Modifier.fillMaxWidth(),
+                enabled = true, // Keep White
+                readOnly = true, // No typing
                 trailingIcon = {
                     Icon(Icons.Default.CalendarToday, contentDescription = "Date Picker for DOB")
                 }
             )
-            OutlinedTextField(
-                value = profile.doj.orEmpty(),
-                onValueChange = { /* Controlled by date picker */ },
-                label = { Text("Date of Joining") },
-                placeholder = { Text("Select date") },
-                // --- MODIFIED: Show M3 picker on click ---
+            // Overlay to capture clicks
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .clickable { showDojDialog = true },
-                shape = RoundedCornerShape(12.dp),
-                colors = clickableTextFieldColors,
-                enabled = false, // Make it read-only as picker handles input
+                    .matchParentSize()
+                    .padding(top = 24.dp) // Adjust for label
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { showDobDialog = true }
+            )
+        }
+
+        // DOJ Picker
+        Box(modifier = Modifier.fillMaxWidth()) {
+            LabeledTextField(
+                value = profile.doj.orEmpty(),
+                onValueChange = { },
+                label = "Date of Joining",
+                placeholder = "Select date",
+                modifier = Modifier.fillMaxWidth(),
+                enabled = true, // Keep White
+                readOnly = true, // No typing
                 trailingIcon = {
                     Icon(Icons.Default.CalendarToday, contentDescription = "Date Picker for DOJ")
                 }
             )
+            // Overlay to capture clicks
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(top = 24.dp) // Adjust for label
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { showDojDialog = true }
+            )
         }
 
         // --- Phone (Editable) ---
-        OutlinedTextField(
+        LabeledTextField(
             value = profile.phone.orEmpty(),
             onValueChange = { newValue -> onUpdateProfileField { it.copy(phone = newValue) } },
-            label = { Text("Phone") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = textFieldColors,
-            singleLine = true
+            label = "Phone",
+            modifier = Modifier.fillMaxWidth()
         )
 
         // --- Address (Editable) ---
-        OutlinedTextField(
+        LabeledTextField(
             value = profile.address.orEmpty(),
             onValueChange = { newValue -> onUpdateProfileField { it.copy(address = newValue) } },
-            label = { Text("Address") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = textFieldColors,
-            singleLine = true
+            label = "Address",
+            modifier = Modifier.fillMaxWidth()
         )
 
         // --- NEW: Save Button (Moved from Scaffold) ---

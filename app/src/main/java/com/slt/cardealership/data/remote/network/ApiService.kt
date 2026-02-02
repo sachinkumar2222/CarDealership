@@ -144,7 +144,17 @@ interface ApiService {
 
     @GET("dealer-api/dealers/{dealerId}/posts")
     suspend fun getPosts(
-        @Path("dealerId") dealerId: Long
+        @Path("dealerId") dealerId: Long,
+        @Query("page") page: Int = 1,
+        @Query("item_per_page") itemsPerPage: Int = 10,
+        @Query("order_by") orderBy: String? = null,
+        @Query("order") order: String? = null,
+        @Query("status") status: String? = null,
+        @Query("name") name: String? = null,
+        @Query("have_content") haveContent: Boolean? = null,
+        @Query("have_links") haveLinks: Boolean? = null,
+        @Query("have_image") haveImage: Boolean? = null,
+        @Query("domain_name") domainName: String? = "all"
     ): PostListResponse
 
     @GET("dealer-api/dealers/{dealerId}/posts")
@@ -167,6 +177,22 @@ interface ApiService {
         @Path("dealerId") dealerId: Long
     ): List<com.slt.cardealership.domain.model.ArticleLink>
 
+    @GET("dealer-api/dealer-seo-tags")
+    suspend fun getDealerSeoTags(
+        @Query("dealer_id") dealerId: Long
+    ): SeoTagListResponse
+
+    @POST("dealer-api/dealers/{dealerId}/ArticleLinks")
+    suspend fun addArticleLink(
+        @Path("dealerId") dealerId: Long,
+        @Body request: com.slt.cardealership.domain.model.ArticleLinkRequest
+    ): Response<Unit>
+
+    @DELETE("dealer-api/dealers/{dealerId}/ArticleLinks/{id}")
+    suspend fun deleteArticleLink(
+        @Path("dealerId") dealerId: Long,
+        @Path("id") linkId: String
+    ): Response<Unit>
 
     @GET("dealer-api/dealers/{dealerId}/posts/{postId}")
     suspend fun getPostById(
@@ -626,10 +652,16 @@ interface ApiService {
         @Query("dealer_id") dealerId: Long
     ): List<ManageUsers>
 
-
-
+    // For Admin changing other users' passwords
     @PUT("organizations-api/users/{userId}/change-password")
     suspend fun changeUserPassword(
+        @Path("userId") userId: Long,
+        @Body request: ChangePasswordRequest
+    ): Response<Unit>
+
+    // For User changing their own password
+    @POST("organizations-api/users/changePassword/{userId}")
+    suspend fun changeMyPassword(
         @Path("userId") userId: Long,
         @Body request: ChangePasswordRequest
     ): Response<Unit>

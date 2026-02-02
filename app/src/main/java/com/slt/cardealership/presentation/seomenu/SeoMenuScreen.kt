@@ -1,5 +1,8 @@
 package com.slt.cardealership.presentation.seomenu
 
+import com.slt.cardealership.presentation.common.AnimatedDropdown
+import com.slt.cardealership.presentation.common.LabeledTextField
+import androidx.compose.foundation.layout.height
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.slt.cardealership.domain.model.SeoCategory
 import com.slt.cardealership.presentation.home.HomeRoutes
+import com.slt.cardealership.presentation.seomenu.AddSeoMenuSheet
 import com.slt.cardealership.presentation.seomenu.SeoMenuEvent
 import com.slt.cardealership.presentation.seomenu.SeoMenuUiItem
 import com.slt.cardealership.presentation.seomenu.SeoMenuViewModel
@@ -41,6 +45,9 @@ fun SeoMenuScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showAddSheet by remember { mutableStateOf(false) }
+
     // --- Listen for one-time events (like toast messages or navigation) ---
     LaunchedEffect(key1 = true) {
         viewModel.eventFlow.collect { event ->
@@ -48,9 +55,11 @@ fun SeoMenuScreen(
                 is SeoMenuEvent.ShowToast -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }
-                is SeoMenuEvent.SaveSuccessAndNavBack -> {
-                    // Save was successful, now navigate back
-                    onBackClick()
+
+
+                is SeoMenuEvent.SaveAddSuccessAndNavBack -> {
+                    showAddSheet = false
+                    viewModel.refreshSeoMenus()
                 }
 
                 else -> {}
@@ -93,7 +102,7 @@ fun SeoMenuScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(HomeRoutes.AddSeoMenuScreen) }, // <-- 2. CONNECTED to ViewModel
+                onClick = { showAddSheet = true },
                 containerColor = customColor,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
@@ -113,7 +122,8 @@ fun SeoMenuScreen(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .height(55.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = customColor, // Use your brand color
                     contentColor = Color.White,
@@ -130,7 +140,7 @@ fun SeoMenuScreen(
                 } else {
                     Text(
                         text = "Save Changes", // <-- 5. TEXT CHANGED
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        modifier = Modifier.padding(vertical = 2.dp)
                     )
                 }
             }
@@ -200,6 +210,13 @@ fun SeoMenuScreen(
                 }
             }
         }
+
+        if (showAddSheet) {
+            AddSeoMenuSheet(
+                onDismissRequest = { showAddSheet = false },
+                sheetState = sheetState
+            )
+        }
     }
 }
 
@@ -216,23 +233,6 @@ fun EditableSeoMenuCard(
     onDelete: () -> Unit,
     customColor: Color
 ) {
-
-
-    // Define colors for the TextFields
-    val textFieldColors = TextFieldDefaults.colors(
-        focusedContainerColor = Color.White,
-        unfocusedContainerColor = Color.White,
-        disabledContainerColor = Color.White,
-        focusedIndicatorColor = customColor,
-        unfocusedIndicatorColor = Color.LightGray,
-        focusedLabelColor = customColor,
-        unfocusedLabelColor = Color.Gray,
-        focusedTextColor = Color.Black,
-        unfocusedTextColor = Color.Black,
-        focusedTrailingIconColor = customColor,
-        unfocusedTrailingIconColor = Color.Gray
-    )
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -246,48 +246,47 @@ fun EditableSeoMenuCard(
             // --- Row 1: Category and Target Dropdowns ---
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Category Dropdown
-                SeoDropdown(
+                AnimatedDropdown(
                     label = "Category",
                     selectedOption = item.categoryName,
-                    options = allCategories,
-                    onOptionSelected = { category ->
-                        onItemChange(item.copy(categoryId = category.id, categoryName = category.name))
+                    options = allCategories.map { it.name },
+                    onOptionSelected = { selectedName ->
+                         val category = allCategories.find { it.name == selectedName }
+                         if (category != null) {
+                             onItemChange(item.copy(categoryId = category.id, categoryName = category.name))
+                         }
                     },
-                    optionLabel = { it.name },
                     modifier = Modifier.weight(1f)
                 )
 
                 // Target Dropdown
-                SeoDropdown(
+                AnimatedDropdown(
                     label = "Target",
                     selectedOption = item.target,
                     options = allTargets,
                     onOptionSelected = { target ->
                         onItemChange(item.copy(target = target))
                     },
-                    optionLabel = { it },
                     modifier = Modifier.weight(1f)
                 )
             }
 
             // --- Row 2: Menu Label (Now Editable) ---
-            OutlinedTextField(
+            LabeledTextField(
+                label = "Menu Label",
                 value = item.label,
                 onValueChange = { newItemLabel -> onItemChange(item.copy(label = newItemLabel)) },
-                label = { Text("Menu Label") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                singleLine = true
+                placeholder = "Menu Label",
+                modifier = Modifier.fillMaxWidth()
             )
 
             // --- Row 3: Menu URL (Now Editable) ---
-            OutlinedTextField(
+            LabeledTextField(
+                label = "Menu URL (e.g., https://... )",
                 value = item.url,
                 onValueChange = { newItemUrl -> onItemChange(item.copy(url = newItemUrl)) },
-                label = { Text("Menu URL (e.g., https://... )") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                singleLine = true
+                placeholder = "Menu URL",
+                modifier = Modifier.fillMaxWidth()
             )
 
             // --- Row 4: Delete Button ---

@@ -1,5 +1,8 @@
 package com.slt.cardealership.presentation.articles
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slt.cardealership.data.local.SessionManager
@@ -26,11 +29,15 @@ class ArticleViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ArticleUiState>(ArticleUiState.Loading)
     val uiState = _uiState.asStateFlow()
 
+    // Sort State
+    var sortBy by mutableStateOf("CreatedOn")
+    var sortOrder by mutableStateOf("desc")
+
     init {
-        fetchArticles()
+        fetchPosts()
     }
 
-    fun fetchArticles() {
+    fun fetchPosts() {
         viewModelScope.launch {
             _uiState.value = ArticleUiState.Loading
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull()
@@ -38,18 +45,24 @@ class ArticleViewModel @Inject constructor(
                 _uiState.value = ArticleUiState.Error("Dealer ID not found.")
                 return@launch
             }
-            postRepository.getPosts(dealerId)
+            postRepository.getPosts(dealerId, page = 1, orderBy = sortBy, order = sortOrder)
                 .onSuccess { posts -> _uiState.value = ArticleUiState.Success(posts) }
-                .onFailure { _uiState.value = ArticleUiState.Error(it.message ?: "Failed to load.") }
+                .onFailure { _uiState.value = ArticleUiState.Error(it.message ?: "Failed to load posts.") }
         }
     }
 
-    fun deleteArticle(postId: String) {
+    fun updateSort(newSortBy: String, newSortOrder: String) {
+        sortBy = newSortBy
+        sortOrder = newSortOrder
+        fetchPosts()
+    }
+
+    fun deleteArticle(articleId: String) {
         viewModelScope.launch {
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
-            postRepository.deletePost(dealerId, postId)
-                .onSuccess { fetchArticles() } // Refresh the list on success
-                .onFailure { /* Optionally show a toast or error message */ }
+            postRepository.deletePost(dealerId, articleId)
+                .onSuccess { fetchPosts() } // Refresh list
+                .onFailure { /* Handle error */ }
         }
     }
 }

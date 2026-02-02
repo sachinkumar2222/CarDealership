@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.slt.cardealership.presentation.faqs.AddFaqSheet
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -39,12 +40,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
 import com.slt.cardealership.domain.model.FaqItem
 import com.slt.cardealership.presentation.home.HomeRoutes
-
-// --- DEFINE COLORS ---
-private val lightBlueColor = Color(0xFF2196F3)
-// --- END DEFINE COLORS ---
+import com.slt.cardealership.ui.theme.BrandBlue
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +56,11 @@ fun FaqScreen(
     val listState by viewModel.listState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    
+    // Bottom Sheet State
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showSheet by remember { mutableStateOf(false) }
 
     // Local state for search
     var searchQuery by remember { mutableStateOf("") }
@@ -77,8 +83,15 @@ fun FaqScreen(
 
         viewModel.events.collect { event ->
             when (event) {
-                is FaqEvent.ShowSuccess -> snackbarHostState.showSnackbar(event.message)
-                is FaqEvent.ShowError -> snackbarHostState.showSnackbar(event.message)
+                is FaqEvent.ShowSuccess -> {
+                    scope.launch { snackbarHostState.showSnackbar(event.message) }
+                }
+                is FaqEvent.ShowError -> {
+                    scope.launch { snackbarHostState.showSnackbar(event.message) }
+                }
+                FaqEvent.NavigateBack -> {
+                    showSheet = false
+                }
                 else -> {}
             }
         }
@@ -106,9 +119,9 @@ fun FaqScreen(
             FloatingActionButton(
                 onClick = {
                     viewModel.prepareNewFaqForm()
-                    navController.navigate(HomeRoutes.AddFaqScreen)
+                    showSheet = true
                 },
-                containerColor = lightBlueColor,
+                containerColor = BrandBlue,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -162,7 +175,7 @@ fun FaqScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color(0xFFF9F9F9),
                         unfocusedContainerColor = Color(0xFFF9F9F9),
-                        focusedBorderColor = lightBlueColor,
+                        focusedBorderColor = BrandBlue,
                         unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
                     ),
                     singleLine = true,
@@ -177,7 +190,7 @@ fun FaqScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     listState.isLoading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = BrandBlue)
                     }
                     filteredFaqs.isEmpty() -> {
                         EmptyFaqContent(
@@ -190,14 +203,14 @@ fun FaqScreen(
                             state = androidx.compose.foundation.lazy.rememberLazyListState(),
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+                            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp)
                         ) {
                             items(filteredFaqs, key = { it.id }) { faqItem ->
                                 FaqCard(
                                     item = faqItem,
                                     onEditClick = {
                                         viewModel.loadFaqForEdit(faqItem.id)
-                                        navController.navigate(HomeRoutes.AddFaqScreen)
+                                        showSheet = true
                                     },
                                     onDeleteClick = {
                                         viewModel.deleteFaq(faqItem.id, type = "default")
@@ -207,6 +220,21 @@ fun FaqScreen(
                         }
                     }
                 }
+            }
+        }
+        
+        // --- Bottom Sheet ---
+        if (showSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showSheet = false },
+                sheetState = sheetState,
+                containerColor = Color.White,
+                scrimColor = Color.Black.copy(alpha = 0.5f)
+            ) {
+               AddFaqSheet(
+                   viewModel = viewModel,
+                   onClose = { showSheet = false }
+               )
             }
         }
     }
@@ -219,114 +247,136 @@ fun FaqCard(
     onDeleteClick: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     val rotationAngle by animateFloatAsState(targetValue = if (isExpanded) 180f else 0f, label = "expansion_arrow")
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp), // Increased elevation for pop
-        modifier = Modifier.fillMaxWidth()
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { isExpanded = !isExpanded }
     ) {
-        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            // Solid Blue Strip on Left
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(6.dp)
-                    .background(lightBlueColor)
-            )
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp)
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Header Row: Question + Actions
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top, // Align top to handle multi-line titles
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Question
+                // Expand Icon on Left
+                 Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Expand",
+                    modifier = Modifier
+                        .rotate(rotationAngle)
+                        .padding(top = 2.dp, end = 12.dp) // Align visually with text top
+                        .size(24.dp),
+                    tint = Color(0xFF94A3B8)
+                )
+                
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.question,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 17.sp,
-                            lineHeight = 22.sp
-                        ),
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black.copy(alpha = 0.85f),
-                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                        color = Color(0xFF1E293B),
+                        modifier = Modifier.padding(bottom = 4.dp)
                     )
-
-                    // Action Icons
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Edit Button
-                        IconButton(
-                            onClick = onEditClick,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit",
-                                tint = lightBlueColor,
-                                modifier = Modifier.size(20.dp)
-                            )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                         // Domain/Type Tag
+                        if (!item.domain_name.isNullOrBlank()) {
+                            Surface(
+                                color = Color(0xFFEFF6FF),
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.padding(end = 8.dp)
+                            ) {
+                                Text(
+                                    text = item.domain_name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = BrandBlue,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        // Delete Button
-                        IconButton(
-                            onClick = onDeleteClick,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = Color.Red.copy(alpha = 0.7f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                AnimatedVisibility(visible = isExpanded) {
-                    Column {
-                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
-                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Date
                         Text(
-                            text = item.answer,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                lineHeight = 20.sp
-                            ),
-                            color = Color.DarkGray
+                            text = formatDate(item.created_on),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF64748B)
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
 
-                // Expand/Collapse Toggle
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { isExpanded = !isExpanded }
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // Action Menu
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(28.dp) // Slightly smaller touch target visual, but keep usable
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Actions",
+                            tint = Color(0xFF94A3B8)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        modifier = Modifier.background(Color.White),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Edit") },
+                            onClick = {
+                                showMenu = false
+                                onEditClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBlue)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = Color.Red) },
+                            onClick = {
+                                showMenu = false
+                                onDeleteClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Expanded Content (Answer)
+            AnimatedVisibility(visible = isExpanded) {
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color(0xFFF1F5F9))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
                     Text(
-                        text = if (isExpanded) "Show Less" else "Show Answer",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = lightBlueColor,
-                        fontWeight = FontWeight.SemiBold
+                        text = "Answer:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF64748B),
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(bottom = 4.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.ExpandMore,
-                        contentDescription = "Expand/Collapse",
-                        tint = lightBlueColor,
-                        modifier = Modifier.rotate(rotationAngle)
+                    Text(
+                        text = item.answer,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF334155),
+                        lineHeight = 22.sp
                     )
                 }
             }
@@ -361,5 +411,15 @@ fun EmptyFaqContent(
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+// Helper to format date
+private fun formatDate(timestamp: Long): String {
+    return try {
+        val sdf = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+        sdf.format(java.util.Date(timestamp))
+    } catch (e: Exception) {
+        ""
     }
 }

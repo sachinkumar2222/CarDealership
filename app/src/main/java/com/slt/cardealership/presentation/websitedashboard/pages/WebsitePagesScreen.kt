@@ -1,5 +1,8 @@
 package com.slt.cardealership.presentation.websitedashboard.pages
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,9 +10,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -105,6 +112,7 @@ fun WebsitePagesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Pages") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -115,8 +123,7 @@ fun WebsitePagesScreen(
                     containerColor = Color.White,
                     titleContentColor = Color.Black,
                     navigationIconContentColor = Color.Black
-                ),
-                modifier = Modifier.shadow(8.dp)
+                )
             )
         },
         floatingActionButton = {
@@ -168,6 +175,9 @@ fun WebsitePagesScreen(
                             pageToEdit = page
                             showEditDialog = true
                         },
+                        onDeleteClick = { page ->
+                            viewModel.deletePage(page.id)
+                        },
                         paginationContent = {
                             PaginationControls(
                                 currentPage = state.currentPage,
@@ -191,6 +201,7 @@ fun PagesList(
     pages: List<DomainPage>,
     modifier: Modifier = Modifier,
     onEditClick: (DomainPage) -> Unit,
+    onDeleteClick: (DomainPage) -> Unit,
     paginationContent: @Composable () -> Unit
 ) {
     LazyColumn(
@@ -201,9 +212,10 @@ fun PagesList(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(pages) { page ->
-            PageCard(
+            ExpandablePageCard(
                 page = page,
-                onEditClick = { onEditClick(page) }
+                onEditClick = { onEditClick(page) },
+                onDeleteClick = { onDeleteClick(page) }
             )
         }
         item {
@@ -333,12 +345,18 @@ fun PaginationControls(
 }
 
 @Composable
-fun PageCard(
+fun ExpandablePageCard(
     page: DomainPage,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -348,121 +366,178 @@ fun PageCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Page Name and Status Row
+            // Header Row: Critical Info + Action Menu
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = page.pageName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1A1A1A),
-                    modifier = Modifier.weight(1f)
+                // Dropdown Icon
+                val rotationState by animateFloatAsState(
+                    targetValue = if (expanded) 90f else 0f
                 )
 
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = when (page.status.lowercase()) {
-                        "active" -> Color(0xFFE7F5E9)
-                        "inactive" -> Color(0xFFFFF3E0)
-                        else -> Color(0xFFE0E0E0)
-                    }
-                ) {
-                    Text(
-                        text = page.status.replaceFirstChar {
-                            if (it.isLowerCase()) it.titlecase(Locale.getDefault())
-                            else it.toString()
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = when (page.status.lowercase()) {
-                            "active" -> Color(0xFF2E7D32)
-                            "inactive" -> Color(0xFFE65100)
-                            else -> Color(0xFF616161)
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Page Slug
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Slug: ",
-                    fontSize = 13.sp,
-                    color = Color.Gray,
-                    fontWeight = FontWeight.Medium
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .padding(top = 2.dp) // Align slightly with text
+                        .rotate(rotationState),
+                    tint = Color.Gray
                 )
-                Text(
-                    text = page.pageSlug,
-                    fontSize = 13.sp,
-                    color = Color(0xFF666666)
-                )
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-            // Page Type
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Type: ",
-                    fontSize = 13.sp,
-                    color = Color.Gray,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = page.pageTypeName,
-                    fontSize = 13.sp,
-                    color = Color(0xFF666666)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Divider(color = Color(0xFFE0E0E0))
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Bottom Row with Metadata and Actions
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                // Critical Info Column
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Updated: ${formatTimestamp(page.updatedOn)}",
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        text = page.pageName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A1A1A)
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "By: ${page.updatedBy}",
-                        fontSize = 12.sp,
+                        text = "${page.pageTypeName} • ${formatTimestamp(page.updatedOn)}",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onEditClick,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFF2196F3)
-                        ),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                // Three-dot Action Menu
+                Box {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Edit",
-                            modifier = Modifier.size(16.dp)
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Actions",
+                            tint = Color.Gray
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                        modifier = Modifier
+                            .background(Color.White)
+                            .width(160.dp), // Set a fixed width for better look
+                        shadowElevation = 8.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Edit",
+                                    color = Color.Black, // Blue
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onEditClick()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1E88E5), // Blue
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Delete",
+                                    color = Color(0xFFD32F2F), // Red
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onDeleteClick()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD32F2F), // Red
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Expanded Content
+            androidx.compose.animation.AnimatedVisibility(visible = expanded) {
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Divider(color = Color(0xFFE0E0E0))
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Slug
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Slug: ",
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = page.pageSlug,
+                            fontSize = 13.sp,
+                            color = Color(0xFF666666)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Status
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Status: ",
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Edit", fontSize = 13.sp)
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = when (page.status.lowercase()) {
+                                "active" -> Color(0xFFE7F5E9)
+                                "inactive" -> Color(0xFFFFF3E0)
+                                else -> Color(0xFFE0E0E0)
+                            }
+                        ) {
+                            Text(
+                                text = page.status.replaceFirstChar {
+                                    if (it.isLowerCase()) it.titlecase(Locale.getDefault())
+                                    else it.toString()
+                                },
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = when (page.status.lowercase()) {
+                                    "active" -> Color(0xFF2E7D32)
+                                    "inactive" -> Color(0xFFE65100)
+                                    else -> Color(0xFF616161)
+                                }
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Updated By
+                    Text(
+                        text = "Updated By: ${page.updatedBy}",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
                 }
             }
         }

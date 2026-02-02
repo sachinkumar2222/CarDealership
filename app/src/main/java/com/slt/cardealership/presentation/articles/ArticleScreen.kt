@@ -8,10 +8,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +31,7 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.presentation.home.HomeRoutes
+import com.slt.cardealership.presentation.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +40,20 @@ fun ArticleScreen(
     viewModel: ArticleViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var sortMenuExpanded by remember { mutableStateOf(false) }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.fetchPosts()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -43,6 +63,18 @@ fun ArticleScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    OutlinedButton(
+                        onClick = { navController.navigate(HomeRoutes.ArticleLinks) },
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2196F3)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF2196F3)
+                        ),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("Links", fontWeight = FontWeight.SemiBold)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -61,31 +93,98 @@ fun ArticleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF0F2F5)),
-            contentAlignment = Alignment.Center
+                .background(Color(0xFFF0F2F5))
         ) {
-            when (val state = uiState) {
-                is ArticleUiState.Loading -> CircularProgressIndicator()
-                is ArticleUiState.Error -> Text(state.message, color = MaterialTheme.colorScheme.error)
-                is ArticleUiState.Success -> {
-                    if (state.articles.isEmpty()) {
-                        EmptyArticleState()
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 100.dp, start = 16.dp, end = 16.dp, top = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header with Sort
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Articles",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Box {
+                        OutlinedButton(
+                            onClick = { sortMenuExpanded = true },
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
                         ) {
-                            items(state.articles) { article ->
-                                ArticleItemCard(
-                                    post = article,
-                                    onDeleteClick = {
-                                        article.id?.let { viewModel.deleteArticle(it) }
-                                    },
-                                    onEditClick = {
-                                        navController.navigate(HomeRoutes.AddEditArticle(articleId = article.id))
-                                    }
-                                )
+                            Text("Sort by", color = Color.Gray)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = Color.Gray)
+                        }
+
+                        DropdownMenu(
+                            expanded = sortMenuExpanded,
+                            onDismissRequest = { sortMenuExpanded = false },
+                            modifier = Modifier.background(Color.White)
+                        ) {
+                            val sortOptions = listOf(
+                                "Updated On" to "UpdatedOn",
+                                "Created On" to "CreatedOn"
+                            )
+                            val orderOptions = listOf(
+                                "ASC" to "asc",
+                                "DESC" to "desc"
+                            )
+
+                            sortOptions.forEach { (label, value) ->
+                                orderOptions.forEach { (orderLabel, orderValue) ->
+                                    DropdownMenuItem(
+                                        text = { Text("$label ($orderLabel)") },
+                                        onClick = {
+                                            viewModel.updateSort(value, orderValue)
+                                            sortMenuExpanded = false
+                                        },
+                                        colors = MenuDefaults.itemColors(
+                                            textColor = if (viewModel.sortBy == value && viewModel.sortOrder == orderValue) Color(0xFF2196F3) else Color.Black
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                when (val state = uiState) {
+                    is ArticleUiState.Loading -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    is ArticleUiState.Error -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(state.message, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    is ArticleUiState.Success -> {
+                        if (state.articles.isEmpty()) {
+                            EmptyArticleState()
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(bottom = 100.dp, start = 16.dp, end = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(state.articles) { article ->
+                                    ArticleItemCard(
+                                        post = article,
+                                        onDeleteClick = {
+                                            article.id?.let { viewModel.deleteArticle(it) }
+                                        },
+                                        onEditClick = {
+                                            navController.navigate(HomeRoutes.AddEditArticle(articleId = article.id))
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -108,120 +207,40 @@ fun ArticleItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onEditClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column {
-            // Image Section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-            ) {
-                AsyncImage(
-                    model = post.image,
-                    contentDescription = post.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-
-                // Status Chip (Overlay)
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(12.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (post.status == "published") Color(0xFFE8F5E9) else Color(0xFFFFF3E0).copy(alpha = 0.9f),
-                    shadowElevation = 2.dp
-                ) {
-                    Text(
-                        text = post.status?.replaceFirstChar { it.uppercase() } ?: "Draft",
-                        color = if (post.status == "published") Color(0xFF2E7D32) else Color(0xFFE65100),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                // More Options Menu (Overlay) - High Visibility
-                Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                    IconButton(
-                        onClick = { menuExpanded = true },
-                        modifier = Modifier
-                            .shadow(4.dp, CircleShape)
-                            .background(Color.White, CircleShape)
-                            .size(36.dp), // Fixed size for consistency
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options", modifier = Modifier.size(20.dp))
-                    }
-
-                    MaterialTheme(
-                        shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))
-                    ) {
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false },
-                            modifier = Modifier
-                                .background(Color.White)
-                                .width(160.dp), // Consistent width
-                            containerColor = Color.White,
-                            shape = RoundedCornerShape(16.dp),
-                            shadowElevation = 8.dp,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Edit", fontWeight = FontWeight.Medium) },
-                                leadingIcon = { Icon(Icons.Default.Edit, null, tint = Color(0xFF2196F3)) },
-                                onClick = {
-                                    onEditClick()
-                                    menuExpanded = false
-                                }
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = Color.LightGray.copy(alpha = 0.2f))
-                            DropdownMenuItem(
-                                text = { Text("Delete", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.error) },
-                                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-                                onClick = {
-                                    onDeleteClick()
-                                    menuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Content Section
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Content
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = post.name ?: "No Title",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    color = Color(0xFF202124)
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                // Meta info row (Date)
-                if (post.createdOn != null && post.createdOn > 0) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.Gray
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = post.status?.replaceFirstChar { it.uppercase() } ?: "Draft",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (post.status == "published") Color(0xFF2E7D32) else Color(0xFFE65100),
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (post.createdOn != null && post.createdOn > 0) {
+                        Text(
+                            text = " • ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
                                 .format(java.util.Date(post.createdOn)),
@@ -229,22 +248,53 @@ fun ArticleItemCard(
                             color = Color.Gray
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            // Menu
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Options",
+                        tint = Color.Gray
+                    )
                 }
 
-                // Content Preview with HTML stripped
-                val contentPreview = remember(post.content) {
-                    post.content?.replace(Regex("<.*?>"), "")?.trim() ?: "No content"
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier
+                        .background(Color.White)
+                        .width(140.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = 8.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        onClick = {
+                            menuExpanded = false
+                            onEditClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF2196F3))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete", color = Color.Red) },
+                        onClick = {
+                            menuExpanded = false
+                            onDeleteClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                        }
+                    )
                 }
-
-                Text(
-                    text = contentPreview,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.DarkGray, // Slightly darker for readability
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 20.sp
-                )
             }
         }
     }

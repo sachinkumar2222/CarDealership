@@ -123,13 +123,14 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.DealerInfo
+import com.slt.cardealership.presentation.articles.ArticleLinksScreen
 import com.slt.cardealership.presentation.ads.AddAdsScreen
 import com.slt.cardealership.presentation.ads.EditAdsScreen // Import logic
 import com.slt.cardealership.presentation.ads.AdsScreen
 import com.slt.cardealership.presentation.articles.AddEditArticleScreen
 import com.slt.cardealership.presentation.articles.ArticleScreen
 import com.slt.cardealership.presentation.auth.AuthViewModel
-import com.slt.cardealership.presentation.faq.AddFaqScreen
+
 import com.slt.cardealership.presentation.faq.FaqScreen
 import com.slt.cardealership.presentation.info.InfoScreen
 import com.slt.cardealership.presentation.info.InfoUiState
@@ -142,10 +143,8 @@ import com.slt.cardealership.presentation.photos.PhotoScreen
 import com.slt.cardealership.presentation.profile.EditProfileScreen
 import com.slt.cardealership.presentation.profile.ProfileScreen
 import com.slt.cardealership.presentation.profile.ProfileViewModel
-
-
 import com.slt.cardealership.presentation.seo.SeoScreen
-import com.slt.cardealership.presentation.seomenu.AddSeoMenuScreen
+
 import com.slt.cardealership.presentation.seomenu.SeoMenuScreen
 import com.slt.cardealership.presentation.services.ServiceDetailScreen
 import com.slt.cardealership.presentation.services.ServiceScreen
@@ -211,9 +210,6 @@ sealed class HomeRoutes {
     object FaqScreen : HomeRoutes()
 
     @Serializable
-    object AddFaqScreen : HomeRoutes()
-
-    @Serializable
     object AddPhoto : HomeRoutes() // <-- This was missing
 
     @Serializable
@@ -221,9 +217,6 @@ sealed class HomeRoutes {
 
     @Serializable
     object SeoMenuScreen : HomeRoutes()
-
-    @Serializable
-    object AddSeoMenuScreen : HomeRoutes()
 
     @Serializable
     data class ChangePasswordScreen(val userId: Long) : HomeRoutes()
@@ -240,6 +233,8 @@ sealed class HomeRoutes {
     @Serializable
     data class AddEditArticle(val articleId: String? = null) : HomeRoutes()
 
+    @Serializable
+    object ArticleLinks : HomeRoutes()
 
     @Serializable
     object LeadsListScreen : HomeRoutes()
@@ -501,6 +496,11 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                         navController = homeNavController,
                         onNavigateBack = { homeNavController.popBackStack() })
                 }
+
+                composable<HomeRoutes.ArticleLinks> {
+                    ArticleLinksScreen(navController = homeNavController)
+                }
+
                 composable<HomeRoutes.Profile> {
                     val profileViewModel: ProfileViewModel = hiltViewModel()
 
@@ -559,9 +559,7 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                 composable<HomeRoutes.FaqScreen> {
                     FaqScreen(navController = homeNavController)
                 }
-                composable<HomeRoutes.AddFaqScreen> {
-                    AddFaqScreen(navController = homeNavController)
-                }
+
                 composable<HomeRoutes.UserScreen> {
                     UserScreen(
                         onBackClick = { homeNavController.popBackStack() },
@@ -619,11 +617,6 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                         onBackClick = { homeNavController.popBackStack() },
                         navController = homeNavController
                     )
-                }
-
-                composable<HomeRoutes.AddSeoMenuScreen> {
-                    AddSeoMenuScreen(
-                        onBackClick = { homeNavController.popBackStack() })
                 }
 
                 composable<HomeRoutes.ServiceScreen> {

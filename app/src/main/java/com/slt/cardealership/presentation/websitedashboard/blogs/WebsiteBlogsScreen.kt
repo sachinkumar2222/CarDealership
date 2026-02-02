@@ -1,5 +1,9 @@
 package com.slt.cardealership.presentation.websitedashboard.blogs
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,17 +11,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,8 +78,7 @@ fun WebsiteBlogsScreen(
                     containerColor = Color.White,
                     titleContentColor = Color.Black,
                     navigationIconContentColor = Color.Black
-                ),
-                modifier = Modifier.shadow(8.dp)
+                )
             )
         },
         floatingActionButton = {
@@ -159,7 +167,7 @@ fun BlogsList(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(blogs) { blog ->
-            BlogCard(
+            ExpandableBlogCard(
                 blog = blog,
                 onEditClick = { onEditClick(blog) }
             )
@@ -171,12 +179,17 @@ fun BlogsList(
 }
 
 @Composable
-fun BlogCard(
+fun ExpandableBlogCard(
     blog: DomainBlog,
     onEditClick: () -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -186,122 +199,176 @@ fun BlogCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Blog Title and Status
+            // Header Row: Critical Info + Action Menu
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = blog.title ?: "Untitled",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1A1A1A),
-                    modifier = Modifier.weight(1f)
+                // Dropdown Icon (Chevron)
+                val rotationState by animateFloatAsState(
+                    targetValue = if (expanded) 90f else 0f,
+                    label = "chevron_rotation"
                 )
 
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = when ((blog.status ?: "unknown").lowercase()) {
-                        "published" -> Color(0xFFE7F5E9)
-                        "draft" -> Color(0xFFFFF3E0)
-                        else -> Color(0xFFE0E0E0)
-                    }
-                ) {
-                    Text(
-                        text = (blog.status ?: "Unknown").replaceFirstChar {
-                            if (it.isLowerCase()) it.titlecase(Locale.getDefault())
-                            else it.toString()
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = when ((blog.status ?: "unknown").lowercase()) {
-                            "published" -> Color(0xFF2E7D32)
-                            "draft" -> Color(0xFFE65100)
-                            else -> Color(0xFF616161)
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Slug
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Slug: ",
-                    fontSize = 13.sp,
-                    color = Color.Gray,
-                    fontWeight = FontWeight.Medium
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    modifier = Modifier
+                        .size(24.dp)
+                        .padding(top = 2.dp) // Align slightly with text
+                        .rotate(rotationState),
+                    tint = Color.Gray
                 )
-                Text(
-                    text = blog.slug ?: "-",
-                    fontSize = 13.sp,
-                    color = Color(0xFF666666)
-                )
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-            // Categories
-            if (!blog.categories.isNullOrEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Categories: ",
-                        fontSize = 13.sp,
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = blog.categories,
-                        fontSize = 13.sp,
-                        color = Color(0xFF666666),
-                        maxLines = 1
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Divider(color = Color(0xFFE0E0E0))
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Metadata and Actions
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                // Critical Info Column (Title + Type/Date)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Updated: ${formatTimestamp(blog.updatedOn)}",
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        text = blog.title ?: "Untitled",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A1A1A)
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "By: ${blog.updatedBy}",
-                        fontSize = 12.sp,
+                        text = "${blog.blogType} • ${formatTimestamp(blog.createdOn)}",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onEditClick,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFF2196F3)
-                        ),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                // Three-dot Action Menu
+                Box {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Edit",
-                            modifier = Modifier.size(16.dp)
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Actions",
+                            tint = Color.Gray
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                        modifier = Modifier
+                            .background(Color.White)
+                            .width(140.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        shadowElevation = 8.dp,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Edit",
+                                    color = Color.Black,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onEditClick()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1E88E5), // Blue
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Expanded Content
+            AnimatedVisibility(visible = expanded) {
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Divider(color = Color(0xFFE0E0E0))
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Slug
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Slug: ",
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = blog.slug ?: "-",
+                            fontSize = 13.sp,
+                            color = Color(0xFF666666)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Categories
+                    if (!blog.categories.isNullOrEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Categories: ",
+                                fontSize = 13.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = blog.categories,
+                                fontSize = 13.sp,
+                                color = Color(0xFF666666)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // Status
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Status: ",
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Edit", fontSize = 13.sp)
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = when ((blog.status ?: "unknown").lowercase()) {
+                                "published" -> Color(0xFFE7F5E9)
+                                "draft" -> Color(0xFFFFF3E0)
+                                else -> Color(0xFFE0E0E0)
+                            }
+                        ) {
+                            Text(
+                                text = (blog.status ?: "Unknown").replaceFirstChar {
+                                    if (it.isLowerCase()) it.titlecase(Locale.getDefault())
+                                    else it.toString()
+                                },
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = when ((blog.status ?: "unknown").lowercase()) {
+                                    "published" -> Color(0xFF2E7D32)
+                                    "draft" -> Color(0xFFE65100)
+                                    else -> Color(0xFF616161)
+                                }
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Updated By
+                    Text(
+                        text = "Updated By: ${blog.updatedBy}",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
                 }
             }
         }

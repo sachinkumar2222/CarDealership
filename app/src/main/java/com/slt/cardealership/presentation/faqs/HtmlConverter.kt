@@ -1,4 +1,4 @@
-package com.slt.cardealership.presentation.faq
+package com.slt.cardealership.presentation.faqs
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString

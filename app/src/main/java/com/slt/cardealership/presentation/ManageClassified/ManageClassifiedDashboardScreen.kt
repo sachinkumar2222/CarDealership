@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Quiz
 import androidx.compose.material.icons.outlined.ViewCarousel
@@ -111,9 +112,6 @@ fun ManageClassifiedDashboardScreen(
                     }
                 }
                 is DashboardUiState.Success -> {
-                    // We have the domain details in state.domainItem.
-                    // For now, the UI buttons are static, so we just render them.
-                    // If the user wants to use data from domainItem later, it's available.
 
                     Column(
                         modifier = Modifier
@@ -124,19 +122,19 @@ fun ManageClassifiedDashboardScreen(
                         DashboardButton(
                             title = "Articles",
                             icon = Icons.Outlined.Article,
-                            color = Color(0xFFFFD8E4), // Pinkish
+                            color = Color(0xFFCBD4F4),
                             onClick = { navController.navigate(HomeRoutes.ClassifiedArticles(siteId = siteId)) }
                         )
                         DashboardButton(
                             title = "Banners",
-                            icon = Icons.Outlined.ViewCarousel, // Using carousel icon for banners
-                            color = Color(0xFFD0F0FD), // Light Blue
+                            icon = Icons.Outlined.ViewCarousel,
+                            color = Color(0xFFBFF6C3), // Greenish
                             onClick = { navController.navigate(HomeRoutes.ClassifiedBanners(siteId = siteId)) }
                         )
                         DashboardButton(
                             title = "FAQs",
-                            icon = Icons.Outlined.Quiz, // Quiz/FAQ icon
-                            color = Color(0xFFE6E6FA), // Lavender/Purple
+                            icon = Icons.Outlined.Quiz,
+                            color = Color(0xFFDED0B6), // Beige/Greyish
                             onClick = { navController.navigate(HomeRoutes.ClassifiedFaqs(siteId = siteId)) }
                         )
                     }
@@ -156,38 +154,42 @@ fun DashboardButton(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp)
+            .height(80.dp) // Reduced height slightly to look more like the reference (which was likely ~70-80dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp) // Flat look typically has low/no elevation
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 24.dp), // More horizontal padding
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.Black.copy(alpha = 0.8f)
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(28.dp),
+                tint = Color.Black // Stronger contrast
+            )
+
             Spacer(modifier = Modifier.width(16.dp))
+
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black.copy(alpha = 0.8f)
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 18.sp // Slightly larger font
+                ),
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black
+            )
+
+            Spacer(modifier = Modifier.weight(1f)) // Push Chevron to the end
+
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Go",
+                tint = Color.Black
             )
         }
     }

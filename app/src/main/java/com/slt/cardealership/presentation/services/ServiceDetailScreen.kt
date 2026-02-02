@@ -5,6 +5,8 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import com.slt.cardealership.presentation.common.LabeledTextField
+import com.slt.cardealership.ui.theme.BrandBlue
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -76,7 +78,7 @@ fun ServiceDetailScreen(
     onBackClick: () -> Unit,
     viewModel: ServicesViewModel
 ) {
-    val customColor = Color(0xFF11233c)
+    val customColor = BrandBlue
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
@@ -106,11 +108,11 @@ fun ServiceDetailScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                modifier = Modifier.shadow(4.dp),
+                modifier = Modifier.shadow(8.dp),
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = customColor,
-                    navigationIconContentColor = customColor
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black,
+                    navigationIconContentColor = Color.Black
                 )
             )
         },
@@ -190,13 +192,13 @@ fun ServiceDetailScreen(
                     onClick = { viewModel.saveServices() },
                     enabled = !uiState.isSaving,
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3), contentColor = Color.White)
+                    modifier = Modifier.fillMaxWidth().padding(16.dp).height(55.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = customColor, contentColor = Color.White)
                 ) {
                     if (uiState.isSaving) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                     } else {
-                        Text(text = "Save", modifier = Modifier.padding(vertical = 8.dp))
+                        Text(text = "Save", modifier = Modifier.padding(vertical = 2.dp))
                     }
                 }
                 Spacer(modifier = Modifier.height(40.dp)) // Extra padding at bottom
@@ -265,18 +267,6 @@ fun ServiceContentPage(
 
     customColor: Color
 ) {
-    val textFieldColors = TextFieldDefaults.colors(
-        focusedContainerColor = MaterialTheme.colorScheme.surface,
-        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-        disabledContainerColor = MaterialTheme.colorScheme.surface,
-        focusedIndicatorColor = Color(0xFF2196F3),
-        unfocusedIndicatorColor = Color.LightGray,
-        focusedTextColor = customColor,
-        unfocusedTextColor = customColor,
-        cursorColor = Color(0xFF2196F3),
-        focusedLabelColor = Color(0xFF2196F3)
-    )
-
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -293,7 +283,7 @@ fun ServiceContentPage(
             Icon(
                 Icons.Default.Info,
                 contentDescription = "Info",
-                tint = Color(0xFF2196F3),
+                tint = customColor,
                 modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -302,7 +292,7 @@ fun ServiceContentPage(
                     "Copy & Paste to replicate the email address across all services.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = customColor
+                    color = Color.Black
                 )
                 Text(
                     "Note: Doing this will clear old values and replace them with new values.",
@@ -325,7 +315,7 @@ fun ServiceContentPage(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Turn On Lead Form", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = customColor)
+                Text("Turn On Lead Form", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = Color.Black)
                 CustomSwitch(
                     checked = serviceItem.leadFormEnabled,
                     onCheckedChange = { isChecked -> if (serviceItem.supportsLeadForms) onLeadFormToggle(isChecked) },
@@ -346,35 +336,24 @@ fun ServiceContentPage(
 
         // Primary Fields
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = serviceItem.primaryEmail,
-                    onValueChange = { onSettingChange(it, serviceItem.primaryAdfEmail, serviceItem.primaryPhone) },
-                    label = { Text("Primary Email *") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = serviceItem.primaryAdfEmail,
-                    onValueChange = { onSettingChange(serviceItem.primaryEmail, it, serviceItem.primaryPhone) },
-                    label = { Text("Primary ADF Email") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = textFieldColors,
-                    singleLine = true
-                )
-            }
+            LabeledTextField(
+                value = serviceItem.primaryEmail,
+                onValueChange = { onSettingChange(it, serviceItem.primaryAdfEmail, serviceItem.primaryPhone) },
+                label = "Primary Email *",
+                modifier = Modifier.fillMaxWidth()
+            )
+            LabeledTextField(
+                value = serviceItem.primaryAdfEmail,
+                onValueChange = { onSettingChange(serviceItem.primaryEmail, it, serviceItem.primaryPhone) },
+                label = "Primary ADF Email",
+                modifier = Modifier.fillMaxWidth()
+            )
             // --- UPDATED: Primary Phone is now enabled ---
-            OutlinedTextField(
+            LabeledTextField(
                 value = serviceItem.primaryPhone,
                 onValueChange = { onSettingChange(serviceItem.primaryEmail, serviceItem.primaryAdfEmail, it) },
-                label = { Text("Primary Phone") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = textFieldColors,
-                singleLine = true
+                label = "Primary Phone",
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
@@ -428,14 +407,14 @@ fun ServiceInputField(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
-                color = customColor
+                color = Color.Black
             )
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.White)
-                    .border(1.dp, customColor, RoundedCornerShape(12.dp))
+                    .border(1.dp, Color.Black, RoundedCornerShape(12.dp))
                     .clickable { onAddItem() },
                 contentAlignment = Alignment.Center
             ) {
@@ -447,36 +426,22 @@ fun ServiceInputField(
             }
         }
 
-        if (items.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
         items.forEachIndexed { index, text ->
-            OutlinedTextField(
+            LabeledTextField(
                 value = text,
                 onValueChange = { onUpdateItem(index, it) },
+                label = "", // No label needed for list items, placeholder serves purpose
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Enter $title") },
+                placeholder = "Enter $title",
                 trailingIcon = {
                     IconButton(onClick = { onDeleteItem(index) }) {
                         Icon(
                             Icons.Outlined.DeleteOutline,
                             contentDescription = "Delete",
-                            tint = Color.Gray
+                            tint = Color.Red
                         )
                     }
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    disabledContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedIndicatorColor = Color(0xFF2196F3),
-                    unfocusedIndicatorColor = Color.LightGray,
-                    focusedTextColor = customColor,
-                    unfocusedTextColor = customColor,
-                    cursorColor = Color(0xFF2196F3),
-                    focusedLabelColor = Color(0xFF2196F3)
-                )
+                }
             )
         }
     }
@@ -504,7 +469,7 @@ fun CustomSwitch(
 
     val trackColor by animateColorAsState(
         targetValue = if (!enabled) Color.Gray.copy(alpha = 0.5f)
-        else if (checked) Color(0xFF2196F3)
+        else if (checked) BrandBlue
         else Color.LightGray,
         label = "trackColor"
     )

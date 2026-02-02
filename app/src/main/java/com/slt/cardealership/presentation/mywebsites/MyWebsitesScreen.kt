@@ -17,7 +17,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,7 +39,6 @@ fun MyWebsitesScreen(
                 modifier = Modifier.zIndex(1f)
             ) {
                 TopAppBar(
-                    modifier = Modifier.shadow(8.dp),
                     title = {
                         Text(
                             "My Websites",
@@ -65,7 +63,6 @@ fun MyWebsitesScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             when (val state = uiState) {
                 is MyWebsitesUiState.Loading -> {
@@ -115,9 +112,9 @@ fun MyWebsitesScreen(
 @Composable
 fun DomainItemCard(domain: DomainItem, onManageClick: (Int) -> Unit) {
     val brandBlue = Color(0xFF2196F3)
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+    OutlinedCard(
+        colors = CardDefaults.outlinedCardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0)),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -132,7 +129,7 @@ fun DomainItemCard(domain: DomainItem, onManageClick: (Int) -> Unit) {
                 // Icon Container
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(48.dp)
                         .background(
                             color = brandBlue.copy(alpha = 0.1f),
                             shape = androidx.compose.foundation.shape.CircleShape
@@ -143,7 +140,7 @@ fun DomainItemCard(domain: DomainItem, onManageClick: (Int) -> Unit) {
                         imageVector = Icons.Default.Language,
                         contentDescription = "Website",
                         tint = brandBlue,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
@@ -162,40 +159,22 @@ fun DomainItemCard(domain: DomainItem, onManageClick: (Int) -> Unit) {
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = domain.productTypeName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // Action Button
-            Button(
+            OutlinedButton(
                 onClick = { onManageClick(domain.id) },
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = brandBlue,
-                    contentColor = Color.White
+                border = androidx.compose.foundation.BorderStroke(1.dp, brandBlue),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = brandBlue
                 )
             ) {
-                Text("Manage Website", fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Default.ArrowForward,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
+                Text("Manage", fontWeight = FontWeight.SemiBold)
             }
         }
     }

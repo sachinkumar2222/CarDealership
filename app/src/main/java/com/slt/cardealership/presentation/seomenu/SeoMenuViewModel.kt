@@ -67,8 +67,6 @@ data class SeoMenuUiState(
  */
 sealed interface SeoMenuEvent {
     data class ShowToast(val message: String) : SeoMenuEvent
-    object SaveListSuccessAndNavBack : SeoMenuEvent // For the list screen
-    object SaveSuccessAndNavBack : SeoMenuEvent
     object SaveAddSuccessAndNavBack : SeoMenuEvent// For the add screen
 }
 
@@ -294,10 +292,10 @@ class SeoMenuViewModel @Inject constructor(
                 // Make the API call
                 repository.saveSeoMenus(currentDealerId.toLong(), request).getOrThrow()
 
-                // On success, show toast and navigate
+                // On success, show toast and refresh
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 _eventFlow.emit(SeoMenuEvent.ShowToast("SEO Menus saved successfully!"))
-                _eventFlow.emit(SeoMenuEvent.SaveSuccessAndNavBack)
+                loadSeoMenuData(currentDealerId.toLong())
 
             } catch (e: Exception) {
                 Log.e("SeoMenuViewModel", "Failed to save SEO menus", e)

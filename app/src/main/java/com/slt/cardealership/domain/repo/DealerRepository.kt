@@ -81,6 +81,11 @@ interface DealerRepository {
         request: ChangePasswordRequest
     ): Result<Unit>
 
+    suspend fun changeMyPassword(
+        userId: Long,
+        request: ChangePasswordRequest
+    ): Result<Unit>
+
     suspend fun getUserDetails(userId: Long): Result<DetailedUserProfile>
 
     suspend fun updateUser(

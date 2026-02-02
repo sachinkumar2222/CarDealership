@@ -9,6 +9,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 
 import androidx.compose.foundation.background
@@ -16,10 +17,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -43,6 +47,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.slt.cardealership.domain.model.Post
+import com.slt.cardealership.domain.model.PostCta
+import com.slt.cardealership.presentation.common.LabeledTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,27 +82,10 @@ fun AddEditArticleScreen(
             CenterAlignedTopAppBar(
                 title = { Text(if (state.isEditMode) "Edit Article" else "Add Article", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Close") }
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
                 actions = {
-                    Button(
-                        onClick = viewModel::onSave,
-                        enabled = !state.isSaving && !state.isLoading,
-                        modifier = Modifier.padding(end = 8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
-                    ) {
-                        // Show a small spinner inside the button when saving
-                        AnimatedVisibility(visible = state.isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                        }
-                        AnimatedVisibility(visible = !state.isSaving) {
-                            Text("Save")
-                        }
-                    }
+                    // Save button removed from top bar
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
@@ -109,30 +98,40 @@ fun AddEditArticleScreen(
                 .background(Color(0xFFF0F2F5)),
             contentAlignment = Alignment.Center
         ) {
+            // Derive a stable state for animation
+            val screenState = when {
+                state.isLoading -> "Loading"
+                state.error != null -> "Error"
+                state.post != null -> "Content"
+                else -> "Loading"
+            }
+
             AnimatedContent(
-                targetState = state,
+                targetState = screenState,
                 transitionSpec = {
-                    fadeIn(animationSpec = tween(500)) togetherWith fadeOut(animationSpec = tween(500))
+                    fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
                 },
-                label = "Content Transition" // Optional label for inspection
-            ) { targetState ->
-                when {
-                    targetState.isLoading -> {
+                label = "Screen Transition"
+            ) { targetScreen ->
+                when (targetScreen) {
+                    "Loading" -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
                     }
-                    targetState.error != null -> {
+                    "Error" -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                targetState.error,
+                                state.error ?: "Unknown Error",
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(16.dp)
                             )
                         }
                     }
-                    targetState.post != null -> {
-                        AddEditArticleForm(post = targetState.post, viewModel = viewModel)
+                    "Content" -> {
+                        state.post?.let { post ->
+                            AddEditArticleForm(post = post, viewModel = viewModel)
+                        }
                     }
                 }
             }
@@ -156,34 +155,83 @@ fun AddEditArticleForm(post: Post, viewModel: AddEditArticleViewModel) {
     ) {
         item {
             FormCard(title = "Article Details") {
-                StyledTextField(
+                LabeledTextField(
+                    label = "Article Title *",
                     value = post.name ?: "",
                     onValueChange = viewModel::onTitleChange,
-                    label = "Article Title *",
-                    icon = Icons.Default.Title
+                    leadingIcon = { Icon(Icons.Default.Title, contentDescription = null, tint = Color.Gray) }
                 )
-                StyledTextField(
+                LabeledTextField(
+                    label = "Article Slug * (Note: URL)",
                     value = post.slug ?: "",
                     onValueChange = viewModel::onSlugChange,
-                    label = "Article Slug",
-                    icon = Icons.Default.Link
+                    leadingIcon = { Icon(Icons.Default.Link, contentDescription = null, tint = Color.Gray) }
                 )
+
+                // Status Dropdown
+                var statusExpanded by remember { mutableStateOf(false) }
+                val statusMap = mapOf(
+                    "Select Status" to "",
+                    "Draft" to "draft",
+                    "Publish" to "published"
+                )
+                val currentStatusValue = post.status ?: ""
+                val currentStatusDisplay = statusMap.entries.firstOrNull { it.value == currentStatusValue }?.key ?: "Select Status"
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    LabeledTextField(
+                        label = "Status",
+                        value = currentStatusDisplay,
+                        onValueChange = {},
+                        readOnly = true,
+                        placeholder = "Select Status",
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, "Select Status", modifier = Modifier.clickable { statusExpanded = true })
+                        }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .padding(top = 28.dp) // Offset for label
+                            .clickable { statusExpanded = true }
+                    )
+                    DropdownMenu(
+                        expanded = statusExpanded,
+                        onDismissRequest = { statusExpanded = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        statusMap.forEach { (display, value) ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = display,
+                                        color = if (value == currentStatusValue && value.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Black
+                                    )
+                                },
+                                onClick = {
+                                    viewModel.onStatusChange(value)
+                                    statusExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
 
         item {
             FormCard(title = "Meta Information (SEO)") {
-                StyledTextField(
+                LabeledTextField(
+                    label = "Meta Title * (Max: 60)",
                     value = post.metaTitle ?: "",
                     onValueChange = viewModel::onMetaTitleChange,
-                    label = "Meta Title (Max: 60)",
-                    icon = Icons.Default.TextFields
+                    leadingIcon = { Icon(Icons.Default.TextFields, contentDescription = null, tint = Color.Gray) }
                 )
-                StyledTextField(
+                LabeledTextField(
+                    label = "Meta Description * (Max: 160)",
                     value = post.metaDescription ?: "",
                     onValueChange = viewModel::onMetaDescriptionChange,
-                    label = "Meta Description (Max: 160)",
-                    icon = Icons.Default.Description
+                    leadingIcon = { Icon(Icons.Default.Description, contentDescription = null, tint = Color.Gray) }
                 )
             }
         }
@@ -199,44 +247,123 @@ fun AddEditArticleForm(post: Post, viewModel: AddEditArticleViewModel) {
         }
 
         item {
-            FormCard(title = "Content") {
-                StyledTextField(
+            FormCard(title = "Article Content") {
+                LabeledTextField(
+                    label = "Enter article text *",
                     value = post.content ?: "",
                     onValueChange = viewModel::onContentChange,
-                    label = "Article Text",
-                    icon = Icons.Default.Notes,
-                    modifier = Modifier.height(100.dp)
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, tint = Color.Gray) },
+                    singleLine = false,
+                    minLines = 15,
+                    maxLines = 30
                 )
             }
         }
+
+        item {
+            FormCard(title = "Tags") {
+                var tagsExpanded by remember { mutableStateOf(false) }
+                val availableTags = viewModel.state.availableTags
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    LabeledTextField(
+                        label = "Select Tags",
+                        value = post.tags?.joinToString(", ") { it.tagName } ?: "Select Tags",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, "Select Tags", modifier = Modifier.clickable { tagsExpanded = true })
+                        }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .padding(top = 28.dp)
+                            .clickable { tagsExpanded = true }
+                    )
+                    DropdownMenu(
+                        expanded = tagsExpanded,
+                        onDismissRequest = { tagsExpanded = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        if (availableTags.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("No tags available") },
+                                onClick = { tagsExpanded = false },
+                                enabled = false
+                            )
+                        } else {
+                            availableTags.forEach { tag ->
+                                val isSelected = post.tags?.any { it.tagName == tag.tagName } == true
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Checkbox(
+                                                checked = isSelected,
+                                                onCheckedChange = null
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(tag.tagName)
+                                        }
+                                    },
+                                    onClick = {
+                                        val currentTags = post.tags?.toMutableList() ?: mutableListOf()
+                                        val existing = currentTags.find { it.tagName == tag.tagName }
+                                        if (existing != null) {
+                                            currentTags.remove(existing)
+                                        } else {
+                                            currentTags.add(tag)
+                                        }
+                                        viewModel.onTagsChange(currentTags)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            FormCard(title = "Manage CTA(s)") {
+                post.ctas?.forEachIndexed { index, cta ->
+                    CtaItem(
+                        cta = cta,
+                        onLabelChange = { viewModel.onCtaLabelChange(index, it) },
+                        onUrlChange = { viewModel.onCtaUrlChange(index, it) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+            }
+        }
+
+        item {
+            Button(
+                onClick = viewModel::onSave,
+                enabled = !viewModel.state.isSaving,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+            ) {
+                AnimatedVisibility(visible = viewModel.state.isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(if (viewModel.state.isSaving) "Saving..." else "Save Article")
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(40.dp))
+        }
     }
 }
-
-// A reusable styled TextField with an icon
-@Composable
-fun StyledTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        leadingIcon = { Icon(icon, contentDescription = null) },
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF2196F3),
-            focusedLabelColor = Color(0xFF2196F3),
-            cursorColor = Color(0xFF2196F3),
-            focusedLeadingIconColor = Color(0xFF2196F3)
-        )
-    )
-}
-
 
 @Composable
 fun FormCard(
@@ -244,12 +371,18 @@ fun FormCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1A1A1A)
+        )
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -266,43 +399,110 @@ fun FeaturedImageUploader(
     onImageAdd: () -> Unit,
     onImageRemove: () -> Unit
 ) {
-    val borderColor = if (imageUrl.isNullOrBlank()) MaterialTheme.colorScheme.primary else Color.LightGray
+    val borderColor = if (imageUrl.isNullOrBlank()) Color(0xFF2196F3) else Color.LightGray
+    val stroke = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(200.dp)
             .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .background(if (imageUrl.isNullOrBlank()) Color(0xFFF5F9FF) else Color.Transparent)
+            .then(
+                if (imageUrl.isNullOrBlank()) {
+                    Modifier.drawBehind {
+                        drawRoundRect(
+                            color = borderColor,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = 2.dp.toPx(),
+                                pathEffect = stroke
+                            ),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx())
+                        )
+                    }
+                } else {
+                    Modifier.border(1.dp, Color.LightGray, RoundedCornerShape(12.dp))
+                }
+            )
             .clickable(onClick = onImageAdd),
         contentAlignment = Alignment.Center
     ) {
         if (imageUrl.isNullOrBlank()) {
-            // Placeholder content when no image is selected
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.AddPhotoAlternate, "Add Image", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Add Featured Image", color = MaterialTheme.colorScheme.primary)
-                Text("(Recommended: 960 * 550)", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(Color(0xFFE3F2FD), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.AddPhotoAlternate,
+                        "Add Image",
+                        modifier = Modifier.size(28.dp),
+                        tint = Color(0xFF2196F3)
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Upload Featured Image",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color(0xFF2196F3),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Recommended: 960x550 px",
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         } else {
-            // Show the selected image
             AsyncImage(
                 model = imageUrl,
                 contentDescription = "Featured Image",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            // Close button to remove the image
             IconButton(
                 onClick = onImageRemove,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(8.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    .background(Color.White.copy(alpha = 0.9f), CircleShape)
+                    .border(1.dp, Color(0xFFEEEEEE), CircleShape)
+                    .size(32.dp)
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Remove Image", tint = Color.White)
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Remove Image",
+                    tint = Color.Red,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
+    }
+}
+
+@Composable
+fun CtaItem(
+    cta: PostCta,
+    onLabelChange: (String) -> Unit,
+    onUrlChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("CTA", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+
+        LabeledTextField(
+            label = "Label",
+            value = cta.label,
+            onValueChange = onLabelChange,
+            modifier = Modifier.fillMaxWidth()
+        )
+        LabeledTextField(
+            label = "URL",
+            value = cta.url,
+            onValueChange = onUrlChange,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

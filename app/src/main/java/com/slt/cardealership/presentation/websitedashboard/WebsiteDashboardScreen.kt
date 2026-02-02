@@ -29,8 +29,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.slt.cardealership.presentation.home.HomeRoutes
 
-// Brand Colors
-val BrandDarkBlue = Color(0xFF233E66)
 val ScreenBackground = Color(0xFFF5F7FA)
 
 data class DashboardItem(
@@ -123,32 +121,31 @@ fun WebsiteDashboardScreen(
 @Composable
 fun DashboardContent(domain: com.slt.cardealership.domain.model.DomainItem, navController: NavController) {
     val dashboardItems = listOf(
-        DashboardItem("Pages", Icons.Outlined.Article, Color(0xFFF8D7DA), "pages"),
-        DashboardItem("Blog", Icons.Outlined.Book, Color(0xFFD1ECF1), "blog"),
-        DashboardItem("Sliders", Icons.Outlined.ViewCarousel, Color(0xFFD4EDDA), "sliders"),
-        DashboardItem("Menus", Icons.Outlined.Menu, Color(0xFFFFF3CD), "menus"),
-        DashboardItem("Specials", Icons.Outlined.Star, Color(0xFFE2D9F3), "specials"),
-        DashboardItem("Research Compare", Icons.Outlined.CompareArrows, Color(0xFFD1F2EB), "research_compare"),
-        DashboardItem("Settings", Icons.Outlined.Settings, Color(0xFFE9ECEF), "settings")
+        DashboardItem("Pages", Icons.Outlined.Article, Color(0xFFF7D9E3), "pages"),
+        DashboardItem("Blog", Icons.Outlined.Book, Color(0xFFCBF0F4), "blog"),
+        DashboardItem("Sliders", Icons.Outlined.ViewCarousel, Color(0xFFBFF6C3), "sliders"),
+        DashboardItem("Menus", Icons.Outlined.Menu, Color(0xFFFFE896), "menus"),
+        DashboardItem("Research Compare", Icons.Outlined.CompareArrows, Color(0xFFEAECCC), "research_compare"),
+        DashboardItem("Settings", Icons.Outlined.Settings, Color(0xFFCBD4F4), "settings")
     )
 
-    Column(modifier = Modifier.padding(16.dp)) {
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(dashboardItems) { item ->
-                DashboardCard(item) { route ->
-                    when (route) {
-                        "pages" -> navController.navigate(HomeRoutes.WebsitePages(domain.id))
-                        "blog" -> navController.navigate(HomeRoutes.WebsiteBlogs(domain.id))
-                        "sliders" -> navController.navigate(HomeRoutes.WebsiteSliders(domain.id))
-                        "menus" -> navController.navigate(HomeRoutes.WebsiteMenus(domain.id))
-                        "research_compare" -> navController.navigate(HomeRoutes.WebsiteResearchCompare(domain.id))
-                        "settings" -> navController.navigate(HomeRoutes.WebsiteSettings(domain.id))
-                    }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(dashboardItems) { item ->
+            DashboardCard(item) { route ->
+                when (route) {
+                    "pages" -> navController.navigate(HomeRoutes.WebsitePages(domain.id))
+                    "blog" -> navController.navigate(HomeRoutes.WebsiteBlogs(domain.id))
+                    "sliders" -> navController.navigate(HomeRoutes.WebsiteSliders(domain.id))
+                    "menus" -> navController.navigate(HomeRoutes.WebsiteMenus(domain.id))
+                    "research_compare" -> navController.navigate(HomeRoutes.WebsiteResearchCompare(domain.id))
+                    "settings" -> navController.navigate(HomeRoutes.WebsiteSettings(domain.id))
+                    // Add other routes as they become available
                 }
             }
         }
@@ -160,11 +157,11 @@ fun DashboardCard(item: DashboardItem, onCardClick: (String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(110.dp) // Slightly taller for better spacing
+            .height(75.dp) // Adjusted height
             .clickable { onCardClick(item.route) },
-        shape = RoundedCornerShape(16.dp), // Softer corners
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = item.color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // Added elevation
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
@@ -177,22 +174,22 @@ fun DashboardCard(item: DashboardItem, onCardClick: (String) -> Unit) {
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.5f)), // Semi-transparent white background
+                    .background(Color.White), // Solid white background
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = item.icon,
                     contentDescription = item.title,
                     modifier = Modifier.size(24.dp),
-                    tint = Color.Black.copy(alpha = 0.8f) // Slightly darker tint
+                    tint = Color.Black // Strong contrast
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold, // Bold text
-                color = Color.Black.copy(alpha = 0.8f),
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
                 lineHeight = 20.sp
             )
         }

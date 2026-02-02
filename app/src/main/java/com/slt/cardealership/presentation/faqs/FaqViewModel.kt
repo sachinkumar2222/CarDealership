@@ -217,6 +217,7 @@ class FaqViewModel @Inject constructor(
             result.onSuccess {
                 Log.d(TAG, "Save successful.")
                 _formState.update { it.copy(isSaving = false) }
+                getFaqs() // Refresh list immediately
                 _events.send(FaqEvent.ShowSuccess(if (state.isEditMode) "FAQ updated" else "FAQ added"))
                 _events.send(FaqEvent.NavigateBack)
             }

@@ -32,7 +32,8 @@ import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.PostCta
 import com.slt.cardealership.presentation.articles.FeaturedImageUploader
 import com.slt.cardealership.presentation.articles.FormCard
-import com.slt.cardealership.presentation.articles.StyledTextField
+import com.slt.cardealership.presentation.common.AnimatedDropdown
+import com.slt.cardealership.presentation.common.LabeledTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,94 +134,59 @@ fun AddEditClassifiedArticleForm(post: Post, viewModel: AddEditClassifiedArticle
     ) {
         item {
             FormCard(title = "Article Details") {
-                StyledTextField(
+                LabeledTextField(
                     value = post.name ?: "",
                     onValueChange = viewModel::onTitleChange,
                     label = "Article Title *",
-                    icon = Icons.Default.Title
+                    placeholder = "Enter article title",
+                    leadingIcon = { Icon(Icons.Default.Title, contentDescription = null, tint = Color.Gray) }
                 )
-                StyledTextField(
+                LabeledTextField(
                     value = post.slug ?: "",
                     onValueChange = viewModel::onSlugChange,
                     label = "Article Slug * (Note: URL)",
-                    icon = Icons.Default.Link
+                    placeholder = "auto-generated-slug",
+                    leadingIcon = { Icon(Icons.Default.Link, contentDescription = null, tint = Color.Gray) }
                 )
 
                 // Status Dropdown
-                var statusExpanded by remember { mutableStateOf(false) }
-                // Options: Display Text -> Value
                 val statusMap = mapOf(
                     "Select Status" to "",
                     "Draft" to "draft",
                     "Publish" to "published"
                 )
-
-                // Reverse map for display
                 val currentStatusValue = post.status ?: ""
                 val currentStatusDisplay = statusMap.entries.firstOrNull { it.value == currentStatusValue }?.key ?: "Select Status"
 
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = currentStatusDisplay,
-                        onValueChange = {},
-                        readOnly = true,
-
-                        placeholder = { Text("Select Status") },
-                        trailingIcon = {
-                            IconButton(onClick = { statusExpanded = true }) {
-                                Icon(Icons.Default.ArrowDropDown, "Select Status")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFE0E0E0),
-                            unfocusedBorderColor = Color(0xFFE0E0E0)
-                        )
-                    )
-                    // Overlay a transparent clickable box
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable { statusExpanded = true }
-                    )
-                    DropdownMenu(
-                        expanded = statusExpanded,
-                        onDismissRequest = { statusExpanded = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        statusMap.forEach { (display, value) ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = display,
-                                        color = if (value == currentStatusValue && value.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Black
-                                    )
-                                },
-                                onClick = {
-                                    viewModel.onStatusChange(value)
-                                    statusExpanded = false
-                                }
-                            )
-                        }
+                AnimatedDropdown(
+                    label = "Status",
+                    options = statusMap.keys.filter { it != "Select Status" }.toList(),
+                    selectedOption = currentStatusDisplay,
+                    onOptionSelected = { selected ->
+                        val value = statusMap[selected] ?: ""
+                        viewModel.onStatusChange(value)
                     }
-                }
+                )
             }
         }
 
         item {
             FormCard(title = "Meta Information (SEO)") {
-                StyledTextField(
+                LabeledTextField(
                     value = post.metaTitle ?: "",
                     onValueChange = viewModel::onMetaTitleChange,
                     label = "Meta Title * (Max: 60)",
-                    icon = Icons.Default.TextFields
+                    placeholder = "SEO Title",
+                    leadingIcon = { Icon(Icons.Default.TextFields, contentDescription = null, tint = Color.Gray) }
                 )
-                StyledTextField(
+                LabeledTextField(
                     value = post.metaDescription ?: "",
                     onValueChange = viewModel::onMetaDescriptionChange,
                     label = "Meta Description * (Max: 160)",
-                    icon = Icons.Default.Description
+                    placeholder = "SEO Description",
+                    leadingIcon = { Icon(Icons.Default.Description, contentDescription = null, tint = Color.Gray) },
+                    singleLine = false,
+                    maxLines = 3
                 )
             }
         }
@@ -237,34 +203,39 @@ fun AddEditClassifiedArticleForm(post: Post, viewModel: AddEditClassifiedArticle
 
         item {
             FormCard(title = "Article Content") {
-                StyledTextField(
+                LabeledTextField(
                     value = post.content ?: "",
                     onValueChange = viewModel::onContentChange,
                     label = "Enter article text *",
-                    icon = Icons.AutoMirrored.Filled.Notes,
-                    modifier = Modifier.height(200.dp)
+                    placeholder = "Write your content here...",
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, tint = Color.Gray) },
+                    modifier = Modifier.height(200.dp),
+                    singleLine = false,
+                    maxLines = 20
                 )
             }
         }
 
         item {
             FormCard(title = "Tags") {
-                var tagsExpanded by remember { mutableStateOf(false) }
                 val availableTags = viewModel.state.availableTags
+                val currentTags = post.tags ?: emptyList()
+                val displayTags = if (currentTags.isEmpty()) "Select Tags" else currentTags.joinToString(", ") { it.tagName }
+
+                // Multi-select dropdown logic is complex for AnimatedDropdown, sticking to custom Box but using LabeledTextField style
+                var tagsExpanded by remember { mutableStateOf(false) }
 
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = post.tags?.joinToString(", ") { it.tagName } ?: "Select Tags",
+                    LabeledTextField(
+                        value = displayTags,
                         onValueChange = {},
+                        label = "Tags",
                         readOnly = true,
-                        label = { Text("Select Tags") },
                         trailingIcon = {
                             IconButton(onClick = { tagsExpanded = true }) {
                                 Icon(Icons.Default.ArrowDropDown, "Select Tags")
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        }
                     )
                     Box(
                         modifier = Modifier
@@ -273,10 +244,11 @@ fun AddEditClassifiedArticleForm(post: Post, viewModel: AddEditClassifiedArticle
                     )
                     DropdownMenu(
                         expanded = tagsExpanded,
-                        onDismissRequest = { tagsExpanded = false }
+                        onDismissRequest = { tagsExpanded = false },
+                        modifier = Modifier.background(Color.White)
                     ) {
                         availableTags.forEach { tag ->
-                            val isSelected = post.tags?.any { it.tagName == tag.tagName } == true
+                            val isSelected = currentTags.any { it.tagName == tag.tagName }
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -289,16 +261,14 @@ fun AddEditClassifiedArticleForm(post: Post, viewModel: AddEditClassifiedArticle
                                     }
                                 },
                                 onClick = {
-                                    val currentTags = post.tags?.toMutableList() ?: mutableListOf()
-                                    // Toggle logic based on tagName as ID might be null in post.tags
-                                    val existing = currentTags.find { it.tagName == tag.tagName }
+                                    val newTags = currentTags.toMutableList()
+                                    val existing = newTags.find { it.tagName == tag.tagName }
                                     if (existing != null) {
-                                        currentTags.remove(existing)
+                                        newTags.remove(existing)
                                     } else {
-                                        currentTags.add(tag)
+                                        newTags.add(tag)
                                     }
-                                    viewModel.onTagsChange(currentTags)
-                                    // Don't dismiss to allow multiple selection
+                                    viewModel.onTagsChange(newTags)
                                 }
                             )
                         }
@@ -322,9 +292,8 @@ fun AddEditClassifiedArticleForm(post: Post, viewModel: AddEditClassifiedArticle
                         onLabelChange = { viewModel.onCtaLabelChange(index, it) },
                         onUrlChange = { viewModel.onCtaUrlChange(index, it) }
                     )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color(0xFFE0E0E0))
                 }
-                // Removed Add CTA button as per requirement
             }
         }
 
@@ -335,7 +304,7 @@ fun AddEditClassifiedArticleForm(post: Post, viewModel: AddEditClassifiedArticle
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
             ) {
                 AnimatedVisibility(visible = viewModel.state.isSaving) {
@@ -346,7 +315,10 @@ fun AddEditClassifiedArticleForm(post: Post, viewModel: AddEditClassifiedArticle
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text(if (viewModel.state.isSaving) "Saving..." else "Save Article")
+                Text(
+                    if (viewModel.state.isSaving) "Saving..." else "Save Article",
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
 
@@ -362,22 +334,18 @@ fun CtaItem(
     onLabelChange: (String) -> Unit,
     onUrlChange: (String) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("CTA", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
 
-        OutlinedTextField(
+        LabeledTextField(
             value = cta.label,
             onValueChange = onLabelChange,
-            label = { Text("Label") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+            label = "Label"
         )
-        OutlinedTextField(
+        LabeledTextField(
             value = cta.url,
             onValueChange = onUrlChange,
-            label = { Text("URL") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+            label = "URL"
         )
     }
 }

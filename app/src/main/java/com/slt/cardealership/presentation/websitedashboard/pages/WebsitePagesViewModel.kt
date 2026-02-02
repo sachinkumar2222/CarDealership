@@ -46,7 +46,7 @@ class WebsitePagesViewModel @Inject constructor(
     fun fetchPages(domainId: Int, page: Int = 1) {
         currentDomainId = domainId
         currentPage = page
-        
+
         viewModelScope.launch {
             _uiState.value = WebsitePagesUiState.Loading
             val result = dealerRepository.getDomainPages(page, itemsPerPage, domainId)
@@ -93,7 +93,18 @@ class WebsitePagesViewModel @Inject constructor(
             val result = dealerRepository.deleteDomainPage(pageId)
             result.onSuccess {
                 _events.send(WebsitePagesEvent.ShowSuccess("Page deleted successfully"))
-                fetchPages(currentDomainId, currentPage) // Refresh list
+
+                // Optimistic update: Remove the item from the current list immediately
+                val currentState = _uiState.value
+                if (currentState is WebsitePagesUiState.Success) {
+                    val updatedList = currentState.pages.filter { it.id != pageId }
+                    _uiState.value = currentState.copy(
+                        pages = updatedList,
+                        totalItems = currentState.totalItems - 1
+                    )
+                }
+
+                fetchPages(currentDomainId, currentPage) // Refresh list from server
             }.onFailure { error ->
                 _events.send(WebsitePagesEvent.ShowError(error.message ?: "Failed to delete page"))
             }

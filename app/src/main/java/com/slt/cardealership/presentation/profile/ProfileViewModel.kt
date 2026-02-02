@@ -267,7 +267,7 @@ class ProfileViewModel @Inject constructor(
             // 3. Make API Call
             try {
                 // Using dealerRepository from constructor
-                repository.changeUserPassword(userId, request).getOrThrow()
+                repository.changeMyPassword(userId, request).getOrThrow()
                 _changePasswordState.value = ChangePasswordUiState(isSuccess = true)
             } catch (exception: Throwable) {
                 _changePasswordState.value = ChangePasswordUiState(

@@ -396,7 +396,7 @@ fun DealerInfoContent(
     // --- Content ---
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 32.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 1. Header & Basic Info

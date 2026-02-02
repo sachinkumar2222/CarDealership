@@ -96,7 +96,7 @@ fun GradientButton(
     val blueGradient = Brush.horizontalGradient(
         colors = listOf(Color(0xFF2196F3), Color(0xFF1565C0))
     )
-    
+
     Box(
         modifier = modifier
             .clip(shape)
@@ -188,21 +188,25 @@ fun LabeledTextField(
     readOnly: Boolean = false,
     singleLine: Boolean = true,
     minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     isError: Boolean = false,
+    leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     interactionSource: androidx.compose.foundation.interaction.MutableInteractionSource? = null
 ) {
     Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Black.copy(alpha = 0.8f),
-            fontWeight = FontWeight.Medium
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        
+        if (label.isNotBlank()) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Black.copy(alpha = 0.8f),
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -211,8 +215,10 @@ fun LabeledTextField(
             readOnly = readOnly,
             singleLine = singleLine,
             minLines = minLines,
+            maxLines = maxLines,
             isError = isError,
             placeholder = { Text(placeholder, color = Color.Gray.copy(alpha = 0.7f)) },
+            leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
             keyboardOptions = keyboardOptions,
             visualTransformation = visualTransformation,
@@ -223,7 +229,7 @@ fun LabeledTextField(
                 errorBorderColor = MaterialTheme.colorScheme.error,
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
-                disabledContainerColor = Color(0xFFF5F5F5), // Slightly gray for disabled
+                disabledContainerColor = Color(0xFFF5F5F5),
                 errorContainerColor = Color.White
             ),
             shape = RoundedCornerShape(12.dp),
@@ -255,9 +261,9 @@ fun AnimatedDropdown(
                 onValueChange = {},
                 placeholder = "Select $label",
                 readOnly = true,
-                enabled = enabled, // NOTE: LabeledTextField internal enabled check might gray it out. 
-                           // For dropdowns, we usually want it to look enabled but be read-only text.
-                           // But if 'enabled' param is false, it should look disabled.
+                enabled = enabled, // NOTE: LabeledTextField internal enabled check might gray it out.
+                // For dropdowns, we usually want it to look enabled but be read-only text.
+                // But if 'enabled' param is false, it should look disabled.
                 trailingIcon = {
                     Icon(
                         imageVector = Icons.Default.ArrowDropDown,
@@ -267,12 +273,12 @@ fun AnimatedDropdown(
                     )
                 }
             )
-            
+
             // Interaction overlay
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .padding(top = 28.dp) // Offset to account for label height approx? 
+                    .padding(top = 28.dp) // Offset to account for label height approx?
                     .clip(RoundedCornerShape(12.dp))
                     .clickable(enabled = enabled) { expanded = !expanded }
             )

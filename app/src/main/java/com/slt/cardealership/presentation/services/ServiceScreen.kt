@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
 import androidx.hilt.navigation.compose.hiltViewModel
 
+import com.slt.cardealership.ui.theme.BrandBlue
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceScreen(
@@ -60,7 +62,7 @@ fun ServiceScreen(
     // --- 2. GET STATE FROM VIEWMODEL ---
     val uiState by viewModel.uiState.collectAsState()
 
-    val customColor = Color(0xFF11233c)
+    val customColor = BrandBlue
 
     Scaffold(
         topBar = {
@@ -71,17 +73,16 @@ fun ServiceScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                modifier = Modifier.shadow(4.dp),
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = customColor,
-                    navigationIconContentColor = customColor
+                modifier = Modifier.shadow(8.dp),
+                colors =  TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black,
+                    navigationIconContentColor = Color.Black
                 )
             )
         },
         containerColor = MaterialTheme.colorScheme.surface
     ) { paddingValues ->
-        // --- 3. HANDLE LOADING AND ERROR STATES ---
         Box(
             modifier = Modifier
                 .padding(paddingValues)
@@ -111,7 +112,7 @@ fun ServiceScreen(
                             text = "Manage Services",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = customColor,
+                            color = Color.Black,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 16.dp)
@@ -128,7 +129,7 @@ fun ServiceScreen(
                                         title = item.name,
                                         icon = getIconForServiceName(item.name)
                                     ),
-                                    color = customColor,
+                                    color = Color.Black,
                                     onClick = { onServiceClick(item.name) }
                                 )
                             }

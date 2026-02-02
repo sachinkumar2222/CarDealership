@@ -8,6 +8,8 @@ import androidx.lifecycle.*
 import androidx.navigation.toRoute
 import com.slt.cardealership.data.local.SessionManager
 import com.slt.cardealership.domain.model.Post
+import com.slt.cardealership.domain.model.PostCta
+import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.repo.PostRepository
 import com.slt.cardealership.presentation.home.HomeRoutes
 import com.slt.cardealership.utils.uriToFile // Make sure you have this utility function
@@ -19,10 +21,11 @@ import javax.inject.Inject
 
 data class AddEditArticleState(
     val post: Post? = null,
-    val isLoading: Boolean = true, // For loading the initial article
-    val isSaving: Boolean = false, // For save/upload operations
+    val isLoading: Boolean = true,
+    val isSaving: Boolean = false,
     val error: String? = null,
-    val isEditMode: Boolean = false // Track mode explicitly
+    val isEditMode: Boolean = false,
+    val availableTags: List<SeoTag> = emptyList() // Added availableTags
 )
 
 @HiltViewModel
@@ -42,16 +45,46 @@ class AddEditArticleViewModel @Inject constructor(
     val events = _eventChannel.receiveAsFlow()
 
     init {
-        if (articleId != null && articleId != "null") { // Handle "null" string case
+        loadSeoTags() // Fetch tags on init
+
+        if (articleId != null && articleId != "null") {
             state = state.copy(isEditMode = true)
             loadArticle(articleId)
         } else {
-            // Initialize a blank post for "Add" mode
             state = state.copy(
                 isLoading = false,
                 isEditMode = false,
-                post = Post(id = null, dealerId = null, name = "", slug = "", status = "published", metaTitle = "", metaDescription = "", image = null, content = "", createdOn = null)
+                post = Post(
+                    id = null,
+                    dealerId = null,
+                    name = "",
+                    slug = "",
+                    status = "published",
+                    metaTitle = "",
+                    metaDescription = "",
+                    image = null,
+                    content = "",
+                    createdOn = null,
+                    tags = emptyList(),
+                    ctas = listOf(PostCta("", ""), PostCta("", "")) // Default 2 empty CTAs
+                )
             )
+        }
+    }
+
+    private fun loadSeoTags() {
+        viewModelScope.launch {
+            val dealerId = sessionManager.getDealerSlug()?.toLongOrNull()
+            if (dealerId != null) {
+                postRepository.getDealerSeoTags(dealerId)
+                    .onSuccess { tags ->
+                        state = state.copy(availableTags = tags)
+                    }
+                    .onFailure {
+                        // Log or handle error, but don't block the screen
+                        Log.e("AddEditArticleViewModel", "Failed to load SEO tags", it)
+                    }
+            }
         }
     }
 
@@ -59,12 +92,20 @@ class AddEditArticleViewModel @Inject constructor(
         viewModelScope.launch {
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
             postRepository.getPostById(dealerId, id)
-                .onSuccess { post -> state = state.copy(post = post, isLoading = false) }
+                .onSuccess { post ->
+                    // Ensure CTAs list is mutable or at least present
+                    // Ensure CTAs list is mutable or at least present, and has 2 items
+                    val currentCtas = post.ctas?.toMutableList() ?: mutableListOf()
+                    while (currentCtas.size < 2) {
+                        currentCtas.add(PostCta("", ""))
+                    }
+                    state = state.copy(post = post.copy(ctas = currentCtas), isLoading = false)
+                }
                 .onFailure { state = state.copy(error = it.message, isLoading = false) }
         }
     }
 
-    // --- COMPLETED STATE UPDATE FUNCTIONS ---
+    // --- FIELD UPDATES ---
     fun onTitleChange(newValue: String) {
         state = state.copy(post = state.post?.copy(name = newValue))
     }
@@ -80,22 +121,45 @@ class AddEditArticleViewModel @Inject constructor(
     fun onContentChange(newValue: String) {
         state = state.copy(post = state.post?.copy(content = newValue))
     }
+    fun onStatusChange(newValue: String) {
+        state = state.copy(post = state.post?.copy(status = newValue))
+    }
 
-    // --- NEW IMAGE HANDLING FUNCTIONS ---
+    // --- TAGS ---
+    fun onTagsChange(newTags: List<SeoTag>) {
+        state = state.copy(post = state.post?.copy(tags = newTags))
+    }
+
+    // --- CTAs ---
+    fun onCtaLabelChange(index: Int, newLabel: String) {
+        val currentCtas = state.post?.ctas?.toMutableList() ?: return
+        if (index in currentCtas.indices) {
+            currentCtas[index] = currentCtas[index].copy(label = newLabel)
+            state = state.copy(post = state.post?.copy(ctas = currentCtas))
+        }
+    }
+
+    fun onCtaUrlChange(index: Int, newUrl: String) {
+        val currentCtas = state.post?.ctas?.toMutableList() ?: return
+        if (index in currentCtas.indices) {
+            currentCtas[index] = currentCtas[index].copy(url = newUrl)
+            state = state.copy(post = state.post?.copy(ctas = currentCtas))
+        }
+    }
+
+    // --- IMAGE HANDLING ---
     fun onImageRemoved() {
         state = state.copy(post = state.post?.copy(image = null))
     }
 
     fun onImageSelected(uri: Uri, context: Context) {
-        Log.d("ImagePicker", "Image URI: $uri")
         viewModelScope.launch {
-            state = state.copy(isSaving = true) // Show loading indicator on image
+            state = state.copy(isSaving = true)
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
             val imageFile = uriToFile(context, uri) ?: return@launch
 
             postRepository.uploadPostImage(dealerId, imageFile)
                 .onSuccess { imageUrl ->
-                    // Update the post's image URL with the one from the server
                     state = state.copy(
                         isSaving = false,
                         post = state.post?.copy(image = imageUrl)
@@ -114,7 +178,6 @@ class AddEditArticleViewModel @Inject constructor(
             val dealerId = sessionManager.getDealerSlug()?.toLongOrNull() ?: return@launch
             val currentPost = state.post ?: return@launch
 
-            // Basic validation
             if (currentPost.name.isNullOrBlank()) {
                 _eventChannel.send(UiEvent.ShowSnackbar("Title cannot be empty."))
                 state = state.copy(isSaving = false)

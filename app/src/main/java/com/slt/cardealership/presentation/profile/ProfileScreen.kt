@@ -4,7 +4,6 @@ import com.slt.cardealership.presentation.common.LoadingAnimation
 import com.slt.cardealership.presentation.common.FullScreenError
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,12 +41,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -74,7 +70,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import android.widget.Toast
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
+import com.slt.cardealership.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,6 +117,7 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Profile", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -125,7 +125,7 @@ fun ProfileScreen(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = Color.White
                 )
             )
         },
@@ -268,19 +268,13 @@ fun UserProfileContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         // --- Gradient Definition ---
-        val blueGradient = Brush.horizontalGradient(
-            colors = listOf(
-                Color(0xFF2196F3),
-                Color(0xFF1565C0)
-            )
-        )
 
         // --- Edit Profile Button ---
         Button(
             onClick = { onEditProfileClick(userProfile.id) },
             modifier = Modifier
                 .fillMaxWidth()
-                .background(blueGradient, shape = RoundedCornerShape(12.dp)),
+                .background(BrandBlue, shape = RoundedCornerShape(12.dp)),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.Transparent, // Makes the gradient visible

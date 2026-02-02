@@ -24,8 +24,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.slt.cardealership.presentation.faq.HtmlConverter
-import com.slt.cardealership.presentation.faq.applyEditToAnnotatedString // Import Helper
+import com.slt.cardealership.presentation.faqs.HtmlConverter
+import com.slt.cardealership.presentation.faqs.applyEditToAnnotatedString
+import com.slt.cardealership.presentation.faqs.toggleSpanStyle
 
 
 
@@ -212,37 +213,4 @@ fun AddEditClassifiedFaqScreen(
     }
 }
 
-// Extension to toggle span styles
-fun TextFieldValue.toggleSpanStyle(style: SpanStyle): TextFieldValue {
-    val selection = this.selection
-    if (selection.collapsed) return this // No text selected
 
-    val annotatedString = this.annotatedString
-    val togglingBold = style.fontWeight == FontWeight.Bold
-    val togglingItalic = style.fontStyle == FontStyle.Italic
-    val togglingUnderline = style.textDecoration == TextDecoration.Underline
-
-    val isCurrentlyActive = annotatedString.spanStyles
-        .filter { maxOf(it.start, selection.min) < minOf(it.end, selection.max) }
-        .any {
-            (togglingBold && it.item.fontWeight == FontWeight.Bold) ||
-                    (togglingItalic && it.item.fontStyle == FontStyle.Italic) ||
-                    (togglingUnderline && it.item.textDecoration == TextDecoration.Underline)
-        }
-
-    val newAnnotatedString = AnnotatedString.Builder(annotatedString).apply {
-        val styleToApply = if (isCurrentlyActive) {
-            when {
-                togglingBold -> SpanStyle(fontWeight = FontWeight.Normal)
-                togglingItalic -> SpanStyle(fontStyle = FontStyle.Normal)
-                togglingUnderline -> SpanStyle(textDecoration = TextDecoration.None)
-                else -> SpanStyle()
-            }
-        } else {
-            style
-        }
-        addStyle(styleToApply, selection.min, selection.max)
-    }.toAnnotatedString()
-
-    return this.copy(annotatedString = newAnnotatedString)
-}

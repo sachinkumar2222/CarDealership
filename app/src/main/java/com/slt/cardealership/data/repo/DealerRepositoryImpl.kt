@@ -412,6 +412,22 @@ class DealerRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun changeMyPassword(
+        userId: Long,
+        request: ChangePasswordRequest
+    ): Result<Unit> {
+        return try {
+            val response = apiService.changeMyPassword(userId, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to change password"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun updateUser(
         userId: Long,
         parts: Map<String, @JvmSuppressWildcards RequestBody>

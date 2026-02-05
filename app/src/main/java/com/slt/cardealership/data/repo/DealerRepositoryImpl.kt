@@ -54,6 +54,10 @@ import com.slt.cardealership.domain.model.ManageUsers
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import kotlinx.coroutines.coroutineScope
+import com.slt.cardealership.domain.model.CreateResearchBlogCategoryRequest
+import com.slt.cardealership.domain.model.CreateResearchCompareRequest
+import com.slt.cardealership.domain.model.ResearchBlogCategoryResponse
+import com.slt.cardealership.domain.model.UpdateResearchBlogCategoryRequest
 
 
 import com.slt.cardealership.domain.model.ResearchMake
@@ -2566,7 +2570,7 @@ class DealerRepositoryImpl @Inject constructor(
 
     override suspend fun getDomainPages(page: Int, itemsPerPage: Int, domainId: Int): Result<com.slt.cardealership.domain.model.DomainPagesResponse> {
         return try {
-            val response = apiService.getDomainPages(page, itemsPerPage, domainId)
+            val response = apiService.getDomainPagesV2(page, itemsPerPage, domainId)
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
@@ -2643,6 +2647,67 @@ class DealerRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    // --- Research Blog Categories ---
+    override suspend fun getResearchBlogCategories(
+        domainId: Int,
+        page: Int,
+        itemsPerPage: Int,
+        domainName: String?
+    ): Result<com.slt.cardealership.domain.model.ResearchBlogCategoryResponse> {
+        return try {
+            val response = apiService.getResearchBlogCategories(domainId, page, itemsPerPage, domainName)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun createResearchBlogCategory(
+        request: com.slt.cardealership.domain.model.CreateResearchBlogCategoryRequest
+    ): Result<Unit> {
+        return try {
+            val response = apiService.createResearchBlogCategory(request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to create category: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateResearchBlogCategory(
+        id: String,
+        request: com.slt.cardealership.domain.model.UpdateResearchBlogCategoryRequest
+    ): Result<Unit> {
+        return try {
+            val response = apiService.updateResearchBlogCategory(id, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update category: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteResearchBlogCategory(id: String): Result<Unit> {
+        return try {
+            val response = apiService.deleteResearchBlogCategory(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete category: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+
+
 
 

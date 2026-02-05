@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.slt.cardealership.presentation.home.HomeRoutes
+import com.slt.cardealership.ui.theme.BrandDarkBlue
 
 val ScreenBackground = Color(0xFFF5F7FA)
 
@@ -56,30 +58,24 @@ fun WebsiteDashboardScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            "Website Dashboard",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (uiState is WebsiteDashboardUiState.Success) {
-                            Text(
-                                text = (uiState as WebsiteDashboardUiState.Success).domain.domainName,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.DarkGray
-                            )
-                        }
-                    }
+                    // Title only to match reference cleaner look
+                    Text(
+                        "Website Dashboard",
+                        fontWeight = FontWeight.Bold,
+                        color = com.slt.cardealership.ui.theme.BrandDarkBlue
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = com.slt.cardealership.ui.theme.BrandDarkBlue
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color.Black,
-                    navigationIconContentColor = Color.Black
+                    containerColor = Color.White
                 ),
                 modifier = Modifier.shadow(8.dp)
             )
@@ -129,14 +125,13 @@ fun DashboardContent(domain: com.slt.cardealership.domain.model.DomainItem, navC
         DashboardItem("Settings", Icons.Outlined.Settings, Color(0xFFCBD4F4), "settings")
     )
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+    androidx.compose.foundation.lazy.LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp), // Match reference: 24dp horizontal
+        verticalArrangement = Arrangement.spacedBy(12.dp) // Match reference: 12dp spacing
     ) {
-        items(dashboardItems) { item ->
+        items(dashboardItems.size) { index ->
+            val item = dashboardItems[index]
             DashboardCard(item) { route ->
                 when (route) {
                     "pages" -> navController.navigate(HomeRoutes.WebsitePages(domain.id))
@@ -145,7 +140,6 @@ fun DashboardContent(domain: com.slt.cardealership.domain.model.DomainItem, navC
                     "menus" -> navController.navigate(HomeRoutes.WebsiteMenus(domain.id))
                     "research_compare" -> navController.navigate(HomeRoutes.WebsiteResearchCompare(domain.id))
                     "settings" -> navController.navigate(HomeRoutes.WebsiteSettings(domain.id))
-                    // Add other routes as they become available
                 }
             }
         }
@@ -154,44 +148,37 @@ fun DashboardContent(domain: com.slt.cardealership.domain.model.DomainItem, navC
 
 @Composable
 fun DashboardCard(item: DashboardItem, onCardClick: (String) -> Unit) {
-    Card(
+    val contentColor = BrandDarkBlue
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(75.dp) // Adjusted height
-            .clickable { onCardClick(item.route) },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = item.color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .height(80.dp)
+            .background(item.color, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onCardClick(item.route) }
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icon Container
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color.White), // Solid white background
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = item.title,
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.Black // Strong contrast
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                lineHeight = 20.sp
-            )
-        }
+        Icon(
+            imageVector = item.icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(28.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = item.title,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium,
+            color = contentColor,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(28.dp)
+        )
     }
 }

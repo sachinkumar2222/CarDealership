@@ -292,6 +292,9 @@ sealed class HomeRoutes {
     ) : HomeRoutes()
 
     @Serializable
+    data class ManageCategory(val domainId: Int, val domainName: String = "") : HomeRoutes()
+
+    @Serializable
     data class WebsiteSettings(val domainId: Int) : HomeRoutes()
 
     @Serializable
@@ -641,9 +644,6 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                     LeadsListScreen(
                         onBackClick = { homeNavController.popBackStack() },
                         onCategoryClick = { title ->
-                            // Since you are using Type-Safe Navigation (Serializable),
-                            // the library automatically handles special characters like '&'
-                            // in "Build & Price". You don't need manual Uri.encode here.
                             homeNavController.navigate(HomeRoutes.LeadsDetailScreen(title = title))
                         }
                     )
@@ -759,6 +759,15 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                     )
                 }
 
+                composable<HomeRoutes.ManageCategory> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.ManageCategory>()
+                    com.slt.cardealership.presentation.websitedashboard.researchCompare.manageCategory.ManageCategoryScreen(
+                        domainId = args.domainId,
+                        domainName = args.domainName,
+                        onNavigateBack = { homeNavController.popBackStack() }
+                    )
+                }
+
                 composable<HomeRoutes.WebsiteSettings> { backStackEntry ->
                     val args = backStackEntry.toRoute<HomeRoutes.WebsiteSettings>()
                     com.slt.cardealership.presentation.websitedashboard.settings.SettingsScreen(
@@ -846,30 +855,11 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                     )
                 }
 
-                composable<HomeRoutes.AddEditClassifiedBanner> { backStackEntry ->
-                    val route: HomeRoutes.AddEditClassifiedBanner = backStackEntry.toRoute()
-                    com.slt.cardealership.presentation.ManageClassified.banners.AddEditClassifiedBannerScreen(
-                        siteId = route.siteId,
-                        bannerId = route.bannerId,
-                        navController = homeNavController
-                    )
-                }
-
-
                 composable<HomeRoutes.ClassifiedFaqs> { backStackEntry ->
                     val args = backStackEntry.toRoute<HomeRoutes.ClassifiedFaqs>()
                     com.slt.cardealership.presentation.ManageClassified.faqs.ClassifiedFaqsScreen(
                         navController = homeNavController,
                         siteId = args.siteId
-                    )
-                }
-
-                composable<HomeRoutes.AddEditClassifiedFaq> { backStackEntry ->
-                    // val args = backStackEntry.toRoute<HomeRoutes.AddEditClassifiedFaq>()
-                    // The ViewModel gets args from SavedStateHandle directly
-                    com.slt.cardealership.presentation.ManageClassified.faqs.AddEditClassifiedFaqScreen(
-                        navController = homeNavController,
-                        onNavigateBack = { homeNavController.popBackStack() }
                     )
                 }
             }

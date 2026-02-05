@@ -69,25 +69,60 @@ fun ClassifiedArticlesScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    // Sort Dropdown
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate(HomeRoutes.AddEditClassifiedArticle(siteId = siteId)) },
+                containerColor = Color(0xFF2196F3),
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp) // Matches standard FAB shape usually, or Circle
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Article")
+            }
+        },
+        containerColor = Color(0xFFF5F7FA)
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color(0xFFF0F2F5)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header with Sort
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Articles",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
                     Box {
                         OutlinedButton(
                             onClick = { showSortMenu = true },
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
                         ) {
-                            Text(currentSortLabel, color = Color.Black)
-                            Icon(
-                                if (showSortMenu) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
+                            Text("Sort by", color = Color.Gray)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = Color.Gray)
                         }
+
                         DropdownMenu(
                             expanded = showSortMenu,
                             onDismissRequest = { showSortMenu = false },
-                            modifier = Modifier.background(Color.White)
+                            modifier = Modifier.background(Color.White),
+
                         ) {
                             val options = listOf(
                                 Triple("Created On (desc)", "CreatedOn", "desc"),
@@ -102,87 +137,62 @@ fun ClassifiedArticlesScreen(
                                     text = {
                                         Text(
                                             label,
-                                            color = if (isSelected) Color.White else Color.Black
+                                            color = if (isSelected) Color(0xFF2196F3) else Color.Black
                                         )
                                     },
                                     onClick = {
                                         currentSortLabel = label
                                         viewModel.onSortChange(sortBy, sortOrder)
                                         showSortMenu = false
-                                    },
-                                    modifier = Modifier.background(
-                                        if (isSelected) Color(0xFF2196F3) else Color.Transparent
-                                    )
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(HomeRoutes.AddEditClassifiedArticle(siteId = siteId)) },
-                containerColor = Color(0xFF2196F3),
-                contentColor = Color.White,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Article")
-            }
-        },
-        containerColor = Color(0xFFF5F7FA)
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(Color(0xFFF0F2F5)),
-            contentAlignment = Alignment.Center
-        ) {
-            when (val state = uiState) {
-                is ArticlesUiState.Loading -> {
-                    CircularProgressIndicator()
-                }
-                is ArticlesUiState.Error -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(state.message, color = Color.Red)
-                        Button(onClick = { viewModel.fetchData() }) {
-                            Text("Retry")
-                        }
-                    }
-                }
-                is ArticlesUiState.Success -> {
-                    if (state.posts.isEmpty()) {
-                        EmptyArticleState()
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            items(state.posts) { post ->
-                                ArticleItemCard(
-                                    post = post,
-                                    onEditClick = {
-                                        navController.navigate(
-                                            HomeRoutes.AddEditClassifiedArticle(
-                                                siteId = siteId,
-                                                articleId = post.id
-                                            )
-                                        )
-                                    },
-                                    onDeleteClick = {
-                                        postToDelete = post
-                                        showDeleteDialog = true
                                     }
                                 )
                             }
-                            item {
-                                Spacer(modifier = Modifier.height(72.dp)) // Space for FAB
+                        }
+                    }
+                }
+
+                when (val state = uiState) {
+                    is ArticlesUiState.Loading -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    is ArticlesUiState.Error -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(state.message, color = Color.Red)
+                                Button(onClick = { viewModel.fetchData() }) {
+                                    Text("Retry")
+                                }
+                            }
+                        }
+                    }
+                    is ArticlesUiState.Success -> {
+                        if (state.posts.isEmpty()) {
+                            EmptyArticleState()
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(bottom = 100.dp, start = 16.dp, end = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(state.posts) { post ->
+                                    ArticleItemCard(
+                                        post = post,
+                                        onEditClick = {
+                                            navController.navigate(
+                                                HomeRoutes.AddEditClassifiedArticle(
+                                                    siteId = siteId,
+                                                    articleId = post.id
+                                                )
+                                            )
+                                        },
+                                        onDeleteClick = {
+                                            postToDelete = post
+                                            showDeleteDialog = true
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -236,147 +246,94 @@ fun ArticleItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onEditClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column {
-            // Image Section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-            ) {
-                AsyncImage(
-                    model = post.image,
-                    contentDescription = post.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-
-                // Status Chip (Overlay)
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(12.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (post.status == "published") Color(0xFFE8F5E9) else Color(0xFFFFF3E0).copy(alpha = 0.9f),
-                    shadowElevation = 2.dp
-                ) {
-                    Text(
-                        text = post.status?.replaceFirstChar { it.uppercase() } ?: "Draft",
-                        color = if (post.status == "published") Color(0xFF2E7D32) else Color(0xFFE65100),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                // More Options Menu (Overlay) - High Visibility
-                Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                    IconButton(
-                        onClick = { menuExpanded = true },
-                        modifier = Modifier
-                            .shadow(4.dp, CircleShape)
-                            .background(Color.White, CircleShape)
-                            .size(36.dp), // Fixed size for consistency
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options", modifier = Modifier.size(20.dp))
-                    }
-
-                    MaterialTheme(
-                        shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(16.dp))
-                    ) {
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false },
-                            modifier = Modifier
-                                .background(Color.White)
-                                .width(160.dp), // Consistent width
-                            containerColor = Color.White,
-                            shape = RoundedCornerShape(16.dp),
-                            shadowElevation = 8.dp,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Edit", fontWeight = FontWeight.Medium) },
-                                leadingIcon = { Icon(Icons.Default.Edit, null, tint = Color(0xFF2196F3)) },
-                                onClick = {
-                                    onEditClick()
-                                    menuExpanded = false
-                                }
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = Color.LightGray.copy(alpha = 0.2f))
-                            DropdownMenuItem(
-                                text = { Text("Delete", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.error) },
-                                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-                                onClick = {
-                                    onDeleteClick()
-                                    menuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Content Section
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Content
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = post.name ?: "No Title",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    color = Color(0xFF202124)
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                // Meta info row (Date)
-                if (post.createdOn != null && post.createdOn > 0) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = post.status?.replaceFirstChar { it.uppercase() } ?: "Draft",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (post.status == "published") Color(0xFF2E7D32) else Color(0xFFE65100),
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (post.createdOn != null && post.createdOn > 0) {
                         Text(
-                            text = try {
-                                SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-                                    .format(Date(post.createdOn))
-                            } catch (e: Exception) {
-                                "-"
-                            },
+                            text = " • ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+                                .format(java.util.Date(post.createdOn)),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            // Menu
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Options",
+                        tint = Color.Gray
+                    )
                 }
 
-                // Content Preview with HTML stripped
-                val contentPreview = remember(post.content) {
-                    post.content?.replace(Regex("<.*?>"), "")?.trim() ?: "No content"
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier
+                        .background(Color.White)
+                        .width(140.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = 8.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        onClick = {
+                            menuExpanded = false
+                            onEditClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF2196F3))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete", color = Color.Red) },
+                        onClick = {
+                            menuExpanded = false
+                            onDeleteClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                        }
+                    )
                 }
-
-                Text(
-                    text = contentPreview,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.DarkGray, // Slightly darker for readability
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 20.sp
-                )
             }
         }
     }

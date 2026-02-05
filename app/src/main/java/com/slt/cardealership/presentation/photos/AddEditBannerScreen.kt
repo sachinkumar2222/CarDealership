@@ -3,6 +3,7 @@ package com.slt.cardealership.presentation.photos
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.slt.cardealership.presentation.common.LabeledTextField
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,6 +28,7 @@ import coil3.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.*
 import com.slt.cardealership.ui.theme.BrandBlue
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,29 +110,19 @@ fun AddEditBannerScreen(
         }
 
         // Title
-        OutlinedTextField(
+        LabeledTextField(
+            label = "Title *",
             value = uiState.bannerTitle,
             onValueChange = onTitleChange,
-            label = { Text("Title *") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BrandBlue,
-                focusedLabelColor = BrandBlue
-            )
+            placeholder = "Enter title"
         )
 
         // URL
-        OutlinedTextField(
+        LabeledTextField(
+            label = "Destination URL (Optional)",
             value = uiState.bannerUrl,
             onValueChange = onUrlChange,
-            label = { Text("Destination URL (Optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BrandBlue,
-                focusedLabelColor = BrandBlue
-            )
+            placeholder = "Enter destination URL"
         )
 
         // Start Date Picker
@@ -188,30 +180,21 @@ fun DatePickerField(
         }
     }
 
-    OutlinedTextField(
-        value = dateText,
-        onValueChange = {},
-        label = { Text(label) },
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { showDatePicker = true },
-        enabled = false, // Disable typing, handle click on parent
-        trailingIcon = {
-            IconButton(onClick = { showDatePicker = true }) {
-                Icon(Icons.Default.CalendarToday, contentDescription = "Select Date")
+    Box(modifier = Modifier.fillMaxWidth()) {
+        LabeledTextField(
+            label = label,
+            value = dateText,
+            onValueChange = {},
+            readOnly = true,
+            enabled = false,
+            placeholder = "Select Date",
+            trailingIcon = {
+                Icon(Icons.Default.CalendarToday, contentDescription = "Select Date", tint = Color.Black)
             }
-        },
-        colors = OutlinedTextFieldDefaults.colors(
-            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-            disabledBorderColor = MaterialTheme.colorScheme.outline,
-            disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            focusedBorderColor = BrandBlue,
-            focusedLabelColor = BrandBlue
         )
-    )
+        // Overlay for click
+        Box(modifier = Modifier.matchParentSize().clickable { showDatePicker = true })
+    }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(

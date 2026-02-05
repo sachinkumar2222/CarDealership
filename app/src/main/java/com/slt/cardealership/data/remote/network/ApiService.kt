@@ -1121,11 +1121,12 @@ interface ApiService {
     ): Response<Unit>
 
     @GET("application-api/domain-pages")
-    suspend fun getDomainPages(
+    suspend fun getDomainPagesV2(
         @Query("page") page: Int,
         @Query("items_per_page") itemsPerPage: Int,
         @Query("domain_id") domainId: Int
     ): com.slt.cardealership.domain.model.DomainPagesResponse
+
     @GET("dealer-api/dealer-gmb-auth/GetGMBSetting/{dealerId}")
     suspend fun getGmbSettings(
         @Path("dealerId") dealerId: Long
@@ -1147,4 +1148,27 @@ interface ApiService {
         @Body body: com.slt.cardealership.domain.model.SeoDomainMapRequest
     ): Response<Unit>
 
+    @GET("application-api/domain-research-blog-categories")
+    suspend fun getResearchBlogCategories(
+        @Query("domain_id") domainId: Int,
+        @Query("page") page: Int,
+        @Query("item_per_page") itemsPerPage: Int,
+        @Query("domain_name") domainName: String?
+    ): com.slt.cardealership.domain.model.ResearchBlogCategoryResponse
+
+    @POST("application-api/domain-research-blog-categories")
+    suspend fun createResearchBlogCategory(
+        @Body request: com.slt.cardealership.domain.model.CreateResearchBlogCategoryRequest
+    ): Response<Unit>
+
+    @PUT("application-api/domain-research-blog-categories/{id}")
+    suspend fun updateResearchBlogCategory(
+        @Path("id") id: String,
+        @Body request: com.slt.cardealership.domain.model.UpdateResearchBlogCategoryRequest
+    ): Response<Unit>
+
+    @DELETE("application-api/domain-research-blog-categories/{id}")
+    suspend fun deleteResearchBlogCategory(
+        @Path("id") id: String
+    ): Response<Unit>
 }

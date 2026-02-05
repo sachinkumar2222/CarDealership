@@ -41,6 +41,8 @@ import com.slt.cardealership.domain.model.ResearchTrim
 import java.io.File
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
+import com.slt.cardealership.presentation.common.AnimatedDropdown
+import com.slt.cardealership.presentation.common.LabeledTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +64,7 @@ fun AddBlogScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text(if (blogId == null) "Add Blog" else "Edit Blog") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -73,7 +76,6 @@ fun AddBlogScreen(
                     titleContentColor = Color.Black,
                     navigationIconContentColor = Color.Black
                 ),
-                modifier = Modifier.shadow(8.dp)
             )
         }
     ) { padding ->
@@ -151,12 +153,11 @@ fun MainContentSection(state: AddBlogUiState, viewModel: AddBlogViewModel) {
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             // Blog Type
-            Text("Blog Type*", style = MaterialTheme.typography.labelMedium, color = Color.Black)
-            Spacer(modifier = Modifier.height(4.dp))
-            SimpleDropdown(
-                items = listOf("general", "research", "compare"),
-                selectedItem = state.blogType,
-                onItemSelected = { viewModel.onEvent(AddBlogEvent.BlogTypeChanged(it)) }
+            AnimatedDropdown(
+                label = "Blog Type*",
+                options = listOf("general", "research", "compare"),
+                selectedOption = state.blogType,
+                onOptionSelected = { viewModel.onEvent(AddBlogEvent.BlogTypeChanged(it)) }
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -207,127 +208,83 @@ fun MainContentSection(state: AddBlogUiState, viewModel: AddBlogViewModel) {
             }
 
             // Title
-            Text("Title*", style = MaterialTheme.typography.labelMedium, color = Color.Black)
-            OutlinedTextField(
+            LabeledTextField(
+                label = "Title*",
                 value = state.title,
                 onValueChange = { viewModel.onEvent(AddBlogEvent.TitleChanged(it)) },
-                placeholder = { Text("Title* (Required)") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF2196F3),
-                    focusedLabelColor = Color(0xFF2196F3),
-                    cursorColor = Color(0xFF2196F3)
-                )
+                placeholder = "Title* (Required)"
             )
             Spacer(modifier = Modifier.height(16.dp))
 
             // Slug
-            Text("Slug*", style = MaterialTheme.typography.labelMedium, color = Color.Black)
-            Text("Note: Slug is located at the very end of a URL.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-            OutlinedTextField(
+            LabeledTextField(
+                label = "Slug*",
                 value = state.slug,
                 onValueChange = { viewModel.onEvent(AddBlogEvent.SlugChanged(it)) },
-                placeholder = { Text("Slug* (Required)") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF2196F3),
-                    focusedLabelColor = Color(0xFF2196F3),
-                    cursorColor = Color(0xFF2196F3)
-                )
+                placeholder = "Slug* (Required)"
             )
+            Text("Note: Slug is located at the very end of a URL.", style = MaterialTheme.typography.bodySmall, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
             Spacer(modifier = Modifier.height(16.dp))
 
             // Short Description
-            Text("Short Description*", style = MaterialTheme.typography.labelMedium, color = Color.Black)
-            OutlinedTextField(
+            LabeledTextField(
+                label = "Short Description*",
                 value = state.shortDescription,
                 onValueChange = { viewModel.onEvent(AddBlogEvent.ShortDescriptionChanged(it)) },
-                placeholder = { Text("Short description* (Required)") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF2196F3),
-                    focusedLabelColor = Color(0xFF2196F3),
-                    cursorColor = Color(0xFF2196F3)
-                )
+                placeholder = "Short description* (Required)"
             )
             Spacer(modifier = Modifier.height(16.dp))
 
             // Blog Description (Rich Text Placeholder)
-            Text("Blog description*", style = MaterialTheme.typography.labelMedium, color = Color.Black)
-            OutlinedTextField(
+            LabeledTextField(
+                label = "Blog description*",
                 value = state.description,
                 onValueChange = { viewModel.onEvent(AddBlogEvent.DescriptionChanged(it)) },
-                modifier = Modifier.fillMaxWidth().height(300.dp),
-                placeholder = { Text("Enter blog content here...") },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF2196F3),
-                    focusedLabelColor = Color(0xFF2196F3),
-                    cursorColor = Color(0xFF2196F3)
-                )
+                placeholder = "Enter blog content here...",
+                modifier = Modifier.height(300.dp),
+                minLines = 10,
+                maxLines = Int.MAX_VALUE,
+                singleLine = false
             )
         }
     }
-    Spacer(modifier = Modifier.height(24.dp))
 
     // 2. SEO Field Options
     ExpandableCard(title = "SEO Field Options") {
         Column {
-            Text("Meta title*", style = MaterialTheme.typography.labelMedium, color = Color.Black)
-            OutlinedTextField(
+            LabeledTextField(
+                label = "Meta title*",
                 value = state.metaTitle,
                 onValueChange = { viewModel.onEvent(AddBlogEvent.MetaTitleChanged(it)) },
-                placeholder = { Text("Meta Title") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF2196F3),
-                    focusedLabelColor = Color(0xFF2196F3),
-                    cursorColor = Color(0xFF2196F3)
-                )
+                placeholder = "Meta Title"
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Meta description*", style = MaterialTheme.typography.labelMedium, color = Color.Black)
-            OutlinedTextField(
+            LabeledTextField(
+                label = "Meta description*",
                 value = state.metaDescription,
                 onValueChange = { viewModel.onEvent(AddBlogEvent.MetaDescriptionChanged(it)) },
-                placeholder = { Text("Meta Description") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF2196F3),
-                    focusedLabelColor = Color(0xFF2196F3),
-                    cursorColor = Color(0xFF2196F3)
-                )
+                placeholder = "Meta Description"
             )
         }
     }
-    Spacer(modifier = Modifier.height(24.dp))
 
     // 3. Manage CTAs
     ExpandableCard(title = "Manage CTAs") {
         Column {
             state.ctas.forEachIndexed { index, cta ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    LabeledTextField(
+                        label = "Label",
                         value = cta.label,
                         onValueChange = { viewModel.onEvent(AddBlogEvent.UpdateCta(index, cta.copy(label = it))) },
-                        label = { Text("Label") },
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF2196F3),
-                            focusedLabelColor = Color(0xFF2196F3),
-                            cursorColor = Color(0xFF2196F3)
-                        )
+                        modifier = Modifier.weight(1f)
                     )
-                    OutlinedTextField(
+                    LabeledTextField(
+                        label = "URL",
                         value = cta.url,
                         onValueChange = { viewModel.onEvent(AddBlogEvent.UpdateCta(index, cta.copy(url = it))) },
-                        label = { Text("URL") },
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF2196F3),
-                            focusedLabelColor = Color(0xFF2196F3),
-                            cursorColor = Color(0xFF2196F3)
-                        )
+                        modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { viewModel.onEvent(AddBlogEvent.RemoveCta(index)) }) {
                         Icon(Icons.Default.Delete, contentDescription = "Remove CTA")
@@ -337,7 +294,11 @@ fun MainContentSection(state: AddBlogUiState, viewModel: AddBlogViewModel) {
             }
             Button(
                 onClick = { viewModel.onEvent(AddBlogEvent.AddCta()) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
             ) {
                 Text("Add CTA")
             }
@@ -369,10 +330,12 @@ fun SidebarSection(
     ExpandableCard(title = "Action", defaultExpanded = true) {
         Column {
             Text("Status", style = MaterialTheme.typography.bodyMedium)
-            SimpleDropdown(
-                items = listOf("published", "draft", "revision"),
-                selectedItem = state.status,
-                onItemSelected = { viewModel.onEvent(AddBlogEvent.StatusChanged(it)) }
+            Spacer(modifier = Modifier.height(8.dp))
+            AnimatedDropdown(
+                label = "",
+                options = listOf("published", "draft", "revision"),
+                selectedOption = state.status,
+                onOptionSelected = { viewModel.onEvent(AddBlogEvent.StatusChanged(it)) }
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(
@@ -398,44 +361,37 @@ fun SidebarSection(
             }
         }
     }
-    Spacer(modifier = Modifier.height(24.dp))
 
     // 2. Manage Author
     ExpandableCard(title = "Manage author", defaultExpanded = true) {
         Column {
-            // Current Author Display
-            Text("Current author", style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(4.dp))
             val currentAuthor = state.authors.find { it.id == state.selectedAuthorId }
-            OutlinedTextField(
+            // Current Author Display
+            LabeledTextField(
+                label = "Current author",
                 value = currentAuthor?.username ?: "Unknown",
                 onValueChange = {},
                 readOnly = true,
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFFECEFF1),
-                    unfocusedContainerColor = Color(0xFFECEFF1),
-                    disabledContainerColor = Color(0xFFECEFF1),
-                    focusedBorderColor = Color(0xFF2196F3),
-                    cursorColor = Color(0xFF2196F3)
-                )
+                enabled = false
             )
             Spacer(modifier = Modifier.height(16.dp))
 
             // Change Author Dropdown
             Text("Change author", style = MaterialTheme.typography.bodyMedium)
             Spacer(modifier = Modifier.height(4.dp))
-            SimpleDropdown(
-                items = state.authors.map { if (!it.first_name.isNullOrBlank()) "${it.first_name} ${it.last_name}" else it.username },
-                selectedItem = "Select Author", // Always show placeholder for "Change" action
-                onItemSelected = { name ->
+
+            val authorOptions = state.authors.map { if (!it.first_name.isNullOrBlank()) "${it.first_name} ${it.last_name}" else it.username }
+            AnimatedDropdown(
+                label = "",
+                options = authorOptions,
+                selectedOption = "Select Author", // Always show placeholder behavior
+                onOptionSelected = { name ->
                     val author = state.authors.find { (if (!it.first_name.isNullOrBlank()) "${it.first_name} ${it.last_name}" else it.username) == name }
                     author?.let { viewModel.onEvent(AddBlogEvent.AuthorSelected(it.id)) }
                 }
             )
         }
     }
-    Spacer(modifier = Modifier.height(24.dp))
 
     // 3. Featured Image
     ExpandableCard(title = "Featured image", defaultExpanded = true) {
@@ -453,29 +409,33 @@ fun SidebarSection(
                 contentAlignment = Alignment.Center
             ) {
                 if (state.selectedImageUri != null) {
-                    Text("Image Selected: ${state.selectedImageUri!!.lastPathSegment}")
+                    AsyncImage(
+                        model = state.selectedImageUri,
+                        contentDescription = "Selected Image",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
                 } else if (!state.featuredImageUrl.isNullOrEmpty()) {
                     AsyncImage(
                         model = state.featuredImageUrl,
                         contentDescription = "Featured Image",
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Fit
                     )
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Image, contentDescription = null, tint = Color.Gray)
-                        Text("Add New", style = MaterialTheme.typography.titleMedium)
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(48.dp)
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = { imageLauncher.launch("image/*") },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add")
-                        }
-                        Text("(PNG, JPEG, WebP)", style = MaterialTheme.typography.bodySmall, color = Color.Red)
-                        Text("(Max. file size 500Kb)", style = MaterialTheme.typography.bodySmall, color = Color.Red)
+                        Text(
+                            text = "Tap to select image",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
                     }
                 }
             }
@@ -491,7 +451,6 @@ fun SidebarSection(
             }
         }
     }
-    Spacer(modifier = Modifier.height(24.dp))
 
     // 4. Categories
     ExpandableCard(title = "Categories", defaultExpanded = true) {
@@ -545,47 +504,7 @@ fun ExpandableCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SimpleDropdown(
-    items: List<String>,
-    selectedItem: String,
-    onItemSelected: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
-    ) {
-        OutlinedTextField(
-            value = selectedItem,
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                focusedBorderColor = Color(0xFF2196F3),
-                focusedLabelColor = Color(0xFF2196F3),
-                cursorColor = Color(0xFF2196F3)
-            ),
-            modifier = Modifier.menuAnchor().fillMaxWidth()
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(Color.White)
-        ) {
-            items.forEach { item ->
-                DropdownMenuItem(
-                    text = { Text(item) },
-                    onClick = {
-                        onItemSelected(item)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
+// SimpleDropdown removed effectively
 
 @Composable
 fun ManageVehicleDialog(
@@ -687,63 +606,18 @@ fun <T> ResearchDropdown(
     enabled: Boolean = true,
     isRequired: Boolean = false
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    val options = items.map { itemLabel(it) }
+    val selectedOptionLabel = selectedItem?.let(itemLabel) ?: ""
 
-    Column {
-        Row {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Black.copy(alpha = 0.7f)
-            )
-            if (isRequired) {
-                Text("*", color = Color.Red, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-
-        ExposedDropdownMenuBox(
-            expanded = expanded && enabled,
-            onExpandedChange = { if (enabled) expanded = !expanded }
-        ) {
-            OutlinedTextField(
-                value = selectedItem?.let(itemLabel) ?: "",
-                onValueChange = {},
-                readOnly = true,
-                placeholder = { Text("Select $label", color = Color.Gray) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                    unfocusedBorderColor = Color.LightGray,
-                    focusedBorderColor = Color(0xFF2196F3),
-                    cursorColor = Color(0xFF2196F3)
-                ),
-                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                enabled = enabled,
-                shape = RoundedCornerShape(8.dp)
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.background(Color.White)
-            ) {
-                if (items.isEmpty()) {
-                    DropdownMenuItem(
-                        text = { Text("No items available") },
-                        onClick = { expanded = false }
-                    )
-                } else {
-                    items.forEach { item ->
-                        DropdownMenuItem(
-                            text = { Text(itemLabel(item)) },
-                            onClick = {
-                                onItemSelected(item)
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-    }
+    AnimatedDropdown(
+        label = if (isRequired) "$label*" else label,
+        options = options,
+        selectedOption = selectedOptionLabel,
+        onOptionSelected = { optionLabel ->
+            val selected = items.find { itemLabel(it) == optionLabel }
+            selected?.let(onItemSelected)
+        },
+        enabled = enabled
+    )
+    Spacer(modifier = Modifier.height(16.dp))
 }

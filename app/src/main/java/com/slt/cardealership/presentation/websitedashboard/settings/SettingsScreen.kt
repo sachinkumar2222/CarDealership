@@ -20,8 +20,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -36,38 +34,10 @@ import com.slt.cardealership.presentation.websitedashboard.settings.fonts.Manage
 import com.slt.cardealership.ui.theme.BrandBlue
 import com.slt.cardealership.ui.theme.LightBackground
 
-@Composable
-fun SettingsTabButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val containerColor = if (isSelected) BrandBlue else Color.White
-    val contentColor = if (isSelected) Color.White else Color.Gray
-    val borderColor = if (isSelected) Color.Transparent else Color.LightGray.copy(alpha = 0.5f)
-    val elevation = if (isSelected) 6.dp else 2.dp
-
-    Surface(
-        onClick = onClick,
-        modifier = Modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = containerColor,
-        shadowElevation = elevation,
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = text,
-                color = contentColor,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-            )
-        }
-    }
-}
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 
@@ -91,7 +61,6 @@ fun SettingsScreen(
         containerColor = LightBackground,
         topBar = {
             TopAppBar(
-                modifier = Modifier.shadow(4.dp),
                 title = {
                     Text(
                         text = "Settings",
@@ -120,19 +89,28 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(LightBackground)
-                    .padding(vertical = 12.dp, horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ScrollableTabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color.White,
+                edgePadding = 0.dp,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                        color = Color(0xFF2196F3)
+                    )
+                }
             ) {
-                itemsIndexed(tabs) { index, title ->
-                    val isSelected = selectedTabIndex == index
-                    SettingsTabButton(
-                        text = title,
-                        isSelected = isSelected,
-                        onClick = { viewModel.onTabSelected(index) }
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { viewModel.onTabSelected(index) },
+                        text = {
+                            Text(
+                                title,
+                                color = if (selectedTabIndex == index) Color(0xFF2196F3) else Color.Gray,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
                     )
                 }
             }

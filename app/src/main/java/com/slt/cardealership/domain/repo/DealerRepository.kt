@@ -430,6 +430,25 @@ interface DealerRepository {
         request: com.slt.cardealership.domain.model.CreateResearchCompareRequest
     ): Result<Unit>
 
+    // --- Research Blog Categories ---
+    suspend fun getResearchBlogCategories(
+        domainId: Int,
+        page: Int,
+        itemsPerPage: Int,
+        domainName: String?
+    ): Result<com.slt.cardealership.domain.model.ResearchBlogCategoryResponse>
+
+    suspend fun createResearchBlogCategory(
+        request: com.slt.cardealership.domain.model.CreateResearchBlogCategoryRequest
+    ): Result<Unit>
+
+    suspend fun updateResearchBlogCategory(
+        id: String,
+        request: com.slt.cardealership.domain.model.UpdateResearchBlogCategoryRequest
+    ): Result<Unit>
+
+    suspend fun deleteResearchBlogCategory(id: String): Result<Unit>
+
     suspend fun getDomainThemeSetting(domainId: Int): Result<com.slt.cardealership.domain.model.DomainThemeSetting>
     suspend fun getDomainDefaultThemes(domainId: Int): Result<List<com.slt.cardealership.domain.model.DomainDefaultTheme>>
     suspend fun saveDomainThemeSetting(domainId: Int, settings: com.slt.cardealership.domain.model.DomainThemeSetting): Result<com.slt.cardealership.domain.model.DomainThemeSetting>

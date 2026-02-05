@@ -23,6 +23,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -37,6 +43,11 @@ fun ClassifiedFaqsScreen(
     viewModel: ClassifiedFaqsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Bottom Sheet States
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var selectedFaqId by remember { mutableStateOf<String?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // --- Automatic Refresh Logic ---
     val currentBackStackEntry = navController.currentBackStackEntry
@@ -73,7 +84,10 @@ fun ClassifiedFaqsScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(HomeRoutes.AddEditClassifiedFaq(siteId)) },
+                onClick = {
+                    selectedFaqId = null // Add mode
+                    showBottomSheet = true
+                },
                 containerColor = Color(0xFF2196F3),
                 contentColor = Color.White,
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
@@ -105,16 +119,43 @@ fun ClassifiedFaqsScreen(
                             Text(text = "No FAQs found", style = MaterialTheme.typography.bodyLarge)
                         }
                     } else {
-                        FaqTable(faqs = state.faqs, navController = navController, siteId = siteId)
+                        FaqTable(
+                            faqs = state.faqs,
+                            onEditClick = { faq ->
+                                selectedFaqId = faq.id.toString()
+                                showBottomSheet = true
+                            }
+                        )
                     }
                 }
             }
         }
     }
+
+    // Bottom Sheet for Add/Edit
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState,
+            containerColor = Color.White,
+            modifier = Modifier.statusBarsPadding(),
+            content = {
+                AddEditFaqBottomSheet(
+                    siteId = siteId,
+                    faqId = selectedFaqId,
+                    onDismiss = { showBottomSheet = false },
+                    onSuccess = {
+                        showBottomSheet = false
+                        viewModel.fetchData() // Refresh list
+                    }
+                )
+            }
+        )
+    }
 }
 
 @Composable
-fun FaqTable(faqs: List<FaqItem>, navController: NavController, siteId: String) {
+fun FaqTable(faqs: List<FaqItem>, onEditClick: (FaqItem) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -161,9 +202,7 @@ fun FaqTable(faqs: List<FaqItem>, navController: NavController, siteId: String) 
                 FaqRow(
                     index = index + 1,
                     faq = faq,
-                    onEditClick = {
-                        navController.navigate(HomeRoutes.AddEditClassifiedFaq(siteId, faq.id.toString()))
-                    }
+                    onEditClick = { onEditClick(faq) }
                 )
                 Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
             }

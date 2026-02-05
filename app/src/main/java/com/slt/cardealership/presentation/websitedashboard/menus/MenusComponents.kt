@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.slt.cardealership.domain.model.DomainMenuItem
 import com.slt.cardealership.domain.model.DomainPage
+import com.slt.cardealership.presentation.common.LabeledTextField
 
 @Composable
 fun RecursiveMenuItem(
@@ -80,26 +83,20 @@ fun RecursiveMenuItem(
                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
                 Column(modifier = Modifier.padding(16.dp)) {
                     // Menu Label
-                    Text("Menu label*", color = Color.Gray, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedTextField(
+                    LabeledTextField(
+                        label = "Menu label*",
                         value = item.menuLabel,
                         onValueChange = { onUpdate(item.copy(menuLabel = it)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedBorderColor = Color(0xFF2196F3)
-                        )
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        placeholder = "Enter menu label"
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Page / URL
                     val label = if (!item.pageSlug.isNullOrEmpty()) "Page*" else "Menu URL"
-                    Text(label, color = Color.Gray, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedTextField(
+                    LabeledTextField(
+                        label = label,
                         value = item.pageSlug ?: item.customUrl ?: "",
                         onValueChange = {
                             if (!item.pageSlug.isNullOrEmpty()) {
@@ -111,30 +108,21 @@ fun RecursiveMenuItem(
                         readOnly = !item.pageSlug.isNullOrEmpty(),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(if (!item.pageSlug.isNullOrEmpty()) Color.LightGray.copy(alpha = 0.2f) else Color.Transparent),
-                        shape = RoundedCornerShape(4.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedBorderColor = Color(0xFF2196F3)
-                        )
+                            .padding(bottom = 12.dp)
+                            .background(if (!item.pageSlug.isNullOrEmpty()) Color.LightGray.copy(alpha = 0.1f) else Color.Transparent),
+                        placeholder = if (item.pageSlug.isNullOrEmpty()) "Enter URL" else ""
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Parameter
                     if (!item.pageSlug.isNullOrEmpty()) {
-                        Text("Parameter", color = Color.Gray, fontSize = 12.sp)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedTextField(
+                        LabeledTextField(
+                            label = "Parameter",
                             value = item.prms ?: "",
                             onValueChange = { onUpdate(item.copy(prms = it)) },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(4.dp),
-                            placeholder = { Text("/new OR ?brands=example") },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = Color.LightGray,
-                                focusedBorderColor = Color(0xFF2196F3)
-                            )
+                            placeholder = "/new OR ?brands=example"
                         )
                         Text("(For ex: /new OR ?brands=example)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                         Spacer(modifier = Modifier.height(12.dp))
@@ -209,6 +197,7 @@ fun AddMenuItemBottomSheet(
     var selectedTab by remember { mutableStateOf(0) } // 0 = Page, 1 = Custom link
     var url by remember { mutableStateOf("") }
     var label by remember { mutableStateOf("") }
+
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -291,49 +280,39 @@ fun AddMenuItemBottomSheet(
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedButton(
                         onClick = onAddPages,
-                        modifier = Modifier.align(Alignment.End),
+                        modifier = Modifier.fillMaxWidth(), // Full width
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2196F3)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2196F3)),
-                        shape = RoundedCornerShape(4.dp)
+                        shape = RoundedCornerShape(8.dp) // Consistent shape
                     ) {
                         Text("Add To Menu")
                     }
                 } else {
                     // Custom Link
-                    Text("Menu label*", color = Color.Gray, fontSize = 12.sp)
-                    OutlinedTextField(
+                    LabeledTextField(
+                        label = "Menu label*",
                         value = label,
                         onValueChange = { label = it },
-                        placeholder = { Text("Menu label* (Required)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedBorderColor = Color(0xFF2196F3)
-                        )
+                        placeholder = "Menu label* (Required)",
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Menu URL", color = Color.Gray, fontSize = 12.sp)
-                    OutlinedTextField(
+
+                    LabeledTextField(
+                        label = "Menu URL",
                         value = url,
                         onValueChange = { url = it },
-                        placeholder = { Text("Menu Url") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedBorderColor = Color(0xFF2196F3)
-                        )
+                        placeholder = "Menu Url",
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Text("(Note: \"#\" in the URL will work as label)", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
 
                     Spacer(modifier = Modifier.height(24.dp))
                     OutlinedButton(
                         onClick = { onAddCustomLink(label, url) },
-                        modifier = Modifier.align(Alignment.End),
+                        modifier = Modifier.fillMaxWidth(), // Full width
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2196F3)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2196F3)),
-                        shape = RoundedCornerShape(4.dp)
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Text("Add To Menu")
                     }
@@ -343,3 +322,29 @@ fun AddMenuItemBottomSheet(
     }
 }
 
+
+@Composable
+fun MenuCheckboxRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 4.dp)
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = null, // Handled by Row click
+            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF2196F3))
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(start = 8.dp)
+        )
+    }
+}

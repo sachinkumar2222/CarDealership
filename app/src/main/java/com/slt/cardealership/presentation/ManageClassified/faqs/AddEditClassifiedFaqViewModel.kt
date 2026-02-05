@@ -35,8 +35,8 @@ class AddEditClassifiedFaqViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val siteId: String? = savedStateHandle["siteId"]
-    private val faqIdArg: String? = savedStateHandle["faqId"]
+    private var siteId: String? = savedStateHandle["siteId"]
+    private var faqIdArg: String? = savedStateHandle["faqId"]
 
     private val _state = MutableStateFlow(AddEditClassifiedFaqState())
     val state: StateFlow<AddEditClassifiedFaqState> = _state.asStateFlow()
@@ -52,9 +52,13 @@ class AddEditClassifiedFaqViewModel @Inject constructor(
     private var dealerId: Long? = null
     private var domainId: Int? = null
 
-    init {
+
+    fun initializeViewModel(siteIdParam: String, faqIdParam: String?) {
+        this.siteId = siteIdParam
+        this.faqIdArg = faqIdParam
         initialize()
     }
+
 
     private fun initialize() {
         val id = siteId?.toIntOrNull()
@@ -71,10 +75,11 @@ class AddEditClassifiedFaqViewModel @Inject constructor(
                 domainId = id
                 dealerId = domainItem.dealerId?.toLong() ?: sessionManager.getDealerId()?.toLong()
 
-                if (faqIdArg != null) {
-                    loadFaq(faqIdArg.toInt())
+                val currentFaqId = faqIdArg
+                if (currentFaqId != null) {
+                    loadFaq(currentFaqId.toInt())
                 } else {
-                    _state.update { it.copy(isLoading = false, isEditMode = false) }
+                    _state.update { AddEditClassifiedFaqState(isLoading = false, isEditMode = false) }
                 }
             }.onFailure {
                 _state.update { it.copy(isLoading = false, error = "Failed to load domain info") }

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
@@ -47,6 +48,8 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.slt.cardealership.presentation.common.LabeledTextField
+import com.slt.cardealership.presentation.common.AnimatedDropdown
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,31 +105,15 @@ fun AddSliderScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             // Slider Name Input
-                            Text("Slider name *", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Black)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
+                            LabeledTextField(
+                                label = "Slider name *",
                                 value = uiState.sliderName,
                                 onValueChange = { viewModel.onNameChange(it) },
-                                modifier = Modifier.fillMaxWidth(),
-                                placeholder = { Text("Slider name", color = Color.Gray) },
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color(0xFF1976D2), // Using BrandBlue hex or similar
-                                    focusedLabelColor = Color(0xFF1976D2),
-                                    cursorColor = Color(0xFF1976D2),
-                                    unfocusedBorderColor = Color(0xFFE9ECEF),
-                                    focusedContainerColor = Color(0xFFF8F9FA),
-                                    unfocusedContainerColor = Color(0xFFF8F9FA)
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                textStyle = MaterialTheme.typography.bodyMedium
+                                placeholder = "Slider name",
+                                singleLine = true
                             )
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Save Button for Name (Only visible if not yet created or if we want to allow updating name)
-                            // The user flow implies saving name first creates the slider.
-                            // If sliderId is null, show Save. If not null, maybe show Update?
-                            // User image shows "Save" button even after creation.
                             Button(
                                 onClick = {
                                     if (uiState.sliderId == null) {
@@ -138,7 +125,8 @@ fun AddSliderScreen(
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = BrandBlue)
+                                colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text("Save")
                             }
@@ -168,9 +156,11 @@ fun AddSliderScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text("No slide added found", color = Color.Gray)
                                     Spacer(modifier = Modifier.height(16.dp))
-                                    Button(
+                                    OutlinedButton(
                                         onClick = { viewModel.showAddSlideDialog() },
-                                        colors = ButtonDefaults.buttonColors(containerColor = BrandBlue)
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, BrandBlue),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandBlue)
                                     ) {
                                         Icon(Icons.Default.Add, contentDescription = null)
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -186,9 +176,11 @@ fun AddSliderScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text("Slides", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Button(
+                                OutlinedButton(
                                     onClick = { viewModel.showAddSlideDialog() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = BrandBlue)
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, BrandBlue),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandBlue)
                                 ) {
                                     Icon(Icons.Default.Add, contentDescription = null)
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -338,73 +330,39 @@ fun AddSlideDialog(
                     .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState())
             ) {
-                val inputColors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BrandBlue,
-                    focusedLabelColor = BrandBlue,
-                    cursorColor = BrandBlue,
-                    unfocusedBorderColor = Color(0xFFE9ECEF),
-                    focusedContainerColor = Color(0xFFF8F9FA),
-                    unfocusedContainerColor = Color(0xFFF8F9FA)
-                )
+// inputColors removed
 
                 // Title
-                Text("Title *", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Black)
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "Title *",
                     value = title,
                     onValueChange = { title = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = inputColors,
-                    shape = RoundedCornerShape(12.dp)
+                    singleLine = true
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Target
-                Text("Target", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Black)
-                Spacer(modifier = Modifier.height(8.dp))
-                var expanded by remember { mutableStateOf(false) }
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = target,
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth().clickable { expanded = true },
-                        trailingIcon = {
-                            IconButton(onClick = { expanded = true }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Target")
-                            }
-                        },
-                        colors = inputColors,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        DropdownMenuItem(text = { Text("_blank") }, onClick = { target = "_blank"; expanded = false })
-                        DropdownMenuItem(text = { Text("_parent") }, onClick = { target = "_parent"; expanded = false })
-                        DropdownMenuItem(text = { Text("_self") }, onClick = { target = "_self"; expanded = false })
-                        DropdownMenuItem(text = { Text("_top") }, onClick = { target = "_top"; expanded = false })
-                    }
-                }
+                AnimatedDropdown(
+                    label = "Target",
+                    options = listOf("_blank", "_parent", "_self", "_top"),
+                    selectedOption = target,
+                    onOptionSelected = { target = it }
+                )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // URL
-                Text("URL", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Black)
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "URL",
                     value = link,
                     onValueChange = { link = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = inputColors,
-                    shape = RoundedCornerShape(12.dp)
+                    singleLine = true
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
 
                 // Start Date
-                Text("Start Date", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Black)
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "Start Date",
                     value = startDate?.let { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it)) } ?: "",
                     onValueChange = {},
                     readOnly = true,
@@ -413,10 +371,9 @@ fun AddSlideDialog(
                         IconButton(onClick = { showStartDatePicker = true }) {
                             Icon(Icons.Default.CalendarToday, contentDescription = "Select Date")
                         }
-                    },
-                    colors = inputColors,
-                    shape = RoundedCornerShape(12.dp)
+                    }
                 )
+
                 if (showStartDatePicker) {
                     DatePickerModal(
                         onDateSelected = {
@@ -430,9 +387,8 @@ fun AddSlideDialog(
 
                 // End Date
                 var showEndDatePicker by remember { mutableStateOf(false) }
-                Text("End Date", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.Black)
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "End Date",
                     value = endDate?.let { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it)) } ?: "",
                     onValueChange = {},
                     readOnly = true,
@@ -441,9 +397,7 @@ fun AddSlideDialog(
                         IconButton(onClick = { showEndDatePicker = true }) {
                             Icon(Icons.Default.CalendarToday, contentDescription = "Select Date")
                         }
-                    },
-                    colors = inputColors,
-                    shape = RoundedCornerShape(12.dp)
+                    }
                 )
                 if (showEndDatePicker) {
                     DatePickerModal(

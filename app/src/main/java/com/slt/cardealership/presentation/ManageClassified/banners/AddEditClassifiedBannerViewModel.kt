@@ -49,8 +49,8 @@ class AddEditClassifiedBannerViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    private val siteId: String? = savedStateHandle["siteId"]
-    private val bannerId: String? = savedStateHandle["bannerId"]
+    private var siteId: String? = savedStateHandle["siteId"]
+    private var bannerId: String? = savedStateHandle["bannerId"]
 
     private val _uiState = MutableStateFlow<AddEditBannerUiState>(AddEditBannerUiState.Loading)
     val uiState: StateFlow<AddEditBannerUiState> = _uiState.asStateFlow()
@@ -58,7 +58,11 @@ class AddEditClassifiedBannerViewModel @Inject constructor(
     private var dealerId: Long? = null
     private var domainId: Int? = null
 
-    init {
+    // Removed init block to allow manual initialization from BottomSheet
+
+    fun initializeViewModel(siteId: String, bannerId: String?) {
+        this.siteId = siteId
+        this.bannerId = bannerId
         initializeScreen()
     }
 
@@ -67,6 +71,11 @@ class AddEditClassifiedBannerViewModel @Inject constructor(
         if (id == null) {
             _uiState.update { AddEditBannerUiState.Error("Invalid Site ID") }
             return
+        }
+
+        // Reset state for fresh init if needed
+        if (bannerId == null) {
+            _uiState.update { AddEditBannerUiState.Loading }
         }
 
         viewModelScope.launch {
@@ -81,7 +90,7 @@ class AddEditClassifiedBannerViewModel @Inject constructor(
                 }
 
                 if (bannerId != null) {
-                    loadBanner(bannerId)
+                    loadBanner(bannerId!!)
                 } else {
                     _uiState.update { AddEditBannerUiState.Content() }
                 }
@@ -141,8 +150,8 @@ class AddEditClassifiedBannerViewModel @Inject constructor(
         val currentDealerId = dealerId ?: return
         val currentDomainId = domainId ?: return
 
-        if (currentState.title.isBlank() || currentState.url.isBlank()) {
-            updateContent { it.copy(error = "Title and URL are required") }
+        if (currentState.title.isBlank()) {
+            updateContent { it.copy(error = "Title is required") }
             return
         }
 
@@ -180,10 +189,11 @@ class AddEditClassifiedBannerViewModel @Inject constructor(
             val startSeconds = currentState.startDate / 1000
             val endSeconds = currentState.endDate?.div(1000)
 
-            val result = if (currentState.isEditMode && bannerId != null) {
+            val currentBannerId = bannerId
+            val result = if (currentState.isEditMode && currentBannerId != null) {
                 repository.updateBanner(
                     dealerId = currentDealerId,
-                    bannerId = bannerId,
+                    bannerId = currentBannerId,
                     domainId = currentDomainId,
                     title = currentState.title,
                     url = currentState.url,

@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,6 +69,7 @@ fun WebsiteBlogsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Blogs") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -238,7 +240,6 @@ fun ExpandableBlogCard(
                     )
                 }
 
-                // Three-dot Action Menu
                 Box {
                     IconButton(
                         onClick = { menuExpanded = true },
@@ -286,7 +287,6 @@ fun ExpandableBlogCard(
                 }
             }
 
-            // Expanded Content
             AnimatedVisibility(visible = expanded) {
                 Column(modifier = Modifier.padding(top = 16.dp)) {
                     Divider(color = Color(0xFFE0E0E0))

@@ -20,8 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.slt.cardealership.presentation.websitedashboard.settings.DropdownSelector
-import com.slt.cardealership.presentation.websitedashboard.settings.ThemeSettingsViewModel
+import com.slt.cardealership.presentation.common.AnimatedDropdown
 import com.slt.cardealership.ui.theme.BrandBlue
 
 @Composable
@@ -48,7 +47,14 @@ fun InventorySettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Default Inventory View (Toggle)
-            InventorySettingRow(label = "Default inventory view:") {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Default inventory view",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 InventoryViewToggle(
                     currentView = uiState.inventorySettings?.defaultInventoryView ?: "grid",
                     onViewSelected = { viewModel.updateInventoryView(it) }
@@ -56,127 +62,134 @@ fun InventorySettingsScreen(
             }
 
             // Default Inventory Makes (Multi-select)
-            InventorySettingRow(label = "Default inventory Makes:", isMultiLine = true) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MultiSelectDropdown(
-                        label = "Select Make",
-                        options = uiState.allMakes.filter { make ->
-                            uiState.defaultMakes.none { it.makeId == make.id }
-                        }.map { it.name to it },
-                        onOptionSelected = { option ->
-                            if (option != null) viewModel.addMakeToCondition(option.second, "default")
-                        }
-                    )
-                    if (uiState.defaultMakes.isNotEmpty()) {
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            uiState.defaultMakes.forEach { makeSetting ->
-                                RemovableChip(
-                                    label = makeSetting.makeName ?: "Unknown",
-                                    onRemove = { viewModel.removeMakeFromCondition(makeSetting) }
-                                )
-                            }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                AnimatedDropdown(
+                    label = "Default inventory Makes",
+                    options = uiState.allMakes.filter { make ->
+                        uiState.defaultMakes.none { it.makeId == make.id }
+                    }.map { it.name },
+                    selectedOption = "Select Make",
+                    onOptionSelected = { selectedName ->
+                        val selected = uiState.allMakes.find { it.name == selectedName }
+                        selected?.let { viewModel.addMakeToCondition(it, "default") }
+                    }
+                )
+
+                if (uiState.defaultMakes.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.defaultMakes.forEach { makeSetting ->
+                            RemovableChip(
+                                label = makeSetting.makeName ?: "Unknown",
+                                onRemove = { viewModel.removeMakeFromCondition(makeSetting) }
+                            )
                         }
                     }
                 }
             }
 
             // Default Inventory New Makes
-            InventorySettingRow(label = "Default inventory new makes:", isMultiLine = true) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MultiSelectDropdown(
-                        label = "Select Make",
-                        options = uiState.allMakes.filter { make ->
-                            uiState.newMakes.none { it.makeId == make.id }
-                        }.map { it.name to it },
-                        onOptionSelected = { option ->
-                            if (option != null) viewModel.addMakeToCondition(option.second, "new")
-                        }
-                    )
-                    if (uiState.newMakes.isNotEmpty()) {
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            uiState.newMakes.forEach { makeSetting ->
-                                RemovableChip(
-                                    label = makeSetting.makeName ?: "Unknown",
-                                    onRemove = { viewModel.removeMakeFromCondition(makeSetting) }
-                                )
-                            }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                AnimatedDropdown(
+                    label = "Default inventory new makes",
+                    options = uiState.allMakes.filter { make ->
+                        uiState.newMakes.none { it.makeId == make.id }
+                    }.map { it.name },
+                    selectedOption = "Select Make",
+                    onOptionSelected = { selectedName ->
+                        val selected = uiState.allMakes.find { it.name == selectedName }
+                        selected?.let { viewModel.addMakeToCondition(it, "new") }
+                    }
+                )
+
+                if (uiState.newMakes.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.newMakes.forEach { makeSetting ->
+                            RemovableChip(
+                                label = makeSetting.makeName ?: "Unknown",
+                                onRemove = { viewModel.removeMakeFromCondition(makeSetting) }
+                            )
                         }
                     }
                 }
             }
 
             // Default Inventory Used Makes
-            InventorySettingRow(label = "Default inventory used makes:", isMultiLine = true) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MultiSelectDropdown(
-                        label = "Select Make",
-                        options = uiState.allMakes.filter { make ->
-                            uiState.usedMakes.none { it.makeId == make.id }
-                        }.map { it.name to it },
-                        onOptionSelected = { option ->
-                            if (option != null) viewModel.addMakeToCondition(option.second, "used")
-                        }
-                    )
-                    if (uiState.usedMakes.isNotEmpty()) {
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            uiState.usedMakes.forEach { makeSetting ->
-                                RemovableChip(
-                                    label = makeSetting.makeName ?: "Unknown",
-                                    onRemove = { viewModel.removeMakeFromCondition(makeSetting) }
-                                )
-                            }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                AnimatedDropdown(
+                    label = "Default inventory used makes",
+                    options = uiState.allMakes.filter { make ->
+                        uiState.usedMakes.none { it.makeId == make.id }
+                    }.map { it.name },
+                    selectedOption = "Select Make",
+                    onOptionSelected = { selectedName ->
+                        val selected = uiState.allMakes.find { it.name == selectedName }
+                        selected?.let { viewModel.addMakeToCondition(it, "used") }
+                    }
+                )
+
+                if (uiState.usedMakes.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.usedMakes.forEach { makeSetting ->
+                            RemovableChip(
+                                label = makeSetting.makeName ?: "Unknown",
+                                onRemove = { viewModel.removeMakeFromCondition(makeSetting) }
+                            )
                         }
                     }
                 }
             }
 
             // New Inventory Body Types
-            InventorySettingRow(label = "New inventory body types:", isMultiLine = true) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MultiSelectDropdown(
-                        label = "Select Body Type",
-                        options = uiState.allBodyTypes.filter { bodyType ->
-                            uiState.newBodyTypes.none { it.bodyTypeId == bodyType.id }
-                        }.map { it.name to it },
-                        onOptionSelected = { option ->
-                            if (option != null) viewModel.addBodyType(option.second)
-                        }
-                    )
-                    if (uiState.newBodyTypes.isNotEmpty()) {
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            uiState.newBodyTypes.forEach { bodyTypeSetting ->
-                                RemovableChip(
-                                    label = bodyTypeSetting.bodyTypeName ?: "Unknown",
-                                    onRemove = { viewModel.removeBodyType(bodyTypeSetting) }
-                                )
-                            }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                AnimatedDropdown(
+                    label = "New inventory body types",
+                    options = uiState.allBodyTypes.filter { bodyType ->
+                        uiState.newBodyTypes.none { it.bodyTypeId == bodyType.id }
+                    }.map { it.name },
+                    selectedOption = "Select Body Type",
+                    onOptionSelected = { selectedName ->
+                        val selected = uiState.allBodyTypes.find { it.name == selectedName }
+                        selected?.let { viewModel.addBodyType(it) }
+                    }
+                )
+
+                if (uiState.newBodyTypes.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.newBodyTypes.forEach { bodyTypeSetting ->
+                            RemovableChip(
+                                label = bodyTypeSetting.bodyTypeName ?: "Unknown",
+                                onRemove = { viewModel.removeBodyType(bodyTypeSetting) }
+                            )
                         }
                     }
                 }
             }
 
             // Default Sort
-            InventorySettingRow(label = "Default Sort:") {
-                DropdownSelector(
-                    selectedItem = viewModel.getSortLabel(uiState.inventorySettings?.defaultOrder),
-                    items = listOf(
-                        "Price : Low To High",
-                        "Price : High To Low",
-                        "Year : New To Old",
-                        "Year : Old To New",
-                        "Distance : Nearest To Farthest",
-                        "Listed : Newly Listed To Old Listed",
-                        "Listed : Old Listed To Newly Listed",
-                        "Mileage : High To Low",
-                        "Mileage : Low To High",
-                        "Make : A To Z",
-                        "Make : Z To A",
-                        "Model : A To Z",
-                        "Model : Z To A"
-                    ),
-                    onItemSelected = { viewModel.updateDefaultSort(it) }
-                )
-            }
+            AnimatedDropdown(
+                label = "Default Sort",
+                options = listOf(
+                    "Price : Low To High",
+                    "Price : High To Low",
+                    "Year : New To Old",
+                    "Year : Old To New",
+                    "Distance : Nearest To Farthest",
+                    "Listed : Newly Listed To Old Listed",
+                    "Listed : Old Listed To Newly Listed",
+                    "Mileage : High To Low",
+                    "Mileage : Low To High",
+                    "Make : A To Z",
+                    "Make : Z To A",
+                    "Model : A To Z",
+                    "Model : Z To A"
+                ),
+                selectedOption = viewModel.getSortLabel(uiState.inventorySettings?.defaultOrder),
+                onOptionSelected = { viewModel.updateDefaultSort(it) }
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -195,28 +208,7 @@ fun InventorySettingsScreen(
     }
 }
 
-@Composable
-fun InventorySettingRow(
-    label: String,
-    isMultiLine: Boolean = false,
-    content: @Composable () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
-        Box(modifier = Modifier.fillMaxWidth()) {
-            content()
-        }
-    }
-}
+
 
 @Composable
 fun InventoryViewToggle(currentView: String, onViewSelected: (String) -> Unit) {
@@ -296,54 +288,4 @@ fun RemovableChip(label: String, onRemove: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
-@Composable
-fun <T> MultiSelectDropdown(
-    label: String,
-    options: List<Pair<String, T>>,
-    onOptionSelected: (Pair<String, T>?) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        OutlinedTextField(
-            value = label,
-            onValueChange = {},
-            readOnly = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BrandBlue,
-                focusedLabelColor = BrandBlue,
-                cursorColor = BrandBlue,
-                unfocusedBorderColor = Color(0xFFE9ECEF),
-                focusedContainerColor = Color(0xFFF8F9FA),
-                unfocusedContainerColor = Color(0xFFF8F9FA)
-            ),
-            shape = RoundedCornerShape(12.dp),
-            textStyle = MaterialTheme.typography.bodyMedium
-        )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-        ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option.first) },
-                    onClick = {
-                        onOptionSelected(option)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}

@@ -1,6 +1,7 @@
 package com.slt.cardealership.presentation.websitedashboard.sliders
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,9 +19,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.shadow
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -72,13 +74,12 @@ fun WebsiteSlidersScreen(
                 Icon(Icons.Default.Add, contentDescription = "Add New")
             }
         },
-        containerColor = Color(0xFFF5F7FA) // Light background
+        containerColor = Color(0xFFF5F7FA)
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 16.dp) // Reduced padding
+                .padding(paddingValues) // Reduced padding
         ) {
             // Header Section Removed (moved to TopAppBar and FAB)
 
@@ -130,7 +131,9 @@ fun WebsiteSlidersScreen(
                         }
 
                         LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             items(state.sliders) { slider ->
                                 SliderCard(
@@ -154,76 +157,65 @@ fun WebsiteSlidersScreen(
 
 @Composable
 fun SliderCard(slider: DomainSlider, onEditClick: () -> Unit, onDeleteClick: () -> Unit) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9ECEF)),
+        modifier = Modifier.fillMaxWidth().clickable { onEditClick() }
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column {
-                    Text(
-                        text = slider.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${slider.slideCount} slides",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                }
-                Row {
-                    IconButton(onClick = onEditClick) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = BrandBlue)
-                    }
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
-                    }
-                }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = slider.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                val dateStr = formatDate(slider.createdOn)
+                Text(
+                    text = "${slider.slideCount} Slides • $dateStr",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Divider(color = Color(0xFFEEEEEE))
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        text = "Created On",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = formatDate(slider.createdOn),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium
+            Box {
+                IconButton(onClick = { showMenu = !showMenu }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Actions",
+                        tint = Color.Gray
                     )
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "Updated On",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        onClick = {
+                            showMenu = false
+                            onEditClick()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBlue) }
                     )
-                    Text(
-                        text = formatDate(slider.updatedOn),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium
+                    DropdownMenuItem(
+                        text = { Text("Delete", color = Color.Red) },
+                        onClick = {
+                            showMenu = false
+                            onDeleteClick()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red) }
                     )
                 }
             }

@@ -29,9 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.slt.cardealership.presentation.websitedashboard.settings.inventory.MultiSelectDropdown
 import com.slt.cardealership.presentation.websitedashboard.settings.inventory.RemovableChip
-import com.slt.cardealership.presentation.websitedashboard.settings.DropdownSelector
+import com.slt.cardealership.presentation.common.AnimatedDropdown
 import com.slt.cardealership.ui.theme.BrandBlue
 
 @Composable
@@ -59,18 +58,20 @@ fun ResearchSettingsScreen(
             .verticalScroll(rememberScrollState())
     ) {
         // Research Brands Section
-        SettingRow(label = "Research brands:") {
-            Column(modifier = Modifier.weight(1f)) {
-                MultiSelectDropdown(
-                    label = "Select Brand",
-                    options = uiState.allMakes.filter { make ->
-                        uiState.researchMakes.none { it.makeId == make.id }
-                    }.map { it.name to it },
-                    onOptionSelected = { option ->
-                        option?.let { viewModel.addResearchMake(it.second.id) }
-                    }
-                )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            AnimatedDropdown(
+                label = "Research brands",
+                options = uiState.allMakes.filter { make ->
+                    uiState.researchMakes.none { it.makeId == make.id }
+                }.map { it.name },
+                selectedOption = "Select Brand",
+                onOptionSelected = { selectedName ->
+                    val selected = uiState.allMakes.find { it.name == selectedName }
+                    selected?.let { viewModel.addResearchMake(it.id) }
+                }
+            )
 
+            if (uiState.researchMakes.isNotEmpty()) {
                 Row(modifier = Modifier.padding(top = 8.dp)) {
                     uiState.researchMakes.forEach { makeSetting ->
                         RemovableChip(
@@ -85,19 +86,23 @@ fun ResearchSettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Body Types Section
-        SettingRow(label = "Body types :") {
-            Column(modifier = Modifier.weight(1f)) {
-                MultiSelectDropdown(
-                    label = "Select Body Type",
-                    options = uiState.allBodyTypes.filter { bodyType ->
-                        uiState.researchBodyTypes.none { it.bodyTypeId == bodyType.id }
-                    }.map { it.name to it },
-                    onOptionSelected = { option ->
-                        option?.let { viewModel.addResearchBodyType(it.second.id) }
-                    }
-                )
+        Spacer(modifier = Modifier.height(24.dp))
 
+        // Body Types Section
+        Column(modifier = Modifier.fillMaxWidth()) {
+            AnimatedDropdown(
+                label = "Body types",
+                options = uiState.allBodyTypes.filter { bodyType ->
+                    uiState.researchBodyTypes.none { it.bodyTypeId == bodyType.id }
+                }.map { it.name },
+                selectedOption = "Select Body Type",
+                onOptionSelected = { selectedName ->
+                    val selected = uiState.allBodyTypes.find { it.name == selectedName }
+                    selected?.let { viewModel.addResearchBodyType(it.id) }
+                }
+            )
+
+            if (uiState.researchBodyTypes.isNotEmpty()) {
                 Row(modifier = Modifier.padding(top = 8.dp)) {
                     uiState.researchBodyTypes.forEach { bodyTypeSetting ->
                         RemovableChip(
@@ -112,17 +117,18 @@ fun ResearchSettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        Spacer(modifier = Modifier.height(24.dp))
+
         // Min Year Dropdown
         val currentYear = java.time.Year.now().value
         val years = listOf("Select Year") + (1999..currentYear).map { it.toString() }.reversed()
 
-        SettingRow(label = "Min Year:") {
-            DropdownSelector(
-                items = years,
-                selectedItem = uiState.researchSettings?.minYear?.toString() ?: "Select Year",
-                onItemSelected = { viewModel.updateMinYear(it) }
-            )
-        }
+        AnimatedDropdown(
+            label = "Min Year",
+            options = years,
+            selectedOption = uiState.researchSettings?.minYear?.toString() ?: "Select Year",
+            onOptionSelected = { viewModel.updateMinYear(it) }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 

@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.slt.cardealership.domain.model.DomainMenuItem
 import com.slt.cardealership.domain.model.DomainPage
+import com.slt.cardealership.presentation.common.LabeledTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,17 +99,12 @@ fun EditMenusScreen(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Menu name*", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
-                            OutlinedTextField(
+                            LabeledTextField(
+                                label = "Menu name*",
                                 value = formState.menuName,
                                 onValueChange = viewModel::onNameChange,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                singleLine = true,
-                                shape = RoundedCornerShape(4.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedBorderColor = Color.LightGray,
-                                    focusedBorderColor = Color(0xFF2196F3)
-                                )
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = "Enter menu name"
                             )
                         }
                     }
@@ -154,30 +150,27 @@ fun EditMenusScreen(
                             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(
-                                    checked = formState.isTopPrimary,
-                                    onCheckedChange = viewModel::onTopPrimaryChange,
-                                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF2196F3))
-                                )
-                                Text("Top primary menu")
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(
-                                    checked = formState.isFooter,
-                                    onCheckedChange = viewModel::onFooterChange,
-                                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF2196F3))
-                                )
-                                Text("Footer menu")
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(
-                                    checked = formState.isFooterBottom,
-                                    onCheckedChange = viewModel::onFooterBottomChange,
-                                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF2196F3))
-                                )
-                                Text("Footer bottom menu")
-                            }
+                            MenuCheckboxRow(
+                                label = "Top primary menu",
+                                checked = formState.isTopPrimary,
+                                onCheckedChange = viewModel::onTopPrimaryChange
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            MenuCheckboxRow(
+                                label = "Footer menu",
+                                checked = formState.isFooter,
+                                onCheckedChange = viewModel::onFooterChange
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            MenuCheckboxRow(
+                                label = "Footer bottom menu",
+                                checked = formState.isFooterBottom,
+                                onCheckedChange = viewModel::onFooterBottomChange
+                            )
                         }
                     }
 
@@ -187,10 +180,12 @@ fun EditMenusScreen(
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         enabled = formState.menuName.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
-                        shape = RoundedCornerShape(4.dp)
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Text("Update", color = Color.White)
                     }
+
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
 
                 if (formState.isAddDialogVisible) {

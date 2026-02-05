@@ -1,17 +1,19 @@
 package com.slt.cardealership.presentation.ManageClassified.banners
 
+
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,7 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -43,17 +44,10 @@ fun ClassifiedBannersScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var bannerToDelete by remember { mutableStateOf<Banner?>(null) }
 
-    // Auto-refresh logic when returning from Add/Edit screen
-    val currentBackStackEntry = navController.currentBackStackEntry
-    val savedStateHandle = currentBackStackEntry?.savedStateHandle
-    val shouldRefresh by savedStateHandle?.getLiveData<Boolean>("should_refresh")?.observeAsState() ?: mutableStateOf(false)
-
-    LaunchedEffect(shouldRefresh) {
-        if (shouldRefresh == true) {
-            viewModel.fetchData()
-            savedStateHandle?.remove<Boolean>("should_refresh")
-        }
-    }
+    // Bottom Sheet States
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var selectedBannerId by remember { mutableStateOf<String?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Scaffold(
         topBar = {
@@ -62,7 +56,7 @@ fun ClassifiedBannersScreen(
                 title = { Text("Banner", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -70,7 +64,10 @@ fun ClassifiedBannersScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(HomeRoutes.AddEditClassifiedBanner(siteId = siteId)) },
+                onClick = {
+                    selectedBannerId = null
+                    showBottomSheet = true
+                },
                 containerColor = Color(0xFF2196F3),
                 contentColor = Color.White,
                 shape = RoundedCornerShape(12.dp)
@@ -105,21 +102,19 @@ fun ClassifiedBannersScreen(
                     if (state.banners.isEmpty()) {
                         EmptyBannerState()
                     } else {
-                        LazyColumn(
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             items(state.banners) { banner ->
                                 BannerCard(
                                     banner = banner,
                                     onEditClick = {
-                                        navController.navigate(
-                                            HomeRoutes.AddEditClassifiedBanner(
-                                                siteId = siteId,
-                                                bannerId = banner.id
-                                            )
-                                        )
+                                        selectedBannerId = banner.id
+                                        showBottomSheet = true
                                     },
                                     onDeleteClick = {
                                         bannerToDelete = banner
@@ -135,6 +130,27 @@ fun ClassifiedBannersScreen(
                 }
             }
         }
+    }
+
+    // Bottom Sheet for Add/Edit
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState,
+            containerColor = Color.White,
+            modifier = Modifier.statusBarsPadding(),
+            content = {
+                AddEditBannerBottomSheet(
+                    siteId = siteId,
+                    bannerId = selectedBannerId,
+                    onDismiss = { showBottomSheet = false },
+                    onSuccess = {
+                        showBottomSheet = false
+                        viewModel.fetchData() // Refresh list on success
+                    }
+                )
+            }
+        )
     }
 
     // Delete Confirmation Dialog
@@ -176,33 +192,92 @@ fun BannerCard(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Image
-            AsyncImage(
-                model = banner.imageUrl,
-                contentDescription = banner.title,
+        Column {
+            // Image Section with Menu Overlay
+            Box(
                 modifier = Modifier
-                    .size(110.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .fillMaxWidth()
+                    .height(140.dp) // Adjust height as needed
+            ) {
+                AsyncImage(
+                    model = banner.imageUrl,
+                    contentDescription = banner.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
 
-            // Content
+                // Gradient Scrim for visibility
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .align(Alignment.TopCenter)
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent)
+                            )
+                        )
+                )
+
+                // Menu Icon Overlay
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                ) {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp) // Slightly larger icon
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Edit") },
+                            onClick = {
+                                showMenu = false
+                                onEditClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF2196F3))
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                showMenu = false
+                                onDeleteClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Content Section
             Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Title
                 Text(
@@ -215,92 +290,33 @@ fun BannerCard(
                 )
 
                 // URL
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Link,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = Color(0xFF2196F3)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+                if (!banner.url.isNullOrBlank()) {
                     Text(
-                        text = banner.url ?: "No URL",
+                        text = banner.url,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF2196F3),
+                        color = Color.Gray,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                // Dates
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Created: ${formatDate(banner.createdOn)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 11.sp,
-                            color = Color.Gray
-                        )
-                    }
-                    /* Optional: Show Updated date if different? Or just show formatted dates nicely
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Update,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Updated: ${formatDate(banner.updatedOn)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 11.sp,
-                            color = Color.Gray
-                        )
-                    }
-                    */
-                }
-
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Action Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Edit Button (Small)
-                    OutlinedButton(
-                        onClick = onEditClick,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2196F3)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2196F3)),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text("Edit", fontSize = 12.sp)
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Delete Button (Small)
-                    OutlinedButton(
-                        onClick = onDeleteClick,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text("Delete", fontSize = 12.sp)
-                    }
+                // Date
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Created: ${formatDate(banner.createdOn)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.sp,
+                        color = Color.Gray
+                    )
                 }
             }
         }
@@ -322,7 +338,7 @@ fun EmptyBannerState() {
             Icon(
                 imageVector = Icons.Default.Image,
                 contentDescription = "Empty illustration",
-                modifier = Modifier.size(150.dp),
+                modifier = Modifier.size(100.dp),
                 tint = Color.Gray.copy(alpha = 0.5f)
             )
             Text(

@@ -26,6 +26,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.slt.cardealership.domain.model.DomainFont
 import com.slt.cardealership.domain.model.DomainThemeSetting
+import com.slt.cardealership.presentation.common.AnimatedDropdown
+import com.slt.cardealership.presentation.common.LabeledTextField
 import com.slt.cardealership.ui.theme.BrandBlue
 import com.slt.cardealership.utils.uriToFile
 
@@ -55,14 +57,6 @@ fun ThemeSettingsScreen(
         viewModel.init(domainId)
     }
 
-    val inputColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = BrandBlue,
-        focusedLabelColor = BrandBlue,
-        cursorColor = BrandBlue,
-        unfocusedBorderColor = Color(0xFFE9ECEF),
-        focusedContainerColor = Color(0xFFF8F9FA),
-        unfocusedContainerColor = Color(0xFFF8F9FA)
-    )
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -91,79 +85,81 @@ fun ThemeSettingsScreen(
             ) {
                 uiState.themeSetting?.let { settings ->
                     // Theme Settings Form
-                    ThemeSettingItem(label = "Font family:") {
-                        DropdownSelector(
-                            selectedItem = uiState.fonts.find { it.id == settings.fontId }?.name ?: "Select Font",
-                            items = uiState.fonts.map { it.name },
-                            inputColors = inputColors
-                        ) { Name ->
+                    AnimatedDropdown(
+                        label = "Font family",
+                        options = uiState.fonts.map { it.name },
+                        selectedOption = uiState.fonts.find { it.id == settings.fontId }?.name ?: "Select Font",
+                        onOptionSelected = { Name ->
                             val font = uiState.fonts.find { it.name == Name }
                             if(font != null) {
                                 viewModel.updateSetting(settings.copy(fontId = font.id))
                             }
                         }
-                    }
+                    )
 
                     ThemeSettingItem(label = "Primary color:") {
-                        ColorPickerDisplay(colorCode = settings.primaryColor ?: "#000000", inputColors = inputColors)
+                        ColorPickerDisplay(
+                            colorCode = settings.primaryColor ?: "#000000",
+                            onValueChange = { viewModel.updateSetting(settings.copy(primaryColor = it)) }
+                        )
                     }
 
                     ThemeSettingItem(label = "Secondary color:") {
-                        ColorPickerDisplay(colorCode = settings.secondaryColor ?: "#000000", inputColors = inputColors)
+                        ColorPickerDisplay(
+                            colorCode = settings.secondaryColor ?: "#000000",
+                            onValueChange = { viewModel.updateSetting(settings.copy(secondaryColor = it)) }
+                        )
                     }
 
                     ThemeSettingItem(label = "Button text color:") {
-                        ColorPickerDisplay(colorCode = settings.buttonTextColor ?: "#FFFFFF", isTransparent = settings.buttonTextColor == null, inputColors = inputColors)
-                    }
-
-                    ThemeSettingItem(label = "Line height:") {
-                        OutlinedTextField(
-                            value = settings.lineHeight?.toString() ?: "",
-                            onValueChange = {
-                                viewModel.updateSetting(settings.copy(lineHeight = it.toDoubleOrNull()))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = inputColors,
-                            shape = RoundedCornerShape(12.dp)
+                        ColorPickerDisplay(
+                            colorCode = settings.buttonTextColor ?: "#FFFFFF",
+                            isTransparent = settings.buttonTextColor == null,
+                            onValueChange = { viewModel.updateSetting(settings.copy(buttonTextColor = it)) }
                         )
                     }
 
-                    ThemeSettingItem(label = "Font weight:") {
-                        DropdownSelector(
-                            selectedItem = settings.fontWeight?.toString() ?: "400",
-                            items = listOf("100", "200", "300", "400", "500", "600", "700", "800", "900"),
-                            inputColors = inputColors
-                        ) {
+                    DoubleTextField(
+                        label = "Line height",
+                        value = settings.lineHeight,
+                        onValueChange = {
+                            viewModel.updateSetting(settings.copy(lineHeight = it))
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    AnimatedDropdown(
+                        label = "Font weight",
+                        options = listOf("100", "200", "300", "400", "500", "600", "700", "800", "900"),
+                        selectedOption = settings.fontWeight?.toString() ?: "400",
+                        onOptionSelected = {
                             viewModel.updateSetting(settings.copy(fontWeight = it.toIntOrNull()))
                         }
+                    )
+
+                    DoubleTextField(
+                        label = "Letter spacing",
+                        value = settings.letterSpacing,
+                        onValueChange = {
+                            viewModel.updateSetting(settings.copy(letterSpacing = it))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        suffix = { Text("px", modifier = Modifier.padding(end = 16.dp)) }
+                    )
+
+                    // Header Type
+                    val headerOptions = listOf("Header 1", "Header 2")
+                    val headerDisplayValue = when(settings.headerType) {
+                        "header_1" -> "Header 1"
+                        "header_2" -> "Header 2"
+                        else -> "Header 1"
                     }
 
-                    ThemeSettingItem(label = "Letter spacing:") {
-                        OutlinedTextField(
-                            value = settings.letterSpacing?.toString() ?: "0",
-                            onValueChange = {
-                                viewModel.updateSetting(settings.copy(letterSpacing = it.toDoubleOrNull()))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            trailingIcon = { Text("px", modifier = Modifier.padding(end = 16.dp)) },
-                            colors = inputColors,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-
-                    ThemeSettingItem(label = "Header type:") {
-                        val headerOptions = listOf("Header 1", "Header 2")
-                        val displayValue = when(settings.headerType) {
-                            "header_1" -> "Header 1"
-                            "header_2" -> "Header 2"
-                            else -> "Header 1"
-                        }
-
-                        DropdownSelector(
-                            selectedItem = displayValue,
-                            items = headerOptions,
-                            inputColors = inputColors
-                        ) { selected ->
+                    AnimatedDropdown(
+                        label = "Header type",
+                        options = headerOptions,
+                        selectedOption = headerDisplayValue,
+                        onOptionSelected = { selected ->
                             val apiValue = when(selected) {
                                 "Header 1" -> "header_1"
                                 "Header 2" -> "header_2"
@@ -171,7 +167,7 @@ fun ThemeSettingsScreen(
                             }
                             viewModel.updateSetting(settings.copy(headerType = apiValue))
                         }
-                    }
+                    )
 
                     ThemeSettingItem(label = "Show Topbar:") {
                         Switch(
@@ -183,19 +179,19 @@ fun ThemeSettingsScreen(
                         )
                     }
 
-                    ThemeSettingItem(label = "Footer type:") {
-                        val footerOptions = listOf("Footer 1", "Footer 2")
-                        val displayValue = when(settings.footerType) {
-                            "footer_1" -> "Footer 1"
-                            "footer_2" -> "Footer 2"
-                            else -> "Footer 1"
-                        }
+                    // Footer Type
+                    val footerOptions = listOf("Footer 1", "Footer 2")
+                    val footerDisplayValue = when(settings.footerType) {
+                        "footer_1" -> "Footer 1"
+                        "footer_2" -> "Footer 2"
+                        else -> "Footer 1"
+                    }
 
-                        DropdownSelector(
-                            selectedItem = displayValue,
-                            items = footerOptions,
-                            inputColors = inputColors
-                        ) { selected ->
+                    AnimatedDropdown(
+                        label = "Footer type",
+                        options = footerOptions,
+                        selectedOption = footerDisplayValue,
+                        onOptionSelected = { selected ->
                             val apiValue = when(selected) {
                                 "Footer 1" -> "footer_1"
                                 "Footer 2" -> "footer_2"
@@ -203,7 +199,7 @@ fun ThemeSettingsScreen(
                             }
                             viewModel.updateSetting(settings.copy(footerType = apiValue))
                         }
-                    }
+                    )
 
                     ThemeSettingItem(label = "Footer social media:") {
                         Switch(
@@ -219,40 +215,35 @@ fun ThemeSettingsScreen(
 
                     Text("Heading style(s)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
-                    ThemeSettingItem(label = "Font family:") {
-                        DropdownSelector(
-                            selectedItem = uiState.fonts.find { it.id == settings.headingFontId }?.name ?: "Select Font",
-                            items = uiState.fonts.map { it.name },
-                            inputColors = inputColors
-                        ) { Name ->
+                    AnimatedDropdown(
+                        label = "Font family (Heading)",
+                        options = uiState.fonts.map { it.name },
+                        selectedOption = uiState.fonts.find { it.id == settings.headingFontId }?.name ?: "Select Font",
+                        onOptionSelected = { Name ->
                             val font = uiState.fonts.find { it.name == Name }
                             if(font != null) {
                                 viewModel.updateSetting(settings.copy(headingFontId = font.id))
                             }
                         }
-                    }
+                    )
 
-                    ThemeSettingItem(label = "Line height:") {
-                        OutlinedTextField(
-                            value = settings.headingLineHeight?.toString() ?: "",
-                            onValueChange = {
-                                viewModel.updateSetting(settings.copy(headingLineHeight = it.toDoubleOrNull()))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = inputColors,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
+                    DoubleTextField(
+                        label = "Line height (Heading)",
+                        value = settings.headingLineHeight,
+                        onValueChange = {
+                            viewModel.updateSetting(settings.copy(headingLineHeight = it))
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                    ThemeSettingItem(label = "Font weight:") {
-                        DropdownSelector(
-                            selectedItem = settings.headingFontWeight?.toString() ?: "400",
-                            items = listOf("100", "200", "300", "400", "500", "600", "700", "800", "900"),
-                            inputColors = inputColors
-                        ) {
+                    AnimatedDropdown(
+                        label = "Font weight (Heading)",
+                        options = listOf("100", "200", "300", "400", "500", "600", "700", "800", "900"),
+                        selectedOption = settings.headingFontWeight?.toString() ?: "400",
+                        onOptionSelected = {
                             viewModel.updateSetting(settings.copy(headingFontWeight = it.toIntOrNull()))
                         }
-                    }
+                    )
 
 
                     // Logo Section
@@ -327,15 +318,18 @@ fun ThemeSettingsScreen(
                                     )
                                 }
 
+
+
                                 var selectedTheme by remember { mutableStateOf<com.slt.cardealership.domain.model.DomainDefaultTheme?>(null) }
 
-                                DropdownSelector(
-                                    selectedItem = selectedTheme?.name ?: "Select theme",
-                                    items = uiState.defaultThemes.map { it.name },
-                                    inputColors = inputColors
-                                ) { name ->
-                                    selectedTheme = uiState.defaultThemes.find { it.name == name }
-                                }
+                                AnimatedDropdown(
+                                    label = "Select theme",
+                                    options = uiState.defaultThemes.map { it.name },
+                                    selectedOption = selectedTheme?.name ?: "Select theme",
+                                    onOptionSelected = { name ->
+                                        selectedTheme = uiState.defaultThemes.find { it.name == name }
+                                    }
+                                )
 
                                 Card(
                                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
@@ -403,103 +397,86 @@ fun ThemeSettingItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DropdownSelector(
-    selectedItem: String,
-    items: List<String>,
-    inputColors: TextFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = BrandBlue,
-        focusedLabelColor = BrandBlue,
-        cursorColor = BrandBlue,
-        unfocusedBorderColor = Color(0xFFE9ECEF),
-        focusedContainerColor = Color(0xFFF8F9FA),
-        unfocusedContainerColor = Color(0xFFF8F9FA)
-    ),
-    onItemSelected: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        OutlinedTextField(
-            value = selectedItem,
-            onValueChange = {},
-            readOnly = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            colors = inputColors,
-            shape = RoundedCornerShape(12.dp),
-            textStyle = MaterialTheme.typography.bodyMedium
-        )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-        ) {
-            items.forEach { item ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = item,
-                            fontWeight = if (item == selectedItem) FontWeight.Bold else FontWeight.Normal,
-                            color = if (item == selectedItem) BrandBlue else MaterialTheme.colorScheme.onSurface
-                        )
-                    },
-                    onClick = {
-                        expanded = false
-                        onItemSelected(item)
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun ColorPickerDisplay(
     colorCode: String,
     isTransparent: Boolean = false,
-    inputColors: TextFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = BrandBlue,
-        focusedLabelColor = BrandBlue,
-        cursorColor = BrandBlue,
-        unfocusedBorderColor = Color(0xFFE9ECEF),
-        focusedContainerColor = Color(0xFFF8F9FA),
-        unfocusedContainerColor = Color(0xFFF8F9FA)
-    )
+    onValueChange: (String) -> Unit
 ) {
+    val parsedColor = remember(colorCode) {
+        try {
+            if (isTransparent) Color.Transparent
+            else Color(android.graphics.Color.parseColor(if (colorCode.startsWith("#")) colorCode else "#$colorCode"))
+        } catch (e: Exception) {
+            Color.Transparent // Fallback color if parsing fails
+        }
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        OutlinedTextField(
+        LabeledTextField(
+            label = "",
             value = colorCode,
-            onValueChange = {},
+            onValueChange = onValueChange,
             modifier = Modifier.weight(1f),
-            colors = inputColors,
-            shape = RoundedCornerShape(12.dp),
-            textStyle = MaterialTheme.typography.bodyMedium
+            readOnly = false
         )
         Box(
             modifier = Modifier
                 .size(50.dp) // Match height of text field approx
                 .clip(RoundedCornerShape(8.dp))
-                .background(if(isTransparent) Color.Transparent else Color(android.graphics.Color.parseColor(if(colorCode.startsWith("#")) colorCode else "#$colorCode")))
+                .background(parsedColor)
                 .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
         )
     }
 }
 
+@Composable
+fun DoubleTextField(
+    label: String,
+    value: Double?,
+    onValueChange: (Double?) -> Unit,
+    modifier: Modifier = Modifier,
+    suffix: @Composable (() -> Unit)? = null
+) {
+    // 1. Maintain local string state for free-form editing
+    var text by remember { mutableStateOf(value?.toString() ?: "") }
 
+    // 2. Sync from external value ONLY if it's different from what we typically formatted
+    //    and avoid overwriting successful user input that parses to the same value (e.g. "5." vs "5.0")
+    //    We only force update if the external value fundamentally changes (e.g. computed elsewhere or initial load)
+    LaunchedEffect(value) {
+        val currentParsed = text.toDoubleOrNull()
+        // If external value is null but text isn't empty, or value doesn't match parsed text
+        if (value != currentParsed) {
+            text = value?.toString() ?: ""
+        }
+    }
 
+    LabeledTextField(
+        label = label,
+        value = text,
+        onValueChange = { newText ->
+            // 3. Always update local text first so user sees what they type
+            text = newText
+
+            // 4. Try parsing
+            val newDouble = newText.toDoubleOrNull()
+
+            // 5. Emit change if valid (or null if they cleared it)
+            //    But only if the value actually changed to avoid loop
+            if (newDouble != value) {
+                onValueChange(newDouble)
+            }
+        },
+        modifier = modifier,
+        trailingIcon = suffix
+    )
+}
 
 @Composable
 fun LogoUploadCard(label: String, imageUrl: String?, onChange: () -> Unit, onRemove: () -> Unit) {

@@ -39,6 +39,9 @@ class WebsitePagesViewModel @Inject constructor(
     private val _isAddingPage = MutableStateFlow(false)
     val isAddingPage: StateFlow<Boolean> = _isAddingPage.asStateFlow()
 
+    private val _isUpdatingPage = MutableStateFlow(false)
+    val isUpdatingPage: StateFlow<Boolean> = _isUpdatingPage.asStateFlow()
+
     private var currentDomainId: Int = 0
     private var currentPage: Int = 1
     private val itemsPerPage: Int = 10
@@ -114,14 +117,17 @@ class WebsitePagesViewModel @Inject constructor(
     fun updatePage(request: com.slt.cardealership.domain.model.DomainPageUpdateRequest) {
         android.util.Log.d("WebsitePagesViewModel", "Updating page: $request")
         viewModelScope.launch {
+            _isUpdatingPage.value = true
             val result = dealerRepository.updateDomainPage(request)
             result.onSuccess {
                 android.util.Log.d("WebsitePagesViewModel", "Page update successful")
                 _events.send(WebsitePagesEvent.ShowSuccess("Page updated successfully"))
                 fetchPages(currentDomainId, currentPage) // Refresh list
+                _isUpdatingPage.value = false
             }.onFailure { error ->
                 android.util.Log.e("WebsitePagesViewModel", "Page update failed", error)
                 _events.send(WebsitePagesEvent.ShowError(error.message ?: "Failed to update page"))
+                _isUpdatingPage.value = false
             }
         }
     }

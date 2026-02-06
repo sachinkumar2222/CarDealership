@@ -3,7 +3,7 @@ package com.slt.cardealership.presentation.websitedashboard.pages
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Image as ComposableImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,10 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
@@ -23,17 +20,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.rememberAsyncImagePainter
 import com.slt.cardealership.domain.model.DomainPageCreateRequest
-import com.slt.cardealership.domain.model.DomainSlider
+import com.slt.cardealership.presentation.common.AnimatedDropdown
+import com.slt.cardealership.presentation.common.LabeledTextField
+import com.slt.cardealership.utils.uriToFile
 import java.io.File
 import java.io.FileOutputStream
 
@@ -69,14 +68,6 @@ fun AddPageScreen(
     var featuredImageUri by remember { mutableStateOf<Uri?>(null) }
     var heroBannerImageUri by remember { mutableStateOf<Uri?>(null) }
     var bannerType by remember { mutableStateOf("Image") }
-
-    // Dropdown Expanded States
-    var pageTypeExpanded by remember { mutableStateOf(false) }
-    var statusExpanded by remember { mutableStateOf(false) }
-    var templateExpanded by remember { mutableStateOf(false) }
-    var sliderExpanded by remember { mutableStateOf(false) }
-    var bannerTypeExpanded by remember { mutableStateOf(false) }
-    var robotsExpanded by remember { mutableStateOf(false) }
 
     // Data from ViewModel
     val sliders by viewModel.sliders.collectAsState()
@@ -119,6 +110,7 @@ fun AddPageScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                modifier = Modifier.shadow(8.dp),
                 title = { Text("Add Page") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -126,7 +118,7 @@ fun AddPageScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = Color.White,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                     navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
@@ -144,34 +136,22 @@ fun AddPageScreen(
         ) {
             // General Section
             SectionCard(title = "General Information") {
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "Page Name *",
                     value = pageName,
                     onValueChange = { pageName = it },
-                    label = { Text("Page Name *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF2196F3),
-                        focusedLabelColor = Color(0xFF2196F3),
-                        cursorColor = Color(0xFF2196F3)
-                    )
+                    placeholder = "Enter page name"
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "Page Content",
                     value = pageContent,
                     onValueChange = { pageContent = it },
-                    label = { Text("Page Content") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    maxLines = 10,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF2196F3),
-                        focusedLabelColor = Color(0xFF2196F3),
-                        cursorColor = Color(0xFF2196F3)
-                    )
+                    placeholder = "Enter page content (HTML supported)",
+                    minLines = 8,
+                    singleLine = false
                 )
                 Text(
                     text = "Note: Rich Text Editor is not supported in this mobile view. Please use HTML or plain text.",
@@ -183,88 +163,31 @@ fun AddPageScreen(
 
             // Action Section
             SectionCard(title = "Action") {
-                // Page Type Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = pageTypeExpanded,
-                    onExpandedChange = { pageTypeExpanded = !pageTypeExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = pageType,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Page Type *") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = pageTypeExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF2196F3),
-                            focusedLabelColor = Color(0xFF2196F3),
-                            cursorColor = Color(0xFF2196F3)
-                        )
-                    )
-                    ExposedDropdownMenu(
-                        expanded = pageTypeExpanded,
-                        onDismissRequest = { pageTypeExpanded = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        listOf("Standard", "Landing Page", "Blog Post").forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(type) },
-                                onClick = {
-                                    pageType = type
-                                    pageTypeExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                AnimatedDropdown(
+                    label = "Page Type *",
+                    options = listOf("Standard", "Landing Page", "Blog Post"),
+                    selectedOption = pageType,
+                    onOptionSelected = { pageType = it }
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Status Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = statusExpanded,
-                    onExpandedChange = { statusExpanded = !statusExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = status,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Status") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF2196F3),
-                            focusedLabelColor = Color(0xFF2196F3),
-                            cursorColor = Color(0xFF2196F3)
-                        )
-                    )
-                    ExposedDropdownMenu(
-                        expanded = statusExpanded,
-                        onDismissRequest = { statusExpanded = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        listOf("Active", "Inactive", "Draft").forEach { item ->
-                            DropdownMenuItem(
-                                text = { Text(item) },
-                                onClick = {
-                                    status = item
-                                    statusExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                AnimatedDropdown(
+                    label = "Status",
+                    options = listOf("Active", "Inactive", "Draft"),
+                    selectedOption = status,
+                    onOptionSelected = { status = it }
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
                     onClick = {
-                        // Handle Publish
                         val currentTime = System.currentTimeMillis()
                         val request = DomainPageCreateRequest(
                             sqlDomainId = domainId,
                             pageName = pageName,
-                            pageDescription = pageContent, // Mapping content to description as per model
+                            pageDescription = pageContent,
                             pageTitle = pageH1,
                             metaTitle = metaTitle,
                             metaDescription = metaDescription,
@@ -276,12 +199,12 @@ fun AddPageScreen(
                             insertToSitemap = true,
                             featuredImage = null,
                             sliderId = selectedSliderId,
-                            updatedBy = "Admin", // TODO: Get from Auth
+                            updatedBy = "Admin",
                             updatedOn = currentTime,
                             bannerType = if (bannerType == "Image" && heroBannerImageUri == null) "None" else bannerType,
                             bannerUrl = null,
                             pageSlug = pageName.lowercase().replace(" ", "-"),
-                            createdBy = "Admin", // TODO: Get from Auth
+                            createdBy = "Admin",
                             createdOn = currentTime,
                             featuredFilePath = featuredImageUri?.let { uri -> uriToFile(context, uri)?.absolutePath },
                             bannerFilePath = heroBannerImageUri?.let { uri -> uriToFile(context, uri)?.absolutePath }
@@ -290,7 +213,8 @@ fun AddPageScreen(
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     enabled = !isAddingPage,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     if (isAddingPage) {
                         CircularProgressIndicator(
@@ -308,39 +232,12 @@ fun AddPageScreen(
 
             // Templates Section
             SectionCard(title = "Templates") {
-                ExposedDropdownMenuBox(
-                    expanded = templateExpanded,
-                    onExpandedChange = { templateExpanded = !templateExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedTemplate,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Select Template") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = templateExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF2196F3),
-                            focusedLabelColor = Color(0xFF2196F3),
-                            cursorColor = Color(0xFF2196F3)
-                        )
-                    )
-                    ExposedDropdownMenu(
-                        expanded = templateExpanded,
-                        onDismissRequest = { templateExpanded = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        listOf("Default", "Full Width", "Sidebar Left", "Sidebar Right").forEach { item ->
-                            DropdownMenuItem(
-                                text = { Text(item) },
-                                onClick = {
-                                    selectedTemplate = item
-                                    templateExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                AnimatedDropdown(
+                    label = "Select Template",
+                    options = listOf("Default", "Full Width", "Sidebar Left", "Sidebar Right"),
+                    selectedOption = selectedTemplate,
+                    onOptionSelected = { selectedTemplate = it }
+                )
             }
 
             // Featured Image Section
@@ -355,39 +252,12 @@ fun AddPageScreen(
 
             // Hero Banner Section
             SectionCard(title = "Hero Banner") {
-                ExposedDropdownMenuBox(
-                    expanded = bannerTypeExpanded,
-                    onExpandedChange = { bannerTypeExpanded = !bannerTypeExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = bannerType,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Banner Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bannerTypeExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF2196F3),
-                            focusedLabelColor = Color(0xFF2196F3),
-                            cursorColor = Color(0xFF2196F3)
-                        )
-                    )
-                    ExposedDropdownMenu(
-                        expanded = bannerTypeExpanded,
-                        onDismissRequest = { bannerTypeExpanded = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        listOf("Image", "Video", "None").forEach { item ->
-                            DropdownMenuItem(
-                                text = { Text(item) },
-                                onClick = {
-                                    bannerType = item
-                                    bannerTypeExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                AnimatedDropdown(
+                    label = "Banner Type",
+                    options = listOf("Image", "Video", "None"),
+                    selectedOption = bannerType,
+                    onOptionSelected = { bannerType = it }
+                )
 
                 if (bannerType == "Image") {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -402,150 +272,76 @@ fun AddPageScreen(
 
             // Slider Section
             SectionCard(title = "Slider") {
-                ExposedDropdownMenuBox(
-                    expanded = sliderExpanded,
-                    onExpandedChange = { sliderExpanded = !sliderExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = sliders.find { it.id.toString() == selectedSliderId }?.name ?: "Select Slider",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Select Slider") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sliderExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF2196F3),
-                            focusedLabelColor = Color(0xFF2196F3),
-                            cursorColor = Color(0xFF2196F3)
-                        )
-                    )
-                    ExposedDropdownMenu(
-                        expanded = sliderExpanded,
-                        onDismissRequest = { sliderExpanded = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("None") },
-                            onClick = {
-                                selectedSliderId = null
-                                sliderExpanded = false
-                            }
-                        )
-                        sliders.forEach { slider ->
-                            DropdownMenuItem(
-                                text = { Text(slider.name) },
-                                onClick = {
-                                    selectedSliderId = slider.id.toString()
-                                    sliderExpanded = false
-                                }
-                            )
-                        }
+                val currentSliderName = sliders.find { it.id.toString() == selectedSliderId }?.name ?: "None"
+                // Need to handle "None" properly in display vs ID
+                val sliderOptions = listOf("None") + sliders.map { it.name }
+
+                AnimatedDropdown(
+                    label = "Select Slider",
+                    options = sliderOptions,
+                    selectedOption = currentSliderName,
+                    onOptionSelected = { selectedName ->
+                        selectedSliderId = if (selectedName == "None") null
+                        else sliders.find { it.name == selectedName }?.id.toString()
                     }
-                }
+                )
             }
 
             // SEO Section
             SectionCard(title = "SEO Field Options") {
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "Page H1",
                     value = pageH1,
                     onValueChange = { pageH1 = it },
-                    label = { Text("Page H1") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF2196F3),
-                        focusedLabelColor = Color(0xFF2196F3),
-                        cursorColor = Color(0xFF2196F3)
-                    )
+                    placeholder = "Page H1 Title"
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "Meta Title",
                     value = metaTitle,
                     onValueChange = { metaTitle = it },
-                    label = { Text("Meta Title") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF2196F3),
-                        focusedLabelColor = Color(0xFF2196F3),
-                        cursorColor = Color(0xFF2196F3)
-                    )
+                    placeholder = "Meta Title"
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "Meta Description",
                     value = metaDescription,
                     onValueChange = { metaDescription = it },
-                    label = { Text("Meta Description") },
-                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = "Meta Description",
                     minLines = 3,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF2196F3),
-                        focusedLabelColor = Color(0xFF2196F3),
-                        cursorColor = Color(0xFF2196F3)
-                    )
+                    singleLine = false
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                ExposedDropdownMenuBox(
-                    expanded = robotsExpanded,
-                    onExpandedChange = { robotsExpanded = !robotsExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = robotsMetaTag,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Robots Meta Tag") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = robotsExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF2196F3),
-                            focusedLabelColor = Color(0xFF2196F3),
-                            cursorColor = Color(0xFF2196F3)
-                        )
-                    )
-                    ExposedDropdownMenu(
-                        expanded = robotsExpanded,
-                        onDismissRequest = { robotsExpanded = false },
-                        modifier = Modifier.background(Color.White)
-                    ) {
-                        listOf("index, follow", "noindex, follow", "index, nofollow", "noindex, nofollow").forEach { item ->
-                            DropdownMenuItem(
-                                text = { Text(item) },
-                                onClick = {
-                                    robotsMetaTag = item
-                                    robotsExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
+                AnimatedDropdown(
+                    label = "Robots Meta Tag",
+                    options = listOf("index, follow", "noindex, follow", "index, nofollow", "noindex, nofollow"),
+                    selectedOption = robotsMetaTag,
+                    onOptionSelected = { robotsMetaTag = it }
+                )
             }
 
             // Scripts Section
             SectionCard(title = "Scripts") {
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "Header Script",
                     value = headerScript,
                     onValueChange = { headerScript = it },
-                    label = { Text("Header Script") },
-                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = "Header Script",
                     minLines = 3,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF2196F3),
-                        focusedLabelColor = Color(0xFF2196F3),
-                        cursorColor = Color(0xFF2196F3)
-                    )
+                    singleLine = false
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
+                LabeledTextField(
+                    label = "Footer Script",
                     value = footerScript,
                     onValueChange = { footerScript = it },
-                    label = { Text("Footer Script") },
-                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = "Footer Script",
                     minLines = 3,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF2196F3),
-                        focusedLabelColor = Color(0xFF2196F3),
-                        cursorColor = Color(0xFF2196F3)
-                    )
+                    singleLine = false
                 )
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -597,7 +393,7 @@ fun ImagePicker(
                     .clip(RoundedCornerShape(8.dp))
                     .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
             ) {
-                Image(
+                ComposableImage(
                     painter = rememberAsyncImagePainter(imageUri),
                     contentDescription = "Selected Image",
                     modifier = Modifier.fillMaxSize(),
@@ -644,23 +440,5 @@ fun ImagePicker(
                 }
             }
         }
-    }
-}
-
-// Helper to convert Uri to File
-fun uriToFile(context: android.content.Context, uri: Uri): File? {
-    return try {
-        val inputStream = context.contentResolver.openInputStream(uri)
-        val tempFile = File.createTempFile("upload", ".jpg", context.cacheDir)
-        val outputStream = FileOutputStream(tempFile)
-        inputStream?.use { input ->
-            outputStream.use { output ->
-                input.copyTo(output)
-            }
-        }
-        tempFile
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
     }
 }

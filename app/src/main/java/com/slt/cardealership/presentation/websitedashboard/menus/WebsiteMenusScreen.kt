@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Add
@@ -199,7 +200,7 @@ fun MenuCard(
                         modifier = Modifier.background(Color.White),
                         shape = RoundedCornerShape(16.dp),
                         shadowElevation = 8.dp,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+                        border =BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
                     ) {
                         DropdownMenuItem(
                             text = { Text("Edit") },

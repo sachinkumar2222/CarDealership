@@ -243,7 +243,7 @@ fun ResearchCompareCard(
                         .width(140.dp),
                     shape = RoundedCornerShape(16.dp),
                     shadowElevation = 8.dp,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+                    border =BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
                 ) {
                     DropdownMenuItem(
                         text = { Text("View") },

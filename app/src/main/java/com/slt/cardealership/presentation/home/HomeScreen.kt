@@ -258,6 +258,9 @@ sealed class HomeRoutes {
     data class AddPageScreen(val domainId: Int) : HomeRoutes()
 
     @Serializable
+    data class EditPageScreen(val domainId: Int, val pageId: String) : HomeRoutes()
+
+    @Serializable
     data class AddBlogScreen(val domainId: Int, val blogId: String? = null) : HomeRoutes()
 
     @Serializable
@@ -695,6 +698,15 @@ fun HomeScreen(mainNavController: NavController, authViewModel: AuthViewModel) {
                     com.slt.cardealership.presentation.websitedashboard.blogs.WebsiteBlogsScreen(
                         navController = homeNavController,
                         domainId = args.domainId
+                    )
+                }
+
+                composable<HomeRoutes.EditPageScreen> { backStackEntry ->
+                    val args = backStackEntry.toRoute<HomeRoutes.EditPageScreen>()
+                    com.slt.cardealership.presentation.websitedashboard.pages.EditPageScreen(
+                        navController = homeNavController,
+                        domainId = args.domainId,
+                        pageId = args.pageId
                     )
                 }
 

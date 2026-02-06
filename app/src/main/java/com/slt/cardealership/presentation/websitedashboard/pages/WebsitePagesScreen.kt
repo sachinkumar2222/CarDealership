@@ -1,6 +1,7 @@
 package com.slt.cardealership.presentation.websitedashboard.pages
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,7 +29,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,63 +68,26 @@ fun WebsitePagesScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var showEditDialog by remember { mutableStateOf(false) }
-    var pageToEdit by remember { mutableStateOf<DomainPage?>(null) }
 
-    val sliders by viewModel.sliders.collectAsState()
-
-    // Separate effect for details to handle the suspend call and state update
-    val fetchedPageDetailsState = remember { mutableStateOf<DomainPageDetails?>(null) }
-    var isLoadingDetails by remember { mutableStateOf(false) }
-
-    LaunchedEffect(showEditDialog, pageToEdit) {
-        if (showEditDialog && pageToEdit != null) {
-            isLoadingDetails = true
-            viewModel.fetchSliders(domainId.toString())
-            fetchedPageDetailsState.value = viewModel.getPageDetails(pageToEdit!!.id)
-            isLoadingDetails = false
-        }
-    }
-
-    if (showEditDialog && pageToEdit != null && fetchedPageDetailsState.value != null) {
-        ComplexEditPageDialog(
-            page = fetchedPageDetailsState.value!!,
-            domainId = domainId,
-            sliders = sliders,
-            onDismiss = { showEditDialog = false },
-            onSave = { request ->
-                viewModel.updatePage(request)
-                showEditDialog = false
-            }
-        )
-    }
-
-    if (isLoadingDetails) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
-    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                modifier = Modifier.shadow(8.dp),
-                title = { Text("Pages") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color.Black,
-                    navigationIconContentColor = Color.Black
+            Surface(shadowElevation = 8.dp) {
+                TopAppBar(
+                    title = { Text("Pages") },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.White,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
-            )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -172,8 +135,7 @@ fun WebsitePagesScreen(
                         pages = state.pages,
                         modifier = Modifier.weight(1f),
                         onEditClick = { page ->
-                            pageToEdit = page
-                            showEditDialog = true
+                            navController.navigate(HomeRoutes.EditPageScreen(domainId, page.id))
                         },
                         onDeleteClick = { page ->
                             viewModel.deletePage(page.id)
@@ -421,16 +383,16 @@ fun ExpandablePageCard(
                         onDismissRequest = { menuExpanded = false },
                         modifier = Modifier
                             .background(Color.White)
-                            .width(160.dp), // Set a fixed width for better look
-                        shadowElevation = 8.dp,
+                            .width(160.dp),
                         shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+                        shadowElevation = 8.dp,
+                        border =BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
                     ) {
                         DropdownMenuItem(
                             text = {
                                 Text(
                                     "Edit",
-                                    color = Color.Black, // Blue
+                                    color = Color(0xFF1E88E5), // Blue
                                     fontWeight = FontWeight.Medium
                                 )
                             },

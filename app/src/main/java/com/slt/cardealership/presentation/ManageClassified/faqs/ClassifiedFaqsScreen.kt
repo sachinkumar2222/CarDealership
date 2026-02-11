@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.ManageClassified.faqs
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,7 +35,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.slt.cardealership.domain.model.FaqItem
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

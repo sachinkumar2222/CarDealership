@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.inventory
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import android.annotation.SuppressLint
 import android.util.Log
 import android.widget.Toast
@@ -25,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.slt.cardealership.presentation.common.*
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 import com.slt.cardealership.presentation.vehicle.AddEditVehicleFormState
 import com.slt.cardealership.presentation.vehicle.InventoryEvent
 import com.slt.cardealership.presentation.vehicle.VehicleViewModel

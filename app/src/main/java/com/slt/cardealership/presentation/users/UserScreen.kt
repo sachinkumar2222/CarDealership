@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.slt.cardealership.domain.model.ManageUsers
-import com.slt.cardealership.presentation.home.FullScreenError
+import com.slt.cardealership.presentation.common.FullScreenError
 import com.slt.cardealership.presentation.home.shimmer
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.shadow
@@ -133,8 +133,8 @@ fun UserScreen(
                 // --- 2. Error State ---
                 state.error != null -> {
                     FullScreenError(
-                        errorMessage = state.error,
-                        onTryAgain = { viewModel.loadUsers() }
+                        message = state.error,
+                        onRetry = { viewModel.loadUsers() }
                     )
                 }
 

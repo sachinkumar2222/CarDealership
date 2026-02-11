@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.inventory
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import android.util.Log
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -37,7 +39,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.slt.cardealership.domain.model.Vehicle
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 import com.slt.cardealership.presentation.vehicle.InventoryEvent // Ensure this import is correct
 import com.slt.cardealership.presentation.vehicle.VehicleViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -67,7 +69,6 @@ fun InventoryScreen(
                 message = "Error: $it",
                 duration = SnackbarDuration.Short
             )
-            // Optional: viewModel.clearListError() // Add if you want to clear the error after showing
         }
     }
 

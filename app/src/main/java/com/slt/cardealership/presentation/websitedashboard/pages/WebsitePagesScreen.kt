@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.websitedashboard.pages
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -36,8 +38,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.slt.cardealership.domain.model.DomainPage
-import com.slt.cardealership.domain.model.DomainPageDetails
-import com.slt.cardealership.presentation.home.HomeRoutes
 import java.text.SimpleDateFormat
 import java.util.*
 

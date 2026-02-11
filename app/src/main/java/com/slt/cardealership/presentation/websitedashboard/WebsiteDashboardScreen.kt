@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.websitedashboard
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed wrong import
 import com.slt.cardealership.ui.theme.BrandDarkBlue
 
 val ScreenBackground = Color(0xFFF5F7FA)

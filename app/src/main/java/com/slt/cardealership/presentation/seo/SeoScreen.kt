@@ -1,4 +1,6 @@
-package com.slt.cardealership.presentation.seo // Your package name
+package com.slt.cardealership.presentation.seo
+
+import com.slt.cardealership.presentation.navigation.HomeRoutes // Your package name
 
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -37,8 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.slt.cardealership.presentation.home.HomeRoutes.SeoMapperScreen
-import com.slt.cardealership.domain.model.SeoTag // Import your REAL SeoTag model
+// import com.slt.cardealership.presentation.home.HomeRoutes.SeoMapperScreen // Removed
+import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.ui.theme.BrandBlue
 
 
@@ -131,7 +133,7 @@ fun SeoScreen(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-        ) {
+            ) {
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -157,7 +159,7 @@ fun SeoScreen(
                                 color = Color.DarkGray
                             )
                             OutlinedButton(
-                                onClick = { navController.navigate(SeoMapperScreen) },
+                                onClick = { navController.navigate(HomeRoutes.SeoMapperScreen) },
                                 modifier = Modifier.height(36.dp),
                                 shape = RoundedCornerShape(8.dp),
                                 border = BorderStroke(1.dp, BrandBlue),

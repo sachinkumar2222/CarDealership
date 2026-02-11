@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.ManageClassified.banners
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -28,7 +30,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.slt.cardealership.domain.model.Banner
-import com.slt.cardealership.presentation.home.HomeRoutes
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

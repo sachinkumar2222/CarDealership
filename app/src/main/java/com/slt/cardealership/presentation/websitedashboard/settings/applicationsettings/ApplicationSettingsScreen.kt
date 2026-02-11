@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.websitedashboard.settings.applicationsettings
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,7 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 import com.slt.cardealership.ui.theme.BrandBlue
 
 @Composable

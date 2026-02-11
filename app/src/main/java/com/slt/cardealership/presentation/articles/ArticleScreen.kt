@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.articles
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,7 +32,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.slt.cardealership.domain.model.Post
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 import com.slt.cardealership.presentation.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)

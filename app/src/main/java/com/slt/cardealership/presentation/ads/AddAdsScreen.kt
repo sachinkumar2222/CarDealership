@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.ads
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.DrawableRes
@@ -35,7 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.slt.cardealership.R
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 import com.slt.cardealership.presentation.vehicle.VehicleViewModel
 import com.slt.cardealership.presentation.common.LabeledTextField
 import com.slt.cardealership.presentation.common.AnimatedDropdown

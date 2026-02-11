@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.websitedashboard.blogs
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -85,7 +87,7 @@ fun WebsiteBlogsScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(com.slt.cardealership.presentation.home.HomeRoutes.AddBlogScreen(domainId)) },
+                onClick = { navController.navigate(HomeRoutes.AddBlogScreen(domainId)) },
                 containerColor = Color(0xFF2196F3),
                 contentColor = Color.White
             ) {
@@ -130,7 +132,7 @@ fun WebsiteBlogsScreen(
                         modifier = Modifier.weight(1f),
                         onEditClick = { blog ->
                             navController.navigate(
-                                com.slt.cardealership.presentation.home.HomeRoutes.AddBlogScreen(
+                                HomeRoutes.AddBlogScreen(
                                     domainId = domainId,
                                     blogId = blog.id
                                 )

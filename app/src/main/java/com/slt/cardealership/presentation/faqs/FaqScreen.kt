@@ -43,7 +43,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import com.slt.cardealership.domain.model.FaqItem
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 import com.slt.cardealership.ui.theme.BrandBlue
 import kotlinx.coroutines.launch
 
@@ -57,7 +57,7 @@ fun FaqScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
-    
+
     // Bottom Sheet State
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showSheet by remember { mutableStateOf(false) }
@@ -222,7 +222,7 @@ fun FaqScreen(
                 }
             }
         }
-        
+
         // --- Bottom Sheet ---
         if (showSheet) {
             ModalBottomSheet(
@@ -231,10 +231,10 @@ fun FaqScreen(
                 containerColor = Color.White,
                 scrimColor = Color.Black.copy(alpha = 0.5f)
             ) {
-               AddFaqSheet(
-                   viewModel = viewModel,
-                   onClose = { showSheet = false }
-               )
+                AddFaqSheet(
+                    viewModel = viewModel,
+                    onClose = { showSheet = false }
+                )
             }
         }
     }
@@ -268,7 +268,7 @@ fun FaqCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 // Expand Icon on Left
-                 Icon(
+                Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = "Expand",
                     modifier = Modifier
@@ -277,7 +277,7 @@ fun FaqCard(
                         .size(24.dp),
                     tint = Color(0xFF94A3B8)
                 )
-                
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.question,
@@ -286,12 +286,12 @@ fun FaqCard(
                         color = Color(0xFF1E293B),
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                         // Domain/Type Tag
+                        // Domain/Type Tag
                         if (!item.domain_name.isNullOrBlank()) {
                             Surface(
                                 color = Color(0xFFEFF6FF),
@@ -306,7 +306,7 @@ fun FaqCard(
                                 )
                             }
                         }
-                        
+
                         // Date
                         Text(
                             text = formatDate(item.created_on),
@@ -364,7 +364,7 @@ fun FaqCard(
                     Spacer(modifier = Modifier.height(16.dp))
                     HorizontalDivider(color = Color(0xFFF1F5F9))
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     Text(
                         text = "Answer:",
                         style = MaterialTheme.typography.labelMedium,

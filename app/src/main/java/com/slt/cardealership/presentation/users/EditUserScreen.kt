@@ -76,7 +76,7 @@ import coil3.request.crossfade
 import coil3.request.error
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.DetailedUserProfile
-import com.slt.cardealership.presentation.home.FullScreenError
+import com.slt.cardealership.presentation.common.FullScreenError
 import com.slt.cardealership.presentation.home.backgroundColor
 import com.slt.cardealership.presentation.home.businessDarkBlue
 import com.slt.cardealership.presentation.home.surfaceColor
@@ -175,8 +175,8 @@ fun EditUserScreen(
             }
             uiState.detailError != null -> {
                 FullScreenError(
-                    errorMessage = uiState.detailError!!,
-                    onTryAgain = { viewModel.fetchUserDetails(userId) }
+                    message = uiState.detailError!!,
+                    onRetry = { viewModel.fetchUserDetails(userId) }
                 )
             }
             user != null -> {

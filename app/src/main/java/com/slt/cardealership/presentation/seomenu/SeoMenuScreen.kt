@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.seomenu
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import com.slt.cardealership.presentation.common.AnimatedDropdown
 import com.slt.cardealership.presentation.common.LabeledTextField
 import androidx.compose.foundation.layout.height
@@ -28,11 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.slt.cardealership.domain.model.SeoCategory
-import com.slt.cardealership.presentation.home.HomeRoutes
-import com.slt.cardealership.presentation.seomenu.AddSeoMenuSheet
-import com.slt.cardealership.presentation.seomenu.SeoMenuEvent
-import com.slt.cardealership.presentation.seomenu.SeoMenuUiItem
-import com.slt.cardealership.presentation.seomenu.SeoMenuViewModel
+
 
 // --- This is your main screen, now connected to the ViewModel ---
 @OptIn(ExperimentalMaterial3Api::class)

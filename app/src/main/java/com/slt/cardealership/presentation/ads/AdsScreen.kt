@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.ads
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -38,7 +40,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.slt.cardealership.R
 import com.slt.cardealership.domain.model.Advertisement // Import the correct model
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.Date

@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.inventory
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 import com.slt.cardealership.presentation.vehicle.VehicleViewModel
 import java.io.File
 import java.io.FileOutputStream

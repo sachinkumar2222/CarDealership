@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.mywebsites
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -98,7 +100,7 @@ fun MyWebsitesScreen(
                         ) {
                             items(state.domains) { domain ->
                                 DomainItemCard(domain, onManageClick = { domainId ->
-                                    navController.navigate(com.slt.cardealership.presentation.home.HomeRoutes.WebsiteDashboard(domainId))
+                                    navController.navigate(HomeRoutes.WebsiteDashboard(domainId))
                                 })
                             }
                         }

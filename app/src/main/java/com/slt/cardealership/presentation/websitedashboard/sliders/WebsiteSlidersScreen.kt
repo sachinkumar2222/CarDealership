@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.websitedashboard.sliders
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,7 +34,6 @@ import androidx.navigation.NavController
 import com.slt.cardealership.domain.model.DomainSlider
 import java.text.SimpleDateFormat
 import java.util.*
-import com.slt.cardealership.presentation.home.HomeRoutes
 import com.slt.cardealership.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)

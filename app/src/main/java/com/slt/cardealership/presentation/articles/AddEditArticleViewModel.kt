@@ -1,5 +1,7 @@
 package com.slt.cardealership.presentation.articles
 
+import com.slt.cardealership.presentation.navigation.HomeRoutes
+
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -11,7 +13,7 @@ import com.slt.cardealership.domain.model.Post
 import com.slt.cardealership.domain.model.PostCta
 import com.slt.cardealership.domain.model.SeoTag
 import com.slt.cardealership.domain.repo.PostRepository
-import com.slt.cardealership.presentation.home.HomeRoutes
+// Removed invalid import
 import com.slt.cardealership.utils.uriToFile // Make sure you have this utility function
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
